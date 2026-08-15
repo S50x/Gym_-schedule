@@ -120,6 +120,54 @@ test('postgres behaviour', async (t) => {
     assert.equal(after.n, before.n, 'the inserted row must not survive');
   });
 
+  await t.test('TLS verification survives the connection string', async () => {
+    // Asserts client.connectionParameters.ssl — the value that actually governs
+    // the TLS handshake. Checking the Pool's stored options instead is what let
+    // an earlier version of this code claim verification was enforced when it
+    // was not: node-postgres merges the parsed connectionString *over* the
+    // explicit config, so `sslmode=require` in the URL discarded our setting.
+    // Imported here rather than at module scope: server/db.js pulls in
+    // config.js, which reads ORIGIN when it is first evaluated, and helpers.js
+    // only sets ORIGIN inside a top-level await. A static import can win that
+    // race and leave every request failing the CSRF origin check.
+    const pg = (await import('pg')).default;
+    const { tlsOptions, stripTlsParams } = await import('../server/db.js');
+    const neon =
+      'postgresql://u:p@ep-x.us-west-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+
+    const resolved = (raw) =>
+      new pg.Client({ connectionString: stripTlsParams(raw), ssl: tlsOptions(raw) })
+        .connectionParameters.ssl;
+
+    assert.deepEqual(
+      resolved(neon),
+      { rejectUnauthorized: true },
+      'a hosted URL must end up with certificate verification ON'
+    );
+
+    assert.deepEqual(
+      resolved(neon.replace('sslmode=require', 'sslmode=no-verify')),
+      { rejectUnauthorized: false },
+      'the documented no-verify escape hatch must actually reach the driver'
+    );
+
+    assert.equal(
+      resolved('postgres://u:p@localhost:5432/hadeed'),
+      false,
+      'a plain local socket needs no TLS'
+    );
+
+    // The stripped URL must still address the same database with the same
+    // credentials — including a password that needs percent-encoding.
+    const tricky = 'postgresql://user:p%40ss%3Aword@host.example.com:5433/mydb?sslmode=require';
+    const stripped = new URL(stripTlsParams(tricky));
+    assert.equal(stripped.hostname, 'host.example.com');
+    assert.equal(stripped.port, '5433');
+    assert.equal(stripped.pathname, '/mydb');
+    assert.equal(decodeURIComponent(stripped.password), 'p@ss:word');
+    assert.ok(!stripped.search.includes('sslmode'), 'sslmode must be gone');
+  });
+
   await t.test('migrations are recorded and do not re-run', async () => {
     const { rows } = await app.db.query('SELECT version FROM schema_migrations ORDER BY version');
     assert.deepEqual(

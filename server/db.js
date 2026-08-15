@@ -114,7 +114,7 @@ const SCHEMA = [
  * explicitly with `?sslmode=no-verify`, which at least makes the trade-off
  * visible in the connection string instead of hidden in the code.
  */
-function tlsOptions(url) {
+export function tlsOptions(url) {
   if (/[?&]sslmode=disable/.test(url)) return false;
   if (/[?&]sslmode=no-verify/.test(url)) return { rejectUnauthorized: false };
   const local = /@(localhost|127\.0\.0\.1|\[::1\])[:/]/.test(url);
@@ -122,9 +122,37 @@ function tlsOptions(url) {
   return { rejectUnauthorized: true };
 }
 
+/**
+ * Remove the TLS-related query parameters before handing the URL to pg.
+ *
+ * This is not cosmetic. node-postgres merges a parsed connectionString *over*
+ * the explicit config, so `sslmode=require` in the URL silently discards the
+ * `ssl` option set above — `tlsOptions()` was decorative for exactly the hosted
+ * providers it was written for. Verification still happened by luck (an empty
+ * ssl object inherits Node's `rejectUnauthorized: true` default), but the
+ * documented `sslmode=no-verify` escape hatch never reached our code, and a
+ * future pg release that adopts libpq semantics for `require` would have
+ * quietly downgraded the connection to unverified TLS on a routine upgrade.
+ *
+ * Stripping the parameters makes `tlsOptions()` authoritative, and as a bonus
+ * silences the deprecation warning the parser prints on every boot.
+ */
+export function stripTlsParams(url) {
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.delete('sslmode');
+    parsed.searchParams.delete('channel_binding');
+    return parsed.toString();
+  } catch {
+    // Not a shape URL can parse (a unix socket path, say) — leave it alone and
+    // let pg deal with it.
+    return url;
+  }
+}
+
 async function connectPg(url) {
   const pool = new pg.Pool({
-    connectionString: url,
+    connectionString: stripTlsParams(url),
     // Free-tier Postgres allows few connections; a small pool avoids
     // exhausting them, and a short idle timeout releases them promptly.
     max: 5,
