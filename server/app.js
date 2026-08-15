@@ -47,9 +47,9 @@ export function createApp(db) {
 
   /* ── session ───────────────────────────────────────────────── */
 
-  app.use((req, res, next) => {
+  app.use(async (req, res, next) => {
     const token = req.cookies?.[sessionCookieName()];
-    req.user = token ? lookupSession(db, token) : null;
+    req.user = token ? await lookupSession(db, token) : null;
     next();
   });
 
@@ -109,11 +109,7 @@ export function createApp(db) {
 
   // Housekeeping: drop expired sessions and stale rate-limit rows hourly.
   const timer = setInterval(() => {
-    try {
-      sweep(db);
-    } catch (err) {
-      console.error('[sweep]', err);
-    }
+    sweep(db).catch((err) => console.error('[sweep]', err));
   }, 60 * 60 * 1000);
   timer.unref?.();
   app.locals.sweepTimer = timer;

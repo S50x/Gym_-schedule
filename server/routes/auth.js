@@ -13,6 +13,7 @@ import {
 } from '../auth.js';
 import { authRateLimit, clearAuthAttempts, memoryRateLimit } from '../security.js';
 import { emptyState } from '../state-schema.js';
+import { UNIQUE_VIOLATION } from '../db.js';
 import { generateSecret, otpauthUrl, verifyCode } from '../totp.js';
 import { encodeQRRows } from '../qr.js';
 import {
@@ -93,21 +94,21 @@ export function authRouter(db) {
   const loginLimiter = authRateLimit(db, { windowMs: 15 * 60 * 1000, max: 8 });
   const registerLimiter = authRateLimit(db, { windowMs: 60 * 60 * 1000, max: 5 });
 
-  router.get('/me', (req, res) => {
+  router.get('/me', async (req, res) => {
     if (!req.user) return res.status(401).json({ error: 'unauthenticated' });
-    const { count } = db
-      .prepare('SELECT COUNT(*) AS count FROM sessions WHERE user_id = ?')
-      .get(req.user.userId);
-    const row = db.prepare('SELECT totp_enabled FROM users WHERE id = ?').get(req.user.userId);
+    const devices = await db.one('SELECT COUNT(*) AS count FROM sessions WHERE user_id = $1', [
+      req.user.userId,
+    ]);
+    const row = await db.one('SELECT totp_enabled FROM users WHERE id = $1', [req.user.userId]);
     res.json({
       email: req.user.email,
-      devices: count,
+      devices: Number(devices?.count ?? 0),
       totpEnabled: !!row?.totp_enabled,
-      recoveryCodesLeft: row?.totp_enabled ? countRecoveryCodes(db, req.user.userId) : 0,
+      recoveryCodesLeft: row?.totp_enabled ? await countRecoveryCodes(db, req.user.userId) : 0,
     });
   });
 
-  router.post('/register', registerLimiter, (req, res) => {
+  router.post('/register', registerLimiter, async (req, res) => {
     if (!config.allowRegistration) {
       return res
         .status(403)
@@ -122,15 +123,16 @@ export function authRouter(db) {
 
     let userId;
     try {
-      const info = db
-        .prepare(
-          `INSERT INTO users (email, email_norm, password_hash, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?)`
-        )
-        .run(checked.email, emailNorm, hash, now, now);
-      userId = Number(info.lastInsertRowid);
+      const row = await db.one(
+        `INSERT INTO users (email, email_norm, password_hash, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+        [checked.email, emailNorm, hash, now, now]
+      );
+      userId = Number(row.id);
     } catch (err) {
-      if (String(err.message).includes('UNIQUE')) {
+      // Postgres reports a duplicate key as SQLSTATE 23505. Matching on the
+      // message text instead would turn "email already taken" into a 500.
+      if (err.code === UNIQUE_VIOLATION) {
         return res
           .status(409)
           .json({ error: 'exists', message: 'فيه حساب مسجّل بهذا البريد. سجّل دخول بدل التسجيل.' });
@@ -138,17 +140,18 @@ export function authRouter(db) {
       throw err;
     }
 
-    db.prepare(
-      'INSERT INTO app_state (user_id, doc, version, updated_at) VALUES (?, ?, 0, ?)'
-    ).run(userId, JSON.stringify(emptyState()), now);
+    await db.run(
+      'INSERT INTO app_state (user_id, doc, version, updated_at) VALUES ($1, $2, 0, $3)',
+      [userId, JSON.stringify(emptyState()), now]
+    );
 
-    clearAuthAttempts(db, req);
-    const token = createSession(db, userId, deviceLabel(req), now);
+    await clearAuthAttempts(db, req);
+    const token = await createSession(db, userId, deviceLabel(req), now);
     setSessionCookie(res, token);
     res.status(201).json({ email: checked.email });
   });
 
-  router.post('/login', loginLimiter, (req, res) => {
+  router.post('/login', loginLimiter, async (req, res) => {
     const email = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
 
@@ -158,9 +161,10 @@ export function authRouter(db) {
         .json({ error: 'invalid', message: 'اكتب بريدك وكلمة السر.' });
     }
 
-    const row = db
-      .prepare('SELECT id, email, password_hash, totp_enabled FROM users WHERE email_norm = ?')
-      .get(normalizeEmail(email));
+    const row = await db.one(
+      'SELECT id, email, password_hash, totp_enabled FROM users WHERE email_norm = $1',
+      [normalizeEmail(email)]
+    );
 
     // Same message and comparable timing whether the account exists or not,
     // so this endpoint cannot be used to enumerate registered emails.
@@ -176,18 +180,18 @@ export function authRouter(db) {
         .json({ error: 'bad_credentials', message: 'البريد أو كلمة السر غلط.' });
     }
 
-    clearAuthAttempts(db, req);
+    await clearAuthAttempts(db, req);
 
     // Password was right but a second factor is still owed. No session is
     // created here — only a short-lived challenge that grants nothing but the
     // right to present a code. Whether 2FA is on is revealed *after* the
     // password check, so it cannot be probed from outside.
     if (row.totp_enabled) {
-      setMfaCookie(res, createChallenge(db, row.id));
+      setMfaCookie(res, await createChallenge(db, row.id));
       return res.json({ mfaRequired: true });
     }
 
-    const token = createSession(db, row.id, deviceLabel(req));
+    const token = await createSession(db, row.id, deviceLabel(req));
     setSessionCookie(res, token);
     res.json({ email: row.email, mfaRequired: false });
   });
@@ -200,8 +204,8 @@ export function authRouter(db) {
       max: 30,
       message: 'محاولات كثيرة. انتظر شوي وحاول مرة ثانية.',
     }),
-    (req, res) => {
-      const challenge = lookupChallenge(db, req.cookies?.[MFA_COOKIE]);
+    async (req, res) => {
+      const challenge = await lookupChallenge(db, req.cookies?.[MFA_COOKIE]);
       if (!challenge) {
         clearMfaCookie(res);
         return res.status(401).json({
@@ -210,14 +214,14 @@ export function authRouter(db) {
         });
       }
 
-      const result = checkSecondFactor(db, {
+      const result = await checkSecondFactor(db, {
         id: challenge.user_id,
         secret: challenge.totp_secret,
         lastStep: challenge.totp_last_step,
       }, req.body?.code);
 
       if (!result.ok) {
-        const burned = recordFailedAttempt(db, challenge);
+        const burned = await recordFailedAttempt(db, challenge);
         if (burned) {
           clearMfaCookie(res);
           return res.status(401).json({
@@ -234,12 +238,12 @@ export function authRouter(db) {
         });
       }
 
-      consumeChallenge(db, challenge.id);
+      await consumeChallenge(db, challenge.id);
       clearMfaCookie(res);
-      const token = createSession(db, challenge.user_id, deviceLabel(req));
+      const token = await createSession(db, challenge.user_id, deviceLabel(req));
       setSessionCookie(res, token);
 
-      const left = countRecoveryCodes(db, challenge.user_id);
+      const left = await countRecoveryCodes(db, challenge.user_id);
       res.json({
         email: challenge.email,
         usedRecovery: result.usedRecovery,
@@ -248,41 +252,41 @@ export function authRouter(db) {
     }
   );
 
-  router.post('/logout', (req, res) => {
-    destroySession(db, req.cookies?.[sessionCookieName()]);
+  router.post('/logout', async (req, res) => {
+    await destroySession(db, req.cookies?.[sessionCookieName()]);
     clearSessionCookie(res);
     res.status(204).end();
   });
 
-  router.post('/logout-all', (req, res) => {
+  router.post('/logout-all', async (req, res) => {
     if (!req.user) return res.status(401).json({ error: 'unauthenticated' });
-    destroyAllSessions(db, req.user.userId);
+    await destroyAllSessions(db, req.user.userId);
     clearSessionCookie(res);
     res.status(204).end();
   });
 
-  router.post('/change-password', (req, res) => {
+  router.post('/change-password', async (req, res) => {
     if (!req.user) return res.status(401).json({ error: 'unauthenticated' });
 
     const current = typeof req.body?.currentPassword === 'string' ? req.body.currentPassword : '';
     const checked = checkCredentials({ email: req.user.email, password: req.body?.newPassword });
     if (checked.error) return res.status(400).json({ error: 'invalid', message: checked.error });
 
-    const row = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(req.user.userId);
+    const row = await db.one('SELECT password_hash FROM users WHERE id = $1', [req.user.userId]);
     if (!row || !verifyPassword(current, row.password_hash)) {
       return res
         .status(401)
         .json({ error: 'bad_credentials', message: 'كلمة السر الحالية غلط.' });
     }
 
-    db.prepare('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?').run(
+    await db.run('UPDATE users SET password_hash = $1, updated_at = $2 WHERE id = $3', [
       hashPassword(checked.password),
       Date.now(),
-      req.user.userId
-    );
+      req.user.userId,
+    ]);
     // Changing the password kicks every other device out.
-    destroyAllSessions(db, req.user.userId);
-    const token = createSession(db, req.user.userId, deviceLabel(req));
+    await destroyAllSessions(db, req.user.userId);
+    const token = await createSession(db, req.user.userId, deviceLabel(req));
     setSessionCookie(res, token);
     res.status(204).end();
   });
@@ -295,12 +299,12 @@ export function authRouter(db) {
   };
 
   /** Re-check the password before any change to the second factor. */
-  const requirePassword = (req, res, next) => {
+  const requirePassword = async (req, res, next) => {
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
     if (!password || password.length > MAX_PASSWORD) {
       return res.status(400).json({ error: 'invalid', message: 'اكتب كلمة السر.' });
     }
-    const row = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(req.user.userId);
+    const row = await db.one('SELECT password_hash FROM users WHERE id = $1', [req.user.userId]);
     if (!row || !verifyPassword(password, row.password_hash)) {
       return res.status(401).json({ error: 'bad_credentials', message: 'كلمة السر غلط.' });
     }
@@ -319,8 +323,8 @@ export function authRouter(db) {
    * authenticator app actually holds it. Enabling without that check is how
    * people lock themselves out.
    */
-  router.post('/2fa/setup', requireAuth, twoFactorLimiter, requirePassword, (req, res) => {
-    const row = db.prepare('SELECT totp_enabled FROM users WHERE id = ?').get(req.user.userId);
+  router.post('/2fa/setup', requireAuth, twoFactorLimiter, requirePassword, async (req, res) => {
+    const row = await db.one('SELECT totp_enabled FROM users WHERE id = $1', [req.user.userId]);
     if (row?.totp_enabled) {
       return res
         .status(409)
@@ -328,21 +332,21 @@ export function authRouter(db) {
     }
 
     const secret = generateSecret();
-    db.prepare('UPDATE users SET totp_pending = ?, updated_at = ? WHERE id = ?').run(
+    await db.run('UPDATE users SET totp_pending = $1, updated_at = $2 WHERE id = $3', [
       secret,
       Date.now(),
-      req.user.userId
-    );
+      req.user.userId,
+    ]);
 
     const url = otpauthUrl({ secret, account: req.user.email });
     res.json({ secret, otpauthUrl: url, qr: encodeQRRows(url) });
   });
 
   /** Step 2 — a valid code proves the app is set up, so switch it on. */
-  router.post('/2fa/enable', requireAuth, twoFactorLimiter, (req, res) => {
-    const row = db
-      .prepare('SELECT totp_pending, totp_enabled FROM users WHERE id = ?')
-      .get(req.user.userId);
+  router.post('/2fa/enable', requireAuth, twoFactorLimiter, async (req, res) => {
+    const row = await db.one('SELECT totp_pending, totp_enabled FROM users WHERE id = $1', [
+      req.user.userId,
+    ]);
 
     if (row?.totp_enabled) {
       return res
@@ -363,29 +367,28 @@ export function authRouter(db) {
       });
     }
 
-    let codes;
-    db.transaction(() => {
-      db.prepare(
-        `UPDATE users
-            SET totp_secret = totp_pending, totp_pending = NULL,
-                totp_enabled = 1, totp_last_step = ?, updated_at = ?
-          WHERE id = ?`
-      ).run(result.step, Date.now(), req.user.userId);
-      codes = issueRecoveryCodes(db, req.user.userId);
-    })();
+    await db.run(
+      `UPDATE users
+          SET totp_secret = totp_pending, totp_pending = NULL,
+              totp_enabled = TRUE, totp_last_step = $1, updated_at = $2
+        WHERE id = $3`,
+      [result.step, Date.now(), req.user.userId]
+    );
+    const codes = await issueRecoveryCodes(db, req.user.userId);
 
     // Any other device signed in before 2FA existed keeps a session that never
     // passed a second factor, so those are dropped.
-    destroyAllSessions(db, req.user.userId);
-    setSessionCookie(res, createSession(db, req.user.userId, deviceLabel(req)));
+    await destroyAllSessions(db, req.user.userId);
+    setSessionCookie(res, await createSession(db, req.user.userId, deviceLabel(req)));
 
     res.json({ recoveryCodes: codes });
   });
 
-  router.post('/2fa/disable', requireAuth, twoFactorLimiter, requirePassword, (req, res) => {
-    const row = db
-      .prepare('SELECT id, totp_secret, totp_enabled, totp_last_step FROM users WHERE id = ?')
-      .get(req.user.userId);
+  router.post('/2fa/disable', requireAuth, twoFactorLimiter, requirePassword, async (req, res) => {
+    const row = await db.one(
+      'SELECT id, totp_secret, totp_enabled, totp_last_step FROM users WHERE id = $1',
+      [req.user.userId]
+    );
 
     if (!row?.totp_enabled) {
       return res.status(400).json({ error: 'not_enabled', message: 'التحقق بخطوتين مو مفعّل.' });
@@ -393,7 +396,7 @@ export function authRouter(db) {
 
     // Password alone must not be enough to strip the second factor off, or the
     // second factor adds nothing against someone who has the password.
-    const check = checkSecondFactor(db, {
+    const check = await checkSecondFactor(db, {
       id: row.id,
       secret: row.totp_secret,
       lastStep: row.totp_last_step,
@@ -403,27 +406,34 @@ export function authRouter(db) {
       return res.status(401).json({ error: 'bad_code', message: 'الرمز غلط.' });
     }
 
-    db.transaction(() => {
-      db.prepare(
+    await db.tx(async (t) => {
+      await t.run(
         `UPDATE users
-            SET totp_secret = NULL, totp_pending = NULL, totp_enabled = 0,
-                totp_last_step = 0, updated_at = ?
-          WHERE id = ?`
-      ).run(Date.now(), req.user.userId);
-      db.prepare('DELETE FROM recovery_codes WHERE user_id = ?').run(req.user.userId);
-    })();
+            SET totp_secret = NULL, totp_pending = NULL, totp_enabled = FALSE,
+                totp_last_step = 0, updated_at = $1
+          WHERE id = $2`,
+        [Date.now(), req.user.userId]
+      );
+      await t.run('DELETE FROM recovery_codes WHERE user_id = $1', [req.user.userId]);
+    });
 
     res.status(204).end();
   });
 
   /** Fresh recovery codes; the old ones stop working immediately. */
-  router.post('/2fa/recovery-codes', requireAuth, twoFactorLimiter, requirePassword, (req, res) => {
-    const row = db.prepare('SELECT totp_enabled FROM users WHERE id = ?').get(req.user.userId);
-    if (!row?.totp_enabled) {
-      return res.status(400).json({ error: 'not_enabled', message: 'التحقق بخطوتين مو مفعّل.' });
+  router.post(
+    '/2fa/recovery-codes',
+    requireAuth,
+    twoFactorLimiter,
+    requirePassword,
+    async (req, res) => {
+      const row = await db.one('SELECT totp_enabled FROM users WHERE id = $1', [req.user.userId]);
+      if (!row?.totp_enabled) {
+        return res.status(400).json({ error: 'not_enabled', message: 'التحقق بخطوتين مو مفعّل.' });
+      }
+      res.json({ recoveryCodes: await issueRecoveryCodes(db, req.user.userId) });
     }
-    res.json({ recoveryCodes: issueRecoveryCodes(db, req.user.userId) });
-  });
+  );
 
   return router;
 }

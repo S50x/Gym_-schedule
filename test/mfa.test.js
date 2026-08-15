@@ -69,7 +69,7 @@ test('two-factor authentication', async (t) => {
 
   await t.test('the raw recovery codes are never stored', async () => {
     const { recoveryCodes } = await enrol(app, 'rawcodes@example.com');
-    const stored = app.db.prepare('SELECT code_hash FROM recovery_codes').all();
+    const stored = (await app.db.query('SELECT code_hash FROM recovery_codes')).rows;
     const hashes = stored.map((r) => r.code_hash).join('|');
     for (const c of recoveryCodes) {
       assert.ok(!hashes.includes(c.replace('-', '')), 'a recovery code was stored in the clear');
@@ -80,7 +80,7 @@ test('two-factor authentication', async (t) => {
     const { secret } = await enrol(app, 'twostep@example.com');
 
     const fresh = await makeClient(app.origin).bootstrap();
-    resetRateLimits();
+    await resetRateLimits();
     const first = await fresh.post('/api/auth/login', {
       email: 'twostep@example.com',
       password: goodPassword,
@@ -103,7 +103,7 @@ test('two-factor authentication', async (t) => {
     await enrol(app, 'wrongcode@example.com');
 
     const fresh = await makeClient(app.origin).bootstrap();
-    resetRateLimits();
+    await resetRateLimits();
     await fresh.post('/api/auth/login', {
       email: 'wrongcode@example.com',
       password: goodPassword,
@@ -118,7 +118,7 @@ test('two-factor authentication', async (t) => {
     await enrol(app, 'bruteforce2fa@example.com');
 
     const fresh = await makeClient(app.origin).bootstrap();
-    resetRateLimits();
+    await resetRateLimits();
     await fresh.post('/api/auth/login', {
       email: 'bruteforce2fa@example.com',
       password: goodPassword,
@@ -150,14 +150,14 @@ test('two-factor authentication', async (t) => {
     const shared = code(secret, 1);
 
     const first = await makeClient(app.origin).bootstrap();
-    resetRateLimits();
+    await resetRateLimits();
     await first.post('/api/auth/login', { email: 'replay@example.com', password: goodPassword });
     const accepted = await first.post('/api/auth/login/verify', { code: shared });
     assert.equal(accepted.status, 200, JSON.stringify(accepted.data));
 
     // Same code, still inside its 30 seconds, from a second device.
     const second = await makeClient(app.origin).bootstrap();
-    resetRateLimits();
+    await resetRateLimits();
     await second.post('/api/auth/login', { email: 'replay@example.com', password: goodPassword });
     const replayed = await second.post('/api/auth/login/verify', { code: shared });
 
@@ -170,7 +170,7 @@ test('two-factor authentication', async (t) => {
     const spare = recoveryCodes[0];
 
     const first = await makeClient(app.origin).bootstrap();
-    resetRateLimits();
+    await resetRateLimits();
     await first.post('/api/auth/login', { email: 'recovery@example.com', password: goodPassword });
     const used = await first.post('/api/auth/login/verify', { code: spare });
 
@@ -179,7 +179,7 @@ test('two-factor authentication', async (t) => {
     assert.equal(used.data.recoveryCodesLeft, 9);
 
     const second = await makeClient(app.origin).bootstrap();
-    resetRateLimits();
+    await resetRateLimits();
     await second.post('/api/auth/login', { email: 'recovery@example.com', password: goodPassword });
     const reused = await second.post('/api/auth/login/verify', { code: spare });
     assert.equal(reused.status, 401, 'a recovery code is single use');
@@ -189,7 +189,7 @@ test('two-factor authentication', async (t) => {
     const { recoveryCodes } = await enrol(app, 'looselyped@example.com');
 
     const client = await makeClient(app.origin).bootstrap();
-    resetRateLimits();
+    await resetRateLimits();
     await client.post('/api/auth/login', { email: 'looselyped@example.com', password: goodPassword });
     const res = await client.post('/api/auth/login/verify', {
       code: `  ${recoveryCodes[3].toLowerCase().replace('-', ' ')}  `,
@@ -202,7 +202,7 @@ test('two-factor authentication', async (t) => {
     await enrol(app, 'owner-b@example.com');
 
     const client = await makeClient(app.origin).bootstrap();
-    resetRateLimits();
+    await resetRateLimits();
     await client.post('/api/auth/login', { email: 'owner-b@example.com', password: goodPassword });
     const res = await client.post('/api/auth/login/verify', { code: a.recoveryCodes[0] });
     assert.equal(res.status, 401);
@@ -219,7 +219,7 @@ test('two-factor authentication', async (t) => {
     }
 
     const attacker = await makeClient(app.origin).bootstrap();
-    resetRateLimits();
+    await resetRateLimits();
     await attacker.post('/api/auth/login', { email: 'regen@example.com', password: goodPassword });
     const stale = await attacker.post('/api/auth/login/verify', { code: recoveryCodes[0] });
     assert.equal(stale.status, 401, 'an old code must stop working');
@@ -247,7 +247,14 @@ test('two-factor authentication', async (t) => {
     const me = await client.get('/api/auth/me');
     assert.equal(me.data.totpEnabled, false);
     assert.equal(
-      app.db.prepare('SELECT COUNT(*) AS n FROM recovery_codes WHERE user_id = (SELECT id FROM users WHERE email_norm = ?)').get('disable@example.com').n,
+      Number(
+        (
+          await app.db.one(
+            'SELECT COUNT(*) AS n FROM recovery_codes WHERE user_id = (SELECT id FROM users WHERE email_norm = $1)',
+            ['disable@example.com']
+          )
+        ).n
+      ),
       0,
       'recovery codes are cleared too'
     );
@@ -258,7 +265,7 @@ test('two-factor authentication', async (t) => {
     await registerAndLogin(phone, 'evict@example.com');
 
     const laptop = await makeClient(app.origin).bootstrap();
-    resetRateLimits();
+    await resetRateLimits();
     await laptop.post('/api/auth/login', { email: 'evict@example.com', password: goodPassword });
     assert.equal((await laptop.get('/api/auth/me')).status, 200);
 

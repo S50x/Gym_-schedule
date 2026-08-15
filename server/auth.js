@@ -57,43 +57,43 @@ export function hashToken(token) {
   return crypto.createHmac('sha256', config.sessionSecret).update(token).digest('hex');
 }
 
-export function createSession(db, userId, label, now = Date.now()) {
+export async function createSession(db, userId, label, now = Date.now()) {
   const token = newToken();
-  db.prepare(
+  await db.run(
     `INSERT INTO sessions (user_id, token_hash, created_at, expires_at, last_seen_at, label)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  ).run(userId, hashToken(token), now, now + config.sessionTtlMs, now, label ?? null);
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [userId, hashToken(token), now, now + config.sessionTtlMs, now, label ?? null]
+  );
   return token;
 }
 
-export function lookupSession(db, token, now = Date.now()) {
+export async function lookupSession(db, token, now = Date.now()) {
   if (!token || typeof token !== 'string') return null;
-  const row = db
-    .prepare(
-      `SELECT s.id, s.user_id, s.expires_at, s.last_seen_at, u.email
-         FROM sessions s JOIN users u ON u.id = s.user_id
-        WHERE s.token_hash = ?`
-    )
-    .get(hashToken(token));
+  const row = await db.one(
+    `SELECT s.id, s.user_id, s.expires_at, s.last_seen_at, u.email
+       FROM sessions s JOIN users u ON u.id = s.user_id
+      WHERE s.token_hash = $1`,
+    [hashToken(token)]
+  );
   if (!row) return null;
   if (row.expires_at <= now || now - row.last_seen_at > config.sessionIdleMs) {
-    db.prepare('DELETE FROM sessions WHERE id = ?').run(row.id);
+    await db.run('DELETE FROM sessions WHERE id = $1', [row.id]);
     return null;
   }
   // Throttle the write: one touch per hour is enough to track idleness.
   if (now - row.last_seen_at > 60 * 60 * 1000) {
-    db.prepare('UPDATE sessions SET last_seen_at = ? WHERE id = ?').run(now, row.id);
+    await db.run('UPDATE sessions SET last_seen_at = $1 WHERE id = $2', [now, row.id]);
   }
   return { sessionId: row.id, userId: row.user_id, email: row.email };
 }
 
-export function destroySession(db, token) {
+export async function destroySession(db, token) {
   if (!token) return;
-  db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(hashToken(token));
+  await db.run('DELETE FROM sessions WHERE token_hash = $1', [hashToken(token)]);
 }
 
-export function destroyAllSessions(db, userId) {
-  db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
+export async function destroyAllSessions(db, userId) {
+  await db.run('DELETE FROM sessions WHERE user_id = $1', [userId]);
 }
 
 /* ────────────────────────── cookies ────────────────────────── */

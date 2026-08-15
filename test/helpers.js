@@ -30,14 +30,14 @@ const { resetAllRateLimits } = await import('../server/security.js');
  * its own dedicated test.
  */
 let currentDb = null;
-export function resetRateLimits() {
-  currentDb?.prepare('DELETE FROM login_attempts').run();
+export async function resetRateLimits() {
+  await currentDb?.run('DELETE FROM login_attempts');
   resetAllRateLimits();
 }
 
-/** Boots the real app on the reserved port with an in-memory database. */
+/** Boots the real app on the reserved port with an in-process Postgres (PGlite). */
 export async function startServer() {
-  const db = createDb(':memory:');
+  const db = await createDb('');
   currentDb = db;
   const app = createApp(db);
   const server = await new Promise((resolve) => {
@@ -52,7 +52,7 @@ export async function startServer() {
     async close() {
       clearInterval(app.locals.sweepTimer);
       await new Promise((resolve) => server.close(resolve));
-      db.close();
+      await db.close();
     },
   };
 }
@@ -126,7 +126,7 @@ export const goodEmail = 'saad@example.com';
 
 export async function registerAndLogin(client, email = goodEmail, password = goodPassword) {
   await client.bootstrap();
-  resetRateLimits();
+  await resetRateLimits();
   const res = await client.post('/api/auth/register', { email, password });
   if (res.status !== 201) throw new Error(`register failed: ${res.status} ${JSON.stringify(res.data)}`);
   return res;

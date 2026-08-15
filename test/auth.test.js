@@ -26,7 +26,7 @@ test('auth', async (t) => {
   });
 
   await t.test('session cookie is HttpOnly and SameSite=Strict', async () => {
-    resetRateLimits();
+    await resetRateLimits();
     const client = await makeClient(app.origin).bootstrap();
     const res = await fetch(app.origin + '/api/auth/login', {
       method: 'POST',
@@ -47,7 +47,7 @@ test('auth', async (t) => {
   });
 
   await t.test('rejects a weak or short password', async () => {
-    resetRateLimits();
+    await resetRateLimits();
     const client = await makeClient(app.origin).bootstrap();
     const short = await client.post('/api/auth/register', { email: 'a@b.com', password: 'short1' });
     assert.equal(short.status, 400);
@@ -60,7 +60,7 @@ test('auth', async (t) => {
   });
 
   await t.test('rejects a malformed email', async () => {
-    resetRateLimits();
+    await resetRateLimits();
     const client = await makeClient(app.origin).bootstrap();
     for (const email of ['not-an-email', 'a@b', 'a b@c.com', '<script>@x.com', 'a@.com']) {
       const res = await client.post('/api/auth/register', { email, password: goodPassword });
@@ -69,7 +69,7 @@ test('auth', async (t) => {
   });
 
   await t.test('does not reveal whether an email is registered', async () => {
-    resetRateLimits();
+    await resetRateLimits();
     const client = await makeClient(app.origin).bootstrap();
     const known = await client.post('/api/auth/login', {
       email: goodEmail,
@@ -84,7 +84,7 @@ test('auth', async (t) => {
   });
 
   await t.test('stores the password hashed, never in clear text', async () => {
-    const row = app.db.prepare('SELECT password_hash FROM users WHERE email_norm = ?').get(goodEmail);
+    const row = await app.db.one('SELECT password_hash FROM users WHERE email_norm = $1', [goodEmail]);
     assert.ok(row);
     assert.ok(!row.password_hash.includes(goodPassword));
     assert.match(row.password_hash, /^scrypt\$/);
@@ -94,7 +94,7 @@ test('auth', async (t) => {
     const client = makeClient(app.origin);
     await registerAndLogin(client, 'hashcheck@example.com');
     const raw = client.jar.get('sid') || client.jar.get('__Host-sid');
-    const hit = app.db.prepare('SELECT COUNT(*) AS n FROM sessions WHERE token_hash = ?').get(raw);
+    const hit = await app.db.one('SELECT COUNT(*) AS n FROM sessions WHERE token_hash = $1', [raw]);
     assert.equal(hit.n, 0, 'raw token must not appear in the sessions table');
   });
 
@@ -115,7 +115,7 @@ test('auth', async (t) => {
     await registerAndLogin(phone, 'multi@example.com');
 
     const laptop = await makeClient(app.origin).bootstrap();
-    resetRateLimits();
+    await resetRateLimits();
     await laptop.post('/api/auth/login', { email: 'multi@example.com', password: goodPassword });
     assert.equal((await laptop.get('/api/auth/me')).status, 200);
 
@@ -130,7 +130,7 @@ test('auth', async (t) => {
   });
 
   await t.test('rate limits repeated failed logins', async () => {
-    resetRateLimits();
+    await resetRateLimits();
     const client = await makeClient(app.origin).bootstrap();
     let sawLimit = false;
     for (let i = 0; i < 12; i++) {

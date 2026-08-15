@@ -11,10 +11,9 @@ COPY server ./server
 COPY public ./public
 COPY scripts ./scripts
 
-# The database lives on a mounted volume, never in the image layers.
-RUN mkdir -p /data && chown -R node:node /data /app
-ENV DB_PATH=/data/app.sqlite
-VOLUME ["/data"]
+# Data lives in Postgres (DATABASE_URL), not on this container's filesystem —
+# that is what lets the app run on a host with no persistent disk.
+RUN chown -R node:node /app
 
 USER node
 EXPOSE 3000

@@ -154,19 +154,19 @@ export function memoryRateLimit({ windowMs, max, keyFn, message }) {
  * account so neither a single IP nor a single account can be hammered.
  */
 export function authRateLimit(db, { windowMs, max }) {
-  return function limiter(req, res, next) {
+  return async function limiter(req, res, next) {
     const now = Date.now();
     const buckets = [`ip:${clientIp(req)}`];
     const email = typeof req.body?.email === 'string' ? normalizeEmailForBucket(req.body.email) : '';
     if (email) buckets.push(`acct:${email}`);
 
-    const count = db.prepare(
-      `SELECT COUNT(*) AS n FROM login_attempts
-        WHERE bucket = ? AND created_at > ?`
-    );
     for (const bucket of buckets) {
-      const { n } = count.get(bucket, now - windowMs);
-      if (n >= max) {
+      const row = await db.one(
+        `SELECT COUNT(*) AS n FROM login_attempts
+          WHERE bucket = $1 AND created_at > $2`,
+        [bucket, now - windowMs]
+      );
+      if (Number(row?.n ?? 0) >= max) {
         const retryAfter = Math.ceil(windowMs / 1000);
         res.setHeader('Retry-After', String(retryAfter));
         return res.status(429).json({
@@ -178,16 +178,17 @@ export function authRateLimit(db, { windowMs, max }) {
     }
 
     // Record the attempt now; routes clear it again on success.
-    const insert = db.prepare('INSERT INTO login_attempts (bucket, created_at) VALUES (?, ?)');
-    for (const bucket of buckets) insert.run(bucket, now);
+    for (const bucket of buckets) {
+      await db.run('INSERT INTO login_attempts (bucket, created_at) VALUES ($1, $2)', [bucket, now]);
+    }
     req.rateLimitBuckets = buckets;
     return next();
   };
 }
 
-export function clearAuthAttempts(db, req) {
+export async function clearAuthAttempts(db, req) {
   for (const bucket of req.rateLimitBuckets || []) {
-    db.prepare('DELETE FROM login_attempts WHERE bucket = ?').run(bucket);
+    await db.run('DELETE FROM login_attempts WHERE bucket = $1', [bucket]);
   }
 }
 
