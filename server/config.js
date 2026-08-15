@@ -53,7 +53,11 @@ export const config = {
   isProd,
   isTest,
   port: Number(process.env.PORT || 3000),
-  dbPath: process.env.DB_PATH || (isTest ? ':memory:' : './data/app.sqlite'),
+  // Set DATABASE_URL and the app talks to a managed Postgres. Leave it unset
+  // and it runs an embedded Postgres (PGlite) from a local folder, so `npm
+  // start` works with nothing installed.
+  databaseUrl: process.env.DATABASE_URL || '',
+  dbDir: isTest ? '' : process.env.DB_PATH || './data/pgdata',
   sessionSecret: requiredSecret(),
   origin,
   // Secure cookies require HTTPS. Never force them on in plain-HTTP local dev or the
