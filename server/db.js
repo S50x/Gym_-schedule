@@ -54,6 +54,38 @@ const MIGRATIONS = [
       CREATE INDEX login_attempts_bucket_idx ON login_attempts(bucket, created_at);
     `);
   },
+
+  // 2 — two-factor authentication (TOTP + recovery codes)
+  (db) => {
+    db.exec(`
+      ALTER TABLE users ADD COLUMN totp_secret    TEXT;
+      ALTER TABLE users ADD COLUMN totp_pending   TEXT;
+      ALTER TABLE users ADD COLUMN totp_enabled   INTEGER NOT NULL DEFAULT 0;
+      -- Newest time step already spent, so a code cannot be replayed inside
+      -- the 30 seconds it stays valid.
+      ALTER TABLE users ADD COLUMN totp_last_step INTEGER NOT NULL DEFAULT 0;
+
+      CREATE TABLE recovery_codes (
+        id         INTEGER PRIMARY KEY,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        code_hash  TEXT    NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX recovery_codes_user_idx ON recovery_codes(user_id);
+
+      -- A password that checked out but still owes a second factor. Short
+      -- lived, single use, and capped on attempts.
+      CREATE TABLE mfa_challenges (
+        id         INTEGER PRIMARY KEY,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token_hash TEXT    NOT NULL UNIQUE,
+        created_at INTEGER NOT NULL,
+        expires_at INTEGER NOT NULL,
+        attempts   INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE INDEX mfa_challenges_expiry_idx ON mfa_challenges(expires_at);
+    `);
+  },
 ];
 
 export function createDb(dbPath = config.dbPath) {
@@ -69,8 +101,9 @@ export function createDb(dbPath = config.dbPath) {
   return db;
 }
 
-/** Delete expired sessions and stale rate-limit rows. Safe to call often. */
+/** Delete expired sessions, challenges and stale rate-limit rows. Safe to call often. */
 export function sweep(db, now = Date.now()) {
   db.prepare('DELETE FROM sessions WHERE expires_at <= ?').run(now);
   db.prepare('DELETE FROM login_attempts WHERE created_at <= ?').run(now - 24 * 60 * 60 * 1000);
+  db.prepare('DELETE FROM mfa_challenges WHERE expires_at <= ?').run(now);
 }

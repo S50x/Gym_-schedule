@@ -107,6 +107,56 @@ export function sparkline(values) {
   return svg;
 }
 
+/* ── QR code ─────────────────────────────────────────────── */
+
+/**
+ * Draws the matrix the server computed as an SVG, one <rect> per dark run.
+ * Built with createElementNS rather than an SVG string so the page keeps its
+ * no-innerHTML rule — and so the strict CSP needs no exception for it.
+ *
+ * Rendered on a permanently white plate: inverting a QR for dark mode makes it
+ * unreadable to a good share of scanners.
+ */
+export function qrSvg({ size, rows }, pixelSize = 6) {
+  const quiet = 4; // the mandatory light border, in modules
+  const total = (size + quiet * 2) * pixelSize;
+
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${total} ${total}`);
+  svg.setAttribute('width', String(total));
+  svg.setAttribute('height', String(total));
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', 'رمز QR لإعداد تطبيق المصادقة');
+  svg.setAttribute('shape-rendering', 'crispEdges');
+
+  const background = document.createElementNS(SVG_NS, 'rect');
+  background.setAttribute('width', String(total));
+  background.setAttribute('height', String(total));
+  background.setAttribute('fill', '#ffffff');
+  svg.appendChild(background);
+
+  for (let row = 0; row < size; row++) {
+    const line = rows[row];
+    let runStart = -1;
+    for (let col = 0; col <= size; col++) {
+      const dark = col < size && line[col] === '1';
+      if (dark && runStart === -1) runStart = col;
+      if (!dark && runStart !== -1) {
+        // One rect per horizontal run keeps the node count low on big codes.
+        const rect = document.createElementNS(SVG_NS, 'rect');
+        rect.setAttribute('x', String((runStart + quiet) * pixelSize));
+        rect.setAttribute('y', String((row + quiet) * pixelSize));
+        rect.setAttribute('width', String((col - runStart) * pixelSize));
+        rect.setAttribute('height', String(pixelSize));
+        rect.setAttribute('fill', '#000000');
+        svg.appendChild(rect);
+        runStart = -1;
+      }
+    }
+  }
+  return svg;
+}
+
 /* ── small building blocks ───────────────────────────────── */
 
 export const bulletList = (items) =>

@@ -6,7 +6,7 @@
  * and caching authenticated responses on disk is not something to do casually.
  */
 
-const VERSION = 'hadeed-v1';
+const VERSION = 'hadeed-v2';
 const SHELL = [
   '/',
   '/css/app.css',
@@ -69,17 +69,21 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Assets: network first, cache as the offline fallback.
+  //
+  // Cache-first would be faster, but it also means a phone that installed the
+  // app once keeps running the old JavaScript after a deploy until the cache
+  // name changes — a stale bundle talking to a newer API is a bad failure to
+  // debug. Freshness wins here; the cache still covers being offline.
   event.respondWith(
-    caches.match(request).then(
-      (hit) =>
-        hit ||
-        fetch(request).then((res) => {
-          if (res.ok && res.type === 'basic') {
-            const copy = res.clone();
-            caches.open(VERSION).then((cache) => cache.put(request, copy));
-          }
-          return res;
-        })
-    )
+    fetch(request)
+      .then((res) => {
+        if (res.ok && res.type === 'basic') {
+          const copy = res.clone();
+          caches.open(VERSION).then((cache) => cache.put(request, copy));
+        }
+        return res;
+      })
+      .catch(() => caches.match(request).then((hit) => hit || Response.error()))
   );
 });
