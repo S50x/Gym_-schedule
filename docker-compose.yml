@@ -1,0 +1,24 @@
+services:
+  hadeed:
+    build: .
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_PATH: /data/app.sqlite
+      # لازم تعبّيهم في ملف .env جنب هذا الملف:
+      #   SESSION_SECRET=...   (ولّده: node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))")
+      #   ORIGIN=https://your-domain.example
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+      ORIGIN: ${ORIGIN:?ORIGIN is required}
+      # فعّله لو خلف Nginx/Caddy/Cloudflare — وإلا خلّه 0.
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+      # اقفله (0) بعد ما تسوي حسابك.
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-1}
+    volumes:
+      - hadeed-data:/data
+
+volumes:
+  hadeed-data:
