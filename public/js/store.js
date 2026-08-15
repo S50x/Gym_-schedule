@@ -10,7 +10,7 @@
  *    phones can log different days without either one losing work.
  */
 
-import { api, ApiError } from './api.js';
+import { api, ApiError, NetworkError } from './api.js';
 import { baseWeights, exById, EXERCISE_IDS } from './program.js';
 import { progress, verdict, MAX_WEEK } from './engine.js';
 
@@ -282,7 +282,7 @@ class Store extends EventTarget {
       this.emit();
       return;
     }
-    if (!navigator.onLine || err.name === 'TypeError') {
+    if (!navigator.onLine || err instanceof NetworkError) {
       this.setSync(SYNC.OFFLINE);
       // Retry once the connection is back; the 'online' listener also fires.
       clearTimeout(this._pushTimer);

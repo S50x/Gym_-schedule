@@ -1,6 +1,6 @@
 import { el } from '../dom.js';
 import { toast, bulletList, qrSvg } from '../ui.js';
-import { api, ApiError } from '../api.js';
+import { api, ApiError, NetworkError } from '../api.js';
 import { SYNC } from '../store.js';
 
 const SYNC_TEXT = {
@@ -12,8 +12,12 @@ const SYNC_TEXT = {
   [SYNC.ERROR]: 'صار خطأ بالمزامنة. بياناتك محفوظة محلياً.',
 };
 
+// ApiError and NetworkError both carry a message written for the person
+// reading it; anything else is a bug on our side, not something they can act on.
 const errorText = (err, fallback) =>
-  err instanceof ApiError ? err.message : fallback || 'ما قدرنا نوصل للسيرفر. تأكد من الاتصال.';
+  err instanceof ApiError || err instanceof NetworkError
+    ? err.message
+    : fallback || 'صار خطأ غير متوقع. حدّث الصفحة وجرّب مرة ثانية.';
 
 export function renderAccount(ctx) {
   const { store, navigate } = ctx;
