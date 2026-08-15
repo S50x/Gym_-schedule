@@ -102,12 +102,24 @@ const SCHEMA = [
 
 /* ────────────────────────── drivers ────────────────────────── */
 
-function shouldUseTls(url) {
-  // Managed Postgres (Render, Neon, Supabase) requires TLS; a local socket
-  // does not offer it. Respect an explicit sslmode in the URL either way.
+/**
+ * Managed Postgres (Neon, Supabase, Render) requires TLS; a local socket does
+ * not offer it.
+ *
+ * The certificate is *verified* by default. Turning verification off is the
+ * usual copy-paste advice, but it means anyone able to sit between the app and
+ * the database can read every row in transit — including password hashes and
+ * session tokens. Providers with publicly-trusted certificates (Neon among
+ * them) verify cleanly. A provider using a self-signed certificate can opt out
+ * explicitly with `?sslmode=no-verify`, which at least makes the trade-off
+ * visible in the connection string instead of hidden in the code.
+ */
+function tlsOptions(url) {
   if (/[?&]sslmode=disable/.test(url)) return false;
-  if (/[?&]sslmode=/.test(url)) return true;
-  return !/@(localhost|127\.0\.0\.1|\[::1\])[:/]/.test(url);
+  if (/[?&]sslmode=no-verify/.test(url)) return { rejectUnauthorized: false };
+  const local = /@(localhost|127\.0\.0\.1|\[::1\])[:/]/.test(url);
+  if (local && !/[?&]sslmode=/.test(url)) return false;
+  return { rejectUnauthorized: true };
 }
 
 async function connectPg(url) {
@@ -118,11 +130,33 @@ async function connectPg(url) {
     max: 5,
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 15_000,
-    ssl: shouldUseTls(url) ? { rejectUnauthorized: false } : false,
+    ssl: tlsOptions(url),
   });
-  // Fail loudly at boot rather than on the first request.
-  const probe = await pool.connect();
-  probe.release();
+
+  // Without this listener node-postgres raises an *unhandled* 'error' event
+  // when an idle connection dies, which takes the whole process down. That is
+  // not hypothetical here: free-tier Postgres (Neon, Supabase) suspends its
+  // compute after a few minutes idle and drops open connections. The pool
+  // discards the dead client and opens a fresh one on the next query.
+  pool.on('error', (err) => {
+    console.error('[db] idle connection dropped:', err.message);
+  });
+
+  // Fail loudly at boot rather than on the first request. A suspended instance
+  // may need a moment to wake, so give it a couple of tries.
+  let lastError;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const probe = await pool.connect();
+      probe.release();
+      lastError = null;
+      break;
+    } catch (err) {
+      lastError = err;
+      if (attempt < 3) await new Promise((r) => setTimeout(r, attempt * 1000));
+    }
+  }
+  if (lastError) throw lastError;
 
   return {
     kind: 'pg',
