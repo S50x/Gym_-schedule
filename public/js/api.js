@@ -15,18 +15,60 @@ export class ApiError extends Error {
   }
 }
 
-async function request(method, path, body) {
+/**
+ * The request never reached the server, or the server never answered.
+ *
+ * Worth separating from ApiError, because the two need opposite advice. Free
+ * hosting puts the service to sleep after a quiet spell, and the first request
+ * afterwards can sit for the best part of a minute while it wakes. Telling
+ * someone to "check your connection" at that moment blames the wrong thing —
+ * their connection is fine, the server is starting.
+ */
+export class NetworkError extends Error {
+  constructor(reason) {
+    super(
+      reason === 'offline'
+        ? 'ما فيه اتصال بالإنترنت. بياناتك محفوظة على جهازك.'
+        : 'السيرفر ما رد. لو هذي أول فتحة بعد فترة، الاستضافة المجانية تنام — انتظر دقيقة وجرّب مرة ثانية.'
+    );
+    this.name = 'NetworkError';
+    this.reason = reason;
+  }
+}
+
+// A waking free instance routinely takes 30–60s to answer the first request,
+// so the ceiling has to sit above that or we would abort a request that was
+// about to succeed.
+const REQUEST_TIMEOUT_MS = 75_000;
+
+async function request(method, path, body, { retryOnWake = true } = {}) {
   const headers = { Accept: 'application/json' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (method !== 'GET' && method !== 'HEAD') headers['X-CSRF-Token'] = csrfToken();
 
-  const res = await fetch(path, {
-    method,
-    headers,
-    credentials: 'same-origin',
-    cache: 'no-store',
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  let res;
+  try {
+    res = await fetch(path, {
+      method,
+      headers,
+      credentials: 'same-origin',
+      cache: 'no-store',
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout?.(REQUEST_TIMEOUT_MS),
+    });
+  } catch (err) {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      throw new NetworkError('offline');
+    }
+    // Online but nothing answered: most often a sleeping instance dropping the
+    // first connection as it starts. One quiet retry turns that into a slow
+    // request instead of a visible failure.
+    if (retryOnWake) {
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      return request(method, path, body, { retryOnWake: false });
+    }
+    throw new NetworkError('unreachable');
+  }
 
   if (res.status === 204) return null;
 
