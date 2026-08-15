@@ -292,8 +292,29 @@ class Store extends EventTarget {
     this.setSync(SYNC.ERROR, err.message);
   }
 
+  /**
+   * Re-read the account (2FA state, device count) without touching the data.
+   *
+   * Deliberately silent: emitting here would repaint the screen, and a caller
+   * part-way through a multi-step flow would have its DOM swapped out from
+   * under it — which once meant the one-time recovery codes were rendered into
+   * a detached node and lost. Callers repaint when they are ready.
+   */
+  async refreshUser() {
+    try {
+      const res = await api.me();
+      this.user = res?.data || null;
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) this.user = null;
+    }
+    return this.user;
+  }
+
   async signedIn(user) {
+    // Trust the server for the account details rather than the login response,
+    // so flags like totpEnabled are always in step with what it actually holds.
     this.user = user;
+    await this.refreshUser();
     this._weightCache.clear();
     // A local-only history from before signing in should not be thrown away:
     // mark it dirty so the first push merges it into the account.

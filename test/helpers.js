@@ -21,6 +21,7 @@ process.env.ORIGIN = `http://127.0.0.1:${PORT}`;
 
 const { createDb } = await import('../server/db.js');
 const { createApp } = await import('../server/app.js');
+const { resetAllRateLimits } = await import('../server/security.js');
 
 /**
  * The auth rate limiter is keyed on IP, and every test connects from 127.0.0.1,
@@ -31,6 +32,7 @@ const { createApp } = await import('../server/app.js');
 let currentDb = null;
 export function resetRateLimits() {
   currentDb?.prepare('DELETE FROM login_attempts').run();
+  resetAllRateLimits();
 }
 
 /** Boots the real app on the reserved port with an in-memory database. */

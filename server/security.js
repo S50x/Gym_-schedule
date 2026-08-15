@@ -101,12 +101,21 @@ export function requireCsrf(req, res, next) {
 
 /* ────────────────────────── rate limiting ────────────────────────── */
 
+/**
+ * Every in-memory limiter this process created. Exists so the test suite can
+ * clear counters between cases; nothing in the request path reads it.
+ */
+const LIMITERS = new Set();
+export function resetAllRateLimits() {
+  for (const limiter of LIMITERS) limiter.reset();
+}
+
 /** In-memory sliding window. Per-process, which is fine for a single-node app. */
 export function memoryRateLimit({ windowMs, max, keyFn, message }) {
   const hits = new Map();
   let lastSweep = Date.now();
 
-  return function limiter(req, res, next) {
+  function limiter(req, res, next) {
     const now = Date.now();
     if (now - lastSweep > windowMs) {
       for (const [k, times] of hits) {
@@ -130,7 +139,13 @@ export function memoryRateLimit({ windowMs, max, keyFn, message }) {
     times.push(now);
     hits.set(key, times);
     return next();
-  };
+  }
+
+  // Lets the test suite clear the counter between cases without having to run
+  // the app on weakened production limits.
+  limiter.reset = () => hits.clear();
+  LIMITERS.add(limiter);
+  return limiter;
 }
 
 /**

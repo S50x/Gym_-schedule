@@ -20,5 +20,8 @@
     "express": "^5.1.0",
     "helmet": "^8.1.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "qrcode": "^1.5.4"
+  }
 }

@@ -1,5 +1,5 @@
 import { el } from '../dom.js';
-import { toast, bulletList } from '../ui.js';
+import { toast, bulletList, qrSvg } from '../ui.js';
 import { api, ApiError } from '../api.js';
 import { SYNC } from '../store.js';
 
@@ -11,6 +11,9 @@ const SYNC_TEXT = {
   [SYNC.OFFLINE]: 'ما فيه نت. بياناتك محفوظة محلياً وبترتفع أول ما يرجع الاتصال.',
   [SYNC.ERROR]: 'صار خطأ بالمزامنة. بياناتك محفوظة محلياً.',
 };
+
+const errorText = (err, fallback) =>
+  err instanceof ApiError ? err.message : fallback || 'ما قدرنا نوصل للسيرفر. تأكد من الاتصال.';
 
 export function renderAccount(ctx) {
   const { store, navigate } = ctx;
@@ -47,6 +50,7 @@ export function renderAccount(ctx) {
         el('span', { class: 'b', text: SYNC_TEXT[store.syncState] })
       )
     ),
+    twoFactorCard(ctx),
     changePasswordCard(ctx),
     el(
       'div',
@@ -94,6 +98,284 @@ export function renderAccount(ctx) {
   );
 }
 
+/* ────────────────────────── two-factor ────────────────────────── */
+
+function twoFactorCard(ctx) {
+  const { store } = ctx;
+  const enabled = !!store.user.totpEnabled;
+  const box = el('div', { class: 'card' });
+
+  const heading = el(
+    'div',
+    { class: 'acctrow' },
+    el('span', { class: 'a', text: 'التحقق بخطوتين' }),
+    el('span', {
+      class: ['pill', enabled ? 'on' : 'off'],
+      text: enabled ? 'مفعّل' : 'مو مفعّل',
+    })
+  );
+  box.appendChild(heading);
+
+  const body = el('div', {});
+  box.appendChild(body);
+
+  if (!enabled) {
+    body.append(
+      el('div', {
+        class: 'mut',
+        text: 'يضيف طبقة ثانية عند الدخول: كلمة السر + رمز متغيّر من تطبيق على جوالك. يعني لو أحد عرف كلمة سرك، ما يقدر يدخل.',
+      }),
+      el('button', {
+        class: 'cta',
+        text: 'فعّل التحقق بخطوتين',
+        on: { click: () => startSetup(ctx, body) },
+      })
+    );
+    return box;
+  }
+
+  const left = store.user.recoveryCodesLeft ?? 0;
+  body.append(
+    el('div', {
+      class: 'mut',
+      text: `عند الدخول من جهاز جديد بيطلب منك رمز من تطبيق المصادقة. باقي عندك ${left} رمز استرجاع.`,
+    }),
+    left <= 3
+      ? el('div', {
+          class: 'formerr',
+          text: 'رموز الاسترجاع قاربت تخلص. ولّد رموز جديدة واحفظها.',
+        })
+      : null,
+    el('button', {
+      class: 'cta ghost',
+      text: 'ولّد رموز استرجاع جديدة',
+      on: { click: () => regenerateCodes(ctx, body) },
+    }),
+    el('button', {
+      class: 'cta danger',
+      text: 'أوقف التحقق بخطوتين',
+      on: { click: () => startDisable(ctx, body) },
+    })
+  );
+  return box;
+}
+
+/** Step 1: confirm the password, then show the QR and the manual secret. */
+function startSetup(ctx, container) {
+  const password = passwordField('كلمة السر الحالية');
+  const message = el('div', {});
+  const button = el('button', { class: 'cta', text: 'كمّل' });
+
+  button.addEventListener('click', async () => {
+    message.replaceChildren();
+    if (!password.value) {
+      return message.replaceChildren(el('div', { class: 'formerr', text: 'اكتب كلمة السر.' }));
+    }
+    button.disabled = true;
+    button.textContent = 'لحظة…';
+    try {
+      const res = await api.setup2fa(password.value);
+      password.value = '';
+      showQrStep(ctx, container, res.data);
+    } catch (err) {
+      message.replaceChildren(el('div', { class: 'formerr', text: errorText(err) }));
+      button.disabled = false;
+      button.textContent = 'كمّل';
+    }
+  });
+
+  container.replaceChildren(
+    el('div', { class: 'mut', text: 'أكّد كلمة السر عشان نبدأ الإعداد.' }),
+    el('label', { class: 'inp ltr' }, el('span', { text: 'كلمة السر' }), password),
+    button,
+    message,
+    cancelButton(ctx)
+  );
+  password.focus();
+}
+
+/** Step 2: scan or type the secret, then prove it with a code. */
+function showQrStep(ctx, container, setup) {
+  const code = codeField();
+  const message = el('div', {});
+  const button = el('button', { class: 'cta', text: 'تأكيد وتفعيل' });
+
+  const submit = async () => {
+    message.replaceChildren();
+    if (!/^\d{6}$/.test(code.value.replace(/\s/g, ''))) {
+      return message.replaceChildren(
+        el('div', { class: 'formerr', text: 'اكتب الرمز المكوّن من 6 أرقام.' })
+      );
+    }
+    button.disabled = true;
+    button.textContent = 'لحظة…';
+    try {
+      const res = await api.enable2fa(code.value);
+      showRecoveryCodes(ctx, container, res.data.recoveryCodes, true);
+    } catch (err) {
+      message.replaceChildren(el('div', { class: 'formerr', text: errorText(err) }));
+      button.disabled = false;
+      button.textContent = 'تأكيد وتفعيل';
+    }
+  };
+  button.addEventListener('click', submit);
+  code.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submit();
+  });
+
+  container.replaceChildren(
+    el('ol', { class: 't steps' },
+      el('li', {}, 'نزّل تطبيق مصادقة مثل ', el('b', { text: 'Google Authenticator' }), ' أو Authy.'),
+      el('li', {}, 'افتحه واختر إضافة حساب، وامسح هذا الرمز.'),
+      el('li', {}, 'اكتب الرمز اللي يطلع لك تحت.')
+    ),
+    el('div', { class: 'qrbox' }, qrSvg(setup.qr)),
+    el('details', { class: 'manual' },
+      el('summary', { text: 'ما قدرت تمسح الرمز؟ اكتب المفتاح يدوياً' }),
+      el('div', { class: 'secret n', text: groupSecret(setup.secret) }),
+      el('div', {
+        class: 'mut',
+        text: 'اختر «إدخال مفتاح الإعداد» بالتطبيق، والنوع «حسب الوقت» (Time based).',
+      })
+    ),
+    el('label', { class: 'inp ltr' }, el('span', { text: 'الرمز من التطبيق' }), code),
+    button,
+    message,
+    cancelButton(ctx)
+  );
+  code.focus();
+}
+
+function showRecoveryCodes(ctx, container, codes, justEnabled) {
+  const list = el(
+    'div',
+    { class: 'codes' },
+    codes.map((c) => el('code', { text: c }))
+  );
+
+  const copy = el('button', {
+    class: 'cta ghost',
+    text: 'انسخ الرموز',
+    on: {
+      click: async () => {
+        try {
+          await navigator.clipboard.writeText(codes.join('\n'));
+          toast('اننسخت — احفظها بمكان آمن');
+        } catch {
+          toast('ما قدرنا ننسخ. حددها بيدك وانسخها.');
+        }
+      },
+    },
+  });
+
+  container.replaceChildren(
+    el('div', {
+      class: 'formok',
+      text: justEnabled ? 'تم التفعيل ✓' : 'انولدت رموز جديدة — القديمة ما عادت تشتغل.',
+    }),
+    el('div', {
+      class: 'mut',
+      text: 'هذي رموز الاسترجاع. لو ضاع جوالك، كل رمز يدخّلك مرة وحدة بس. ما راح تشوفها مرة ثانية — احفظها الحين.',
+    }),
+    list,
+    copy,
+    el('button', {
+      class: 'cta',
+      text: 'حفظتها، كمّل',
+      on: {
+        click: async () => {
+          await ctx.store.refreshUser();
+          ctx.refresh();
+        },
+      },
+    })
+  );
+}
+
+function startDisable(ctx, container) {
+  const password = passwordField('كلمة السر');
+  const code = codeField();
+  const message = el('div', {});
+  const button = el('button', { class: 'cta danger', text: 'أوقف التحقق بخطوتين' });
+
+  button.addEventListener('click', async () => {
+    message.replaceChildren();
+    if (!password.value || !code.value) {
+      return message.replaceChildren(el('div', { class: 'formerr', text: 'عبّي الخانتين.' }));
+    }
+    button.disabled = true;
+    try {
+      await api.disable2fa(password.value, code.value);
+      await ctx.store.refreshUser();
+      toast('انوقف التحقق بخطوتين');
+      ctx.refresh();
+    } catch (err) {
+      message.replaceChildren(el('div', { class: 'formerr', text: errorText(err) }));
+      button.disabled = false;
+    }
+  });
+
+  container.replaceChildren(
+    el('div', {
+      class: 'mut',
+      text: 'نحتاج كلمة السر ورمز من التطبيق مع بعض — عشان لو أحد عرف كلمة سرك ما يقدر يوقف الحماية.',
+    }),
+    el('label', { class: 'inp ltr' }, el('span', { text: 'كلمة السر' }), password),
+    el('label', { class: 'inp ltr' }, el('span', { text: 'الرمز أو رمز استرجاع' }), code),
+    button,
+    message,
+    cancelButton(ctx)
+  );
+}
+
+function regenerateCodes(ctx, container) {
+  const password = passwordField('كلمة السر');
+  const message = el('div', {});
+  const button = el('button', { class: 'cta', text: 'ولّد رموز جديدة' });
+
+  button.addEventListener('click', async () => {
+    message.replaceChildren();
+    if (!password.value) {
+      return message.replaceChildren(el('div', { class: 'formerr', text: 'اكتب كلمة السر.' }));
+    }
+    button.disabled = true;
+    try {
+      const res = await api.newRecoveryCodes(password.value);
+      showRecoveryCodes(ctx, container, res.data.recoveryCodes, false);
+    } catch (err) {
+      message.replaceChildren(el('div', { class: 'formerr', text: errorText(err) }));
+      button.disabled = false;
+    }
+  });
+
+  container.replaceChildren(
+    el('div', { class: 'mut', text: 'الرموز القديمة بتتلغى فوراً.' }),
+    el('label', { class: 'inp ltr' }, el('span', { text: 'كلمة السر' }), password),
+    button,
+    message,
+    cancelButton(ctx)
+  );
+}
+
+const cancelButton = (ctx) =>
+  el('button', { class: 'cta ghost', text: 'إلغاء', on: { click: () => ctx.refresh() } });
+
+const passwordField = (placeholder) =>
+  el('input', { type: 'password', autocomplete: 'current-password', placeholder });
+
+const codeField = () =>
+  el('input', {
+    type: 'text',
+    inputmode: 'numeric',
+    autocomplete: 'one-time-code',
+    placeholder: '123456',
+    maxlength: '14',
+    attrs: { autocapitalize: 'characters', spellcheck: 'false' },
+  });
+
+/** 32 characters in one run is unreadable; authenticator apps group by four. */
+const groupSecret = (secret) => secret.replace(/(.{4})/g, '$1 ').trim();
+
 /* ────────────────────────── sign in / sign up ────────────────────────── */
 
 function authForms(ctx) {
@@ -115,6 +397,7 @@ function authForms(ctx) {
 
   const message = el('div', {});
   const submitBtn = el('button', { class: 'cta', text: 'دخول' });
+  const formCard = el('div', { class: 'card' });
 
   const tabs = ['login', 'register'].map((value) =>
     el('button', {
@@ -137,8 +420,13 @@ function authForms(ctx) {
     })
   );
 
-  const setError = (text) =>
-    message.replaceChildren(el('div', { class: 'formerr', text }));
+  const setError = (text) => message.replaceChildren(el('div', { class: 'formerr', text }));
+
+  const finish = async (email) => {
+    await store.signedIn({ email });
+    toast(mode === 'login' ? 'أهلاً بك' : 'انسوّى حسابك');
+    navigate('home');
+  };
 
   const submit = async () => {
     message.replaceChildren();
@@ -152,13 +440,18 @@ function authForms(ctx) {
     submitBtn.disabled = true;
     submitBtn.textContent = 'لحظة…';
     try {
-      const res = mode === 'login' ? await api.login(email, password) : await api.register(email, password);
+      const res =
+        mode === 'login' ? await api.login(email, password) : await api.register(email, password);
       passwordInput.value = '';
-      await store.signedIn({ email: res.data.email, devices: 1 });
-      toast(mode === 'login' ? 'أهلاً بك' : 'انسوّى حسابك');
-      navigate('home');
+
+      // The account has a second factor: swap the whole card for the code step.
+      if (res.data?.mfaRequired) {
+        showMfaStep(ctx, formCard, finish);
+        return;
+      }
+      await finish(res.data.email);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'ما قدرنا نوصل للسيرفر. تأكد من الاتصال.');
+      setError(errorText(err));
       submitBtn.disabled = false;
       submitBtn.textContent = mode === 'login' ? 'دخول' : 'سوّ الحساب';
     }
@@ -171,6 +464,14 @@ function authForms(ctx) {
     });
   }
 
+  formCard.append(
+    el('div', { class: 'authtabs', attrs: { role: 'tablist' } }, tabs),
+    el('label', { class: 'inp ltr' }, el('span', { text: 'البريد الإلكتروني' }), emailInput),
+    el('label', { class: 'inp ltr' }, el('span', { text: 'كلمة السر (10 خانات فأكثر)' }), passwordInput),
+    submitBtn,
+    message
+  );
+
   return el(
     'div',
     { class: 'authbox' },
@@ -179,15 +480,7 @@ function authForms(ctx) {
       class: 'hint-lg',
       text: 'سجّل حساب مرة وحدة، وبعدها افتح التطبيق من أي جوال أو كمبيوتر وبتلقى نفس الأوزان ونفس التقدم.',
     }),
-    el(
-      'div',
-      { class: 'card' },
-      el('div', { class: 'authtabs', attrs: { role: 'tablist' } }, tabs),
-      el('label', { class: 'inp ltr' }, el('span', { text: 'البريد الإلكتروني' }), emailInput),
-      el('label', { class: 'inp ltr' }, el('span', { text: 'كلمة السر (10 خانات فأكثر)' }), passwordInput),
-      submitBtn,
-      message
-    ),
+    formCard,
     el(
       'div',
       { class: 'card' },
@@ -196,7 +489,10 @@ function authForms(ctx) {
           { b: 'كلمة السر ما تنحفظ أبداً كنص.' },
           ' تنحفظ مشفّرة بـ scrypt، وحتى لو أحد سرق قاعدة البيانات ما يقدر يرجعها.',
         ],
-        [{ b: 'ما نطلب أي معلومة ثانية.' }, ' بريد وكلمة سر بس.'],
+        [
+          { b: 'تقدر تفعّل التحقق بخطوتين' },
+          ' بعد ما تسوي حسابك، من نفس هذي الصفحة.',
+        ],
         [
           { b: 'تقدر تستخدم التطبيق بدون حساب' },
           ' — بس بياناتك بتبقى على هذا الجهاز لحاله.',
@@ -204,6 +500,63 @@ function authForms(ctx) {
       ])
     )
   );
+}
+
+/** Second login step: the code from the authenticator, or a recovery code. */
+function showMfaStep(ctx, card, finish) {
+  const code = codeField();
+  const message = el('div', {});
+  const button = el('button', { class: 'cta', text: 'تأكيد' });
+
+  const submit = async () => {
+    message.replaceChildren();
+    if (!code.value.trim()) {
+      return message.replaceChildren(el('div', { class: 'formerr', text: 'اكتب الرمز.' }));
+    }
+    button.disabled = true;
+    button.textContent = 'لحظة…';
+    try {
+      const res = await api.verifyMfa(code.value);
+      if (res.data.usedRecovery) {
+        toast(`استخدمت رمز استرجاع — باقي ${res.data.recoveryCodesLeft}`);
+      }
+      await finish(res.data.email);
+    } catch (err) {
+      const expired = err instanceof ApiError && err.code === 'challenge_expired';
+      message.replaceChildren(el('div', { class: 'formerr', text: errorText(err) }));
+      if (expired) {
+        // The challenge is gone; the only way forward is to start over.
+        button.textContent = 'ارجع لتسجيل الدخول';
+        button.disabled = false;
+        button.replaceWith(
+          el('button', { class: 'cta', text: 'ارجع لتسجيل الدخول', on: { click: () => ctx.refresh() } })
+        );
+        return;
+      }
+      code.value = '';
+      button.disabled = false;
+      button.textContent = 'تأكيد';
+      code.focus();
+    }
+  };
+
+  button.addEventListener('click', submit);
+  code.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submit();
+  });
+
+  card.replaceChildren(
+    el('div', { class: 'mfahead' }, el('b', { text: 'خطوة أخيرة' })),
+    el('div', {
+      class: 'mut',
+      text: 'افتح تطبيق المصادقة واكتب الرمز. لو ما معك جوالك، اكتب رمز استرجاع.',
+    }),
+    el('label', { class: 'inp ltr' }, el('span', { text: 'الرمز' }), code),
+    button,
+    message,
+    el('button', { class: 'cta ghost', text: 'إلغاء', on: { click: () => ctx.refresh() } })
+  );
+  code.focus();
 }
 
 /* ────────────────────────── change password ────────────────────────── */
@@ -241,12 +594,7 @@ function changePasswordCard(ctx) {
       );
       ctx.refresh();
     } catch (err) {
-      message.replaceChildren(
-        el('div', {
-          class: 'formerr',
-          text: err instanceof ApiError ? err.message : 'ما قدرنا نغيّرها الحين.',
-        })
-      );
+      message.replaceChildren(el('div', { class: 'formerr', text: errorText(err) }));
     } finally {
       button.disabled = false;
     }
