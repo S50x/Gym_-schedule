@@ -165,6 +165,13 @@ test('nutrition', async (t) => {
     assert.equal(tdeeFormula(102, 28, 1.55), Math.round(2028.75 * 1.55));
   });
 
+  await t.test('height feeds into the estimate', () => {
+    // BMR = 10×102 + 6.25×170 − 5×28 + 5 = 1947.5 → ×1.55
+    assert.equal(tdeeFormula(102, 28, 1.55, 170), Math.round(1947.5 * 1.55));
+    // A taller person at the same weight burns more.
+    assert.ok(tdeeFormula(102, 28, 1.55, 190) > tdeeFormula(102, 28, 1.55, 170));
+  });
+
   await t.test('the deficit never drops below the safety floor', () => {
     assert.equal(safeTarget(3000), 2500);
     assert.equal(safeTarget(2000), 1700, 'floored at 1700, not 1500');

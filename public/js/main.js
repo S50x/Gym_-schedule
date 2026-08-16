@@ -18,9 +18,19 @@ const VIEWS = {
 };
 
 const app = document.getElementById('app');
+const tabbar = document.getElementById('tabbar');
 let view = 'home';
 let gym = null;
 let painting = false;
+
+function paintTabs() {
+  if (!tabbar) return;
+  for (const tab of tabbar.querySelectorAll('.tab')) {
+    const on = tab.dataset.view === view;
+    tab.classList.toggle('on', on);
+    tab.setAttribute('aria-current', on ? 'page' : 'false');
+  }
+}
 
 const ctx = {
   store,
@@ -77,6 +87,7 @@ function render() {
     const node = VIEWS[view](ctx);
     clear(app);
     app.appendChild(node);
+    paintTabs();
   } catch (err) {
     console.error(err);
     clear(app);
@@ -93,6 +104,11 @@ function render() {
 
 async function boot() {
   gym = new GymMode(ctx);
+
+  tabbar?.addEventListener('click', (event) => {
+    const tab = event.target.closest('.tab');
+    if (tab) ctx.navigate(tab.dataset.view);
+  });
 
   store.addEventListener('change', () => {
     if (!gym?.state) render();

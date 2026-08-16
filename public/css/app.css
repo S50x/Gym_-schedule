@@ -1,19 +1,25 @@
 @import url('./fonts.css');
 
 :root {
-  --ink: #131a2e;
-  --ink-2: #1b2440;
-  --surf: #1f2a48;
-  --surf-2: #27345a;
-  --line: rgba(190, 205, 255, 0.13);
-  --line-2: rgba(190, 205, 255, 0.26);
-  --txt: #eef2ff;
-  --mut: #93a0c4;
-  --orange: #ff7a2f;
-  --mint: #3fd69b;
-  --blue: #4fa8ff;
-  --coral: #ff5c5c;
-  --focus: #8fc4ff;
+  /* ── Volt: lime on graphite ──
+     --orange keeps its name to avoid churn across the file, but it is now the
+     primary lime accent. Text that sits on it uses --accent-ink; text on the
+     success green uses --mint-ink. */
+  --ink: #131512;
+  --ink-2: #191c15;
+  --surf: #1c1f17;
+  --surf-2: #23271c;
+  --line: rgba(200, 224, 150, 0.12);
+  --line-2: rgba(200, 224, 150, 0.24);
+  --txt: #eef2e6;
+  --mut: #8f978a;
+  --orange: #c4ff36;
+  --mint: #4ee39a;
+  --blue: #63b3ff;
+  --coral: #ff6a5a;
+  --focus: #c4ff36;
+  --accent-ink: #12160a;
+  --mint-ink: #052a17;
 
   /* The viewport is declared `viewport-fit=cover`, so the page extends under
      the status bar, the Dynamic Island and the home indicator. Every screen
@@ -41,7 +47,7 @@ body {
   padding-top: var(--safe-top);
   padding-left: var(--safe-left);
   padding-right: var(--safe-right);
-  background: radial-gradient(1200px 600px at 80% -15%, #243055 0%, transparent 60%), var(--ink);
+  background: radial-gradient(1200px 600px at 80% -15%, #20261a 0%, transparent 60%), var(--ink);
   background-attachment: fixed;
   color: var(--txt);
   font-family: 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -73,7 +79,8 @@ button {
 .wrap {
   max-width: 560px;
   margin: 0 auto;
-  padding: 0 15px calc(60px + var(--safe-bottom));
+  /* Bottom room clears the fixed tab bar. */
+  padding: 0 15px calc(86px + var(--safe-bottom));
 }
 .sr-only {
   position: absolute;
@@ -219,8 +226,8 @@ ul.t b {
   border-radius: 22px;
   padding: 20px;
   margin-bottom: 14px;
-  background: linear-gradient(140deg, var(--orange), #e0521a);
-  color: #1a0b02;
+  background: linear-gradient(150deg, var(--orange), #9be01f);
+  color: var(--accent-ink);
 }
 .today.top {
   margin-top: 6px;
@@ -255,7 +262,7 @@ ul.t b {
 .go {
   display: block;
   width: 100%;
-  background: #1a0b02;
+  background: var(--accent-ink);
   color: #fff;
   border-radius: 14px;
   padding: 15px;
@@ -356,7 +363,7 @@ ul.t b {
 .wrow.now {
   margin: 0 -14px;
   padding: 13px 14px;
-  background: rgba(255, 122, 47, 0.1);
+  background: rgba(196, 255, 54, 0.1);
   border-radius: 14px;
   border-bottom-color: transparent;
 }
@@ -422,7 +429,7 @@ ul.t b {
 .ck.on {
   background: var(--mint);
   border-color: var(--mint);
-  color: #04251a;
+  color: var(--mint-ink);
 }
 
 .crow {
@@ -465,7 +472,7 @@ ul.t b {
 .mchip.on {
   background: var(--orange);
   border-color: var(--orange);
-  color: #1a0b02;
+  color: var(--accent-ink);
   font-weight: 600;
 }
 
@@ -594,7 +601,7 @@ ul.t b {
   z-index: 50;
   display: none;
   flex-direction: column;
-  background: radial-gradient(900px 500px at 50% -10%, #26315a 0%, transparent 60%), var(--ink);
+  background: radial-gradient(900px 500px at 50% -10%, #222b18 0%, transparent 60%), var(--ink);
   padding: calc(var(--safe-top) + 10px) calc(16px + var(--safe-right))
     calc(var(--safe-bottom) + 14px) calc(16px + var(--safe-left));
 }
@@ -723,7 +730,7 @@ ul.t b {
   font-size: 11.5px;
   padding: 4px 10px;
   border-radius: 8px;
-  background: rgba(255, 122, 47, 0.14);
+  background: rgba(196, 255, 54, 0.13);
   color: var(--orange);
 }
 .chip.g {
@@ -753,12 +760,12 @@ ul.t b {
 .sdot.done {
   background: var(--mint);
   border-color: var(--mint);
-  color: #04251a;
+  color: var(--mint-ink);
 }
 .sdot.now {
   border-color: var(--orange);
   color: var(--orange);
-  box-shadow: 0 0 0 3px rgba(255, 122, 47, 0.14);
+  box-shadow: 0 0 0 3px rgba(196, 255, 54, 0.16);
 }
 
 .gfoot {
@@ -772,7 +779,7 @@ ul.t b {
   font-weight: 900;
   font-size: 17px;
   background: var(--orange);
-  color: #1a0b02;
+  color: var(--accent-ink);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -783,7 +790,7 @@ ul.t b {
 }
 .big.mint {
   background: var(--mint);
-  color: #04251a;
+  color: var(--mint-ink);
   margin-top: 12px;
 }
 .glinks {
@@ -852,7 +859,7 @@ ul.t b {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: rgba(11, 16, 32, 0.94);
+  background: rgba(12, 14, 10, 0.95);
   padding: calc(24px + var(--safe-top)) calc(24px + var(--safe-right))
     calc(24px + var(--safe-bottom)) calc(24px + var(--safe-left));
   text-align: center;
@@ -952,7 +959,7 @@ ul.t b {
   border-color: transparent;
 }
 .fb button[aria-pressed='true'][data-v='ok'] {
-  background: rgba(255, 122, 47, 0.18);
+  background: rgba(196, 255, 54, 0.18);
   color: var(--orange);
   border-color: transparent;
 }
@@ -984,7 +991,7 @@ ul.t b {
   height: 74px;
   border-radius: 50%;
   background: var(--mint);
-  color: #04251a;
+  color: var(--mint-ink);
   display: grid;
   place-items: center;
   font-size: 36px;
@@ -1078,7 +1085,7 @@ ul.t b {
   font-family: 'Cairo';
   font-weight: 900;
   font-size: 15px;
-  color: #1a0b02;
+  color: var(--accent-ink);
 }
 .cta.ghost {
   background: transparent;
@@ -1190,7 +1197,7 @@ ul.t b {
 }
 .toast {
   position: fixed;
-  bottom: calc(20px + var(--safe-bottom));
+  bottom: calc(78px + var(--safe-bottom));
   left: 50%;
   transform: translate(-50%, 140px);
   background: var(--txt);
@@ -1389,6 +1396,54 @@ ol.steps b {
   font-weight: 900;
   font-size: 16px;
   margin-bottom: 6px;
+}
+
+/* ══════ bottom tab bar ══════ */
+#tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: space-around;
+  align-items: stretch;
+  gap: 2px;
+  padding: 8px calc(6px + var(--safe-right)) calc(8px + var(--safe-bottom))
+    calc(6px + var(--safe-left));
+  background: rgba(19, 21, 18, 0.92);
+  border-top: 1px solid var(--line);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+#tabbar .tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 2px;
+  border-radius: 13px;
+  color: var(--mut);
+  font-family: 'IBM Plex Sans Arabic';
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+#tabbar .tab svg {
+  width: 23px;
+  height: 23px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+#tabbar .tab.on {
+  color: var(--orange);
+}
+#tabbar .tab:active {
+  transform: scale(0.94);
 }
 
 @media (prefers-reduced-motion: reduce) {
