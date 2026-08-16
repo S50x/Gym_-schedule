@@ -279,74 +279,93 @@ ul.t b {
   transform: scale(0.99);
 }
 
-/* ══════ progression rail ══════ */
-.prog {
+/* ══════ progression cards ══════ */
+.pgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
   margin-bottom: 12px;
 }
-.prow {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 11px 0;
-  border-bottom: 1px solid var(--line);
-}
-.prow:last-child {
-  border: 0;
-}
-.pname {
-  font-family: 'Cairo';
-  font-weight: 600;
-  font-size: 13px;
-  flex: 1;
-  min-width: 0;
+.pcard {
+  position: relative;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  background: var(--surf);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 13px 13px 0;
+  display: flex;
+  flex-direction: column;
 }
-.spark {
-  flex: 0 0 96px;
-  height: 30px;
+.pcard .pname {
+  font-family: 'Cairo';
+  font-weight: 700;
+  font-size: 11.5px;
+  line-height: 1.3;
+  /* Room for two lines of Arabic plus the English line, so the big numbers sit
+     on the same baseline whether the name is "لبج بريس" or the longest one. */
+  min-height: 43px;
+  padding-inline-end: 34px;
+}
+.pcard .pname .en {
+  font-size: 9px;
+  margin-top: 1px;
+}
+.pcard .pbig {
+  font-family: 'Archivo';
+  font-weight: 800;
+  font-size: 27px;
+  line-height: 1;
+  color: var(--orange);
+  direction: ltr;
+  margin-top: 9px;
+}
+.pcard .pbig .unit {
+  font-size: 10px;
+  color: var(--mut);
+  font-weight: 600;
+}
+.pcard .spark {
+  display: block;
+  width: calc(100% + 26px);
+  height: 26px;
+  margin: 8px -13px 0;
 }
 .spark path {
   fill: none;
-  stroke: var(--mint);
+  stroke: var(--orange);
   stroke-width: 2.2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.spark circle {
-  fill: var(--mint);
+.spark circle,
+.spark rect {
+  fill: var(--orange);
 }
-.pnow {
+.spark .sfill {
+  fill: var(--orange);
+  opacity: 0.14;
+  stroke: none;
+}
+.pbadge {
+  position: absolute;
+  top: 11px;
+  inset-inline-start: 11px;
   font-family: 'Archivo';
   font-weight: 800;
-  font-size: 15px;
-  direction: ltr;
-  flex: 0 0 auto;
-  min-width: 52px;
-  text-align: left;
-}
-.pnow .unit {
   font-size: 10px;
-  color: var(--mut);
-}
-.pdel {
-  font-family: 'Archivo';
-  font-weight: 800;
-  font-size: 10.5px;
   color: var(--mint);
+  background: rgba(78, 227, 154, 0.15);
+  padding: 3px 7px;
+  border-radius: 7px;
   direction: ltr;
-  background: rgba(63, 214, 155, 0.15);
-  padding: 2px 6px;
-  border-radius: 6px;
 }
-.pdel.flat {
+.pbadge.flat {
   color: var(--mut);
   background: rgba(190, 205, 255, 0.09);
 }
-.pdel.down {
+.pbadge.down {
   color: var(--blue);
-  background: rgba(79, 168, 255, 0.15);
+  background: rgba(99, 179, 255, 0.15);
 }
 
 /* ══════ week strip ══════ */

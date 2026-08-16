@@ -133,9 +133,9 @@ export function renderHome(ctx) {
     );
   }
 
-  /* ── progression rail ── */
+  /* ── progression cards ── */
   const history = store.weightHistory(wk);
-  const railRows = [];
+  const cards = [];
   for (const id of RAIL_IDS) {
     const e = exById(id);
     const values = history[id];
@@ -144,35 +144,43 @@ export function renderHome(ctx) {
     const now = values[values.length - 1];
     const first = values[0];
     const delta = Math.round((now - first) * 10) / 10;
+    // On an assisted lift the number falls as you get stronger, so the badge
+    // has to read the direction rather than the sign.
     const improved = e.inverse ? delta < 0 : delta > 0;
 
-    railRows.push(
+    cards.push(
       el(
         'div',
-        { class: 'prow' },
-        el('span', { class: 'pname', text: e.n, attrs: { title: e.n } }),
-        sparkline(values),
+        { class: 'pcard' },
+        delta === 0
+          ? el('span', { class: 'pbadge flat', text: '—' })
+          : el('span', {
+              class: ['pbadge', improved ? '' : 'down'],
+              text: `${delta > 0 ? '+' : ''}${delta}`,
+            }),
         el(
-          'span',
-          { class: 'pnow n' },
+          'div',
+          { class: 'pname' },
+          e.n,
+          e.en ? el('small', { class: 'en', text: e.en }) : null
+        ),
+        el(
+          'div',
+          { class: 'pbig n' },
           fmtN(now),
           el('span', { class: 'unit', text: e.time ? ' ث' : ' كجم' })
         ),
-        el('span', {
-          class: ['pdel', delta === 0 ? 'flat' : improved ? '' : 'down'],
-          text: delta === 0 ? '—' : `${delta > 0 ? '+' : ''}${delta}`,
-        })
+        sparkline(values, { fill: true, stretch: true })
       )
     );
   }
 
-  const rail = el(
-    'div',
-    { class: 'card prog' },
-    railRows.length
-      ? railRows
-      : el('div', { class: 'mut', text: 'أول أسبوع — بعد ما تخلّصه بيبان لك خط التقدم هنا.' })
-  );
+  const rail = cards.length
+    ? el('div', { class: 'pgrid' }, cards)
+    : el('div', { class: 'card' }, el('div', {
+        class: 'mut',
+        text: 'أول أسبوع — بعد ما تخلّصه بيبان لك تقدّمك هنا.',
+      }));
 
   /* ── week strip ── */
   const jsToday = new Date().getDay();
