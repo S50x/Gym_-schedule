@@ -152,6 +152,13 @@ function nutritionOf(raw, path) {
   return {
     age,
     act,
+    // Optional so records saved before the height field still validate.
+    height: num(raw.height ?? null, `${path}.height`, {
+      min: 120,
+      max: 230,
+      integer: true,
+      allowNull: true,
+    }),
     tdee,
     target,
     protein: num(raw.protein ?? 0, `${path}.protein`, { min: 0, max: 500, integer: true }),
