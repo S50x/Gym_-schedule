@@ -25,6 +25,9 @@ export class GymMode {
     this.busyUntil = 0;
 
     this.rest = { end: 0, total: 0, timer: null };
+    // Countdown for timed holds (plank). Kept here rather than in the draw
+    // closure, which is rebuilt on every repaint.
+    this.hold = { end: 0, total: 0, timer: null, exId: null, node: null };
 
     this.nodes = {
       gym: document.getElementById('gym'),
@@ -85,6 +88,7 @@ export class GymMode {
   }
 
   close() {
+    this.stopHold({ redraw: false });
     this.state = null;
     this.stopRest();
     this.hide(this.nodes.gym);
@@ -201,13 +205,21 @@ export class GymMode {
 
     clear(this.nodes.body);
     this.nodes.body.append(
-      el('div', { class: 'gname', text: exercise.n }),
+      el(
+        'div',
+        { class: 'gname' },
+        exercise.n,
+        exercise.en ? el('small', { class: 'en', text: exercise.en }) : null
+      ),
       el('div', {
         class: 'gsub',
         text: `${exercise.sets} مجموعات × ${exercise.reps} · راحة ${formatRest(exercise.rest)}`,
       }),
       el('div', { class: 'wbox' }, el('div', { class: 'val' }, bigValue), adjust),
       chips,
+      // A timed hold counts itself down here, so nobody has to leave the app,
+      // open a stopwatch and come back mid-plank.
+      exercise.time ? this.holdControl(exercise, weight) : null,
       el('div', { class: 'sets' }, setButtons)
     );
 
@@ -312,12 +324,87 @@ export class GymMode {
     );
   }
 
+  /* ── timed hold (plank) ─────────────────────────────────── */
+
+  /** Big start/stop control that counts a hold down in place. */
+  holdControl(exercise, seconds) {
+    const running = this.hold.timer !== null && this.hold.exId === exercise.id;
+    const left = running ? Math.max(0, Math.ceil((this.hold.end - Date.now()) / 1000)) : seconds;
+
+    const time = el('span', { class: 'htime n', text: clockText(left) });
+    this.hold.node = running ? time : null;
+
+    const button = el(
+      'button',
+      {
+        class: ['hold', running ? 'run' : ''],
+        attrs: { 'aria-label': running ? 'وقف العد' : 'ابدأ العد' },
+        on: { click: () => (running ? this.stopHold() : this.startHold(exercise, seconds)) },
+      },
+      el('span', { class: 'hlbl', text: running ? 'جارٍ العد — اضغط توقف' : 'ابدأ العد' }),
+      time
+    );
+
+    const bar = el('div', { class: 'hbar' }, el('i', { class: 'hfill' }));
+    this.hold.bar = running ? bar.firstChild : null;
+    if (running) this.paintHold();
+
+    return el('div', { class: 'holdwrap' }, button, bar);
+  }
+
+  startHold(exercise, seconds) {
+    const total = Math.max(1, Math.round(Number(seconds) || 0));
+    clearInterval(this.hold.timer);
+    this.hold = {
+      ...this.hold,
+      end: Date.now() + total * 1000,
+      total,
+      exId: exercise.id,
+      timer: setInterval(() => this.tickHold(), 200),
+    };
+    primeAudio();
+    buzz(25);
+    this.draw();
+  }
+
+  tickHold() {
+    if (Date.now() >= this.hold.end) {
+      const exId = this.hold.exId;
+      this.stopHold();
+      beep();
+      buzz([200, 90, 200]);
+      // The hold *is* the set, so finishing it completes one and starts rest.
+      if (this.state && this.current().exercise.id === exId) this.advance();
+      return;
+    }
+    this.paintHold();
+  }
+
+  paintHold() {
+    const remaining = Math.max(0, this.hold.end - Date.now());
+    if (this.hold.node?.isConnected) {
+      this.hold.node.textContent = clockText(Math.ceil(remaining / 1000));
+    }
+    if (this.hold.bar?.isConnected) {
+      const ratio = this.hold.total > 0 ? remaining / (this.hold.total * 1000) : 0;
+      this.hold.bar.style.width = `${(Math.min(1, ratio) * 100).toFixed(1)}%`;
+    }
+  }
+
+  stopHold({ redraw = true } = {}) {
+    if (this.hold.timer === null) return;
+    clearInterval(this.hold.timer);
+    this.hold = { end: 0, total: 0, timer: null, exId: null, node: null, bar: null };
+    if (redraw && this.state) this.draw();
+  }
+
   /* ── actions ────────────────────────────────────────────── */
 
   step(direction) {
     const { plan } = this.current();
     const next = this.state.index + direction;
     if (next < 0 || next >= plan.ex.length) return;
+    this.stopHold({ redraw: false });
     this.state.index = next;
     this.cueOpen = false;
     this.draw();
@@ -491,6 +578,11 @@ export class GymMode {
 export function isDone(exercise, week) {
   const sets = week.sets?.[exercise.id] || [];
   return sets.length === exercise.sets && sets.every(Boolean);
+}
+
+function clockText(seconds) {
+  const s = Math.max(0, Math.round(seconds));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
 function nextSetIndex(sets, total) {

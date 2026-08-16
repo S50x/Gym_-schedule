@@ -75,12 +75,21 @@ export function beep() {
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-export function sparkline(values) {
+/**
+ * @param {number[]} values
+ * @param {{fill?:boolean, stretch?:boolean}} [options]
+ *   fill    — shade the area under the line.
+ *   stretch — let the SVG scale to its container's width. The stroke is then
+ *             kept at its authored thickness with vector-effect, otherwise a
+ *             wide card would render a fat, distorted line.
+ */
+export function sparkline(values, { fill = false, stretch = false } = {}) {
   const svg = document.createElementNS(SVG_NS, 'svg');
   svg.setAttribute('class', 'spark');
   svg.setAttribute('viewBox', '0 0 96 30');
   svg.setAttribute('aria-hidden', 'true');
   svg.setAttribute('focusable', 'false');
+  if (stretch) svg.setAttribute('preserveAspectRatio', 'none');
 
   const min = Math.min(...values);
   const max = Math.max(...values);
@@ -93,8 +102,18 @@ export function sparkline(values) {
         ]
       : values.map((v, i) => [i * (96 / (values.length - 1)), 27 - ((v - min) / range) * 24]);
 
+  const coords = points.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`);
+
+  if (fill) {
+    const area = document.createElementNS(SVG_NS, 'polygon');
+    area.setAttribute('class', 'sfill');
+    area.setAttribute('points', `0,30 ${coords.join(' ')} 96,30`);
+    svg.appendChild(area);
+  }
+
   const path = document.createElementNS(SVG_NS, 'path');
-  path.setAttribute('d', 'M' + points.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' L'));
+  path.setAttribute('d', 'M' + coords.join(' L'));
+  if (stretch) path.setAttribute('vector-effect', 'non-scaling-stroke');
   svg.appendChild(path);
 
   const [cx, cy] = points[points.length - 1];
@@ -102,7 +121,19 @@ export function sparkline(values) {
   dot.setAttribute('cx', cx.toFixed(1));
   dot.setAttribute('cy', cy.toFixed(1));
   dot.setAttribute('r', '3');
-  svg.appendChild(dot);
+  // A circle in a stretched viewBox turns into an ellipse; a small rect reads
+  // as an endpoint marker at any width.
+  if (stretch) {
+    const marker = document.createElementNS(SVG_NS, 'rect');
+    marker.setAttribute('x', (cx - 2).toFixed(1));
+    marker.setAttribute('y', (cy - 2).toFixed(1));
+    marker.setAttribute('width', '4');
+    marker.setAttribute('height', '4');
+    marker.setAttribute('rx', '1');
+    svg.appendChild(marker);
+  } else {
+    svg.appendChild(dot);
+  }
 
   return svg;
 }

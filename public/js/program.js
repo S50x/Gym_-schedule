@@ -19,6 +19,7 @@ export const PLAN = {
       {
         id: 'chest_db',
         n: 'ضغط صدر دمبل مستوي',
+        en: 'Flat Dumbbell Bench Press',
         sets: 3,
         reps: '8–12',
         repsN: 10,
@@ -37,6 +38,7 @@ export const PLAN = {
       {
         id: 'sh_press',
         n: 'ضغط كتف دمبل جالس',
+        en: 'Seated Dumbbell Shoulder Press',
         sets: 3,
         reps: '8–12',
         repsN: 10,
@@ -55,6 +57,7 @@ export const PLAN = {
       {
         id: 'lat_pull',
         n: 'سحب أمامي (لات بولداون)',
+        en: 'Lat Pulldown',
         sets: 3,
         reps: '10–12',
         repsN: 11,
@@ -72,6 +75,7 @@ export const PLAN = {
       {
         id: 'cable_row',
         n: 'تجديف كيبل جالس',
+        en: 'Seated Cable Row',
         sets: 3,
         reps: '10–12',
         repsN: 11,
@@ -89,6 +93,7 @@ export const PLAN = {
       {
         id: 'lat_raise',
         n: 'رفرفة جانبي دمبل',
+        en: 'Dumbbell Lateral Raise',
         sets: 3,
         reps: '12–15',
         repsN: 13,
@@ -107,6 +112,7 @@ export const PLAN = {
       {
         id: 'tri_push',
         n: 'ترايسبس بوش داون حبل',
+        en: 'Rope Triceps Pushdown',
         sets: 3,
         reps: '12–15',
         repsN: 13,
@@ -120,6 +126,7 @@ export const PLAN = {
       {
         id: 'plank',
         n: 'بلانك',
+        en: 'Plank',
         sets: 3,
         reps: 'ثواني',
         base: 30,
@@ -147,6 +154,7 @@ export const PLAN = {
       {
         id: 'leg_press',
         n: 'لبج بريس',
+        en: 'Leg Press',
         sets: 3,
         reps: '10–12',
         repsN: 11,
@@ -164,6 +172,7 @@ export const PLAN = {
       {
         id: 'rdl',
         n: 'رومانيان ديدليفت دمبل',
+        en: 'Dumbbell Romanian Deadlift',
         sets: 3,
         reps: '10',
         repsN: 10,
@@ -182,6 +191,7 @@ export const PLAN = {
       {
         id: 'leg_ext',
         n: 'تمديد الأرجل',
+        en: 'Leg Extension',
         sets: 3,
         reps: '12',
         repsN: 12,
@@ -195,6 +205,7 @@ export const PLAN = {
       {
         id: 'leg_curl',
         n: 'ثني الأرجل',
+        en: 'Leg Curl',
         sets: 3,
         reps: '12',
         repsN: 12,
@@ -212,6 +223,7 @@ export const PLAN = {
       {
         id: 'calf',
         n: 'رفع السمانة واقف',
+        en: 'Standing Calf Raise',
         sets: 3,
         reps: '15',
         repsN: 15,
@@ -225,6 +237,7 @@ export const PLAN = {
       {
         id: 'deadbug',
         n: 'ديد بق',
+        en: 'Dead Bug',
         sets: 3,
         reps: '10 لكل جهة',
         repsN: 10,
@@ -253,6 +266,7 @@ export const PLAN = {
       {
         id: 'incline_db',
         n: 'ضغط صدر مائل دمبل',
+        en: 'Incline Dumbbell Press',
         sets: 3,
         reps: '8–12',
         repsN: 10,
@@ -271,6 +285,7 @@ export const PLAN = {
       {
         id: 'pullup',
         n: 'عقلة بمساعدة الجهاز',
+        en: 'Assisted Pull-Up',
         sets: 3,
         reps: '6–10',
         repsN: 8,
@@ -289,6 +304,7 @@ export const PLAN = {
       {
         id: 'row_1arm',
         n: 'تجديف دمبل بيد وحدة',
+        en: 'One-Arm Dumbbell Row',
         sets: 3,
         reps: '10 لكل يد',
         repsN: 10,
@@ -307,6 +323,7 @@ export const PLAN = {
       {
         id: 'face_pull',
         n: 'فيس بول كيبل',
+        en: 'Cable Face Pull',
         sets: 3,
         reps: '15',
         repsN: 15,
@@ -322,6 +339,7 @@ export const PLAN = {
       {
         id: 'curl',
         n: 'بايسبس مطرقة بالدمبل',
+        en: 'Dumbbell Hammer Curl',
         sets: 3,
         reps: '12',
         repsN: 12,
@@ -340,6 +358,7 @@ export const PLAN = {
       {
         id: 'tri_oh',
         n: 'ترايسبس خلف الرأس بالدمبل',
+        en: 'Overhead Dumbbell Triceps Extension',
         sets: 3,
         reps: '12',
         repsN: 12,
@@ -371,22 +390,30 @@ export const WEEK = [
   { d: 'الجمعة', rest: 1, c: 6, js: 5 },
 ];
 
+/**
+ * [name, detail, isRest, totalMinutes]
+ * `totalMinutes` is the budget the day's machines share, so picking two machines
+ * can split one session (e.g. 20 min bike + 20 min elliptical).
+ */
 export const CARDIO = [
-  ['السبت', 'تسخين 10 دقائق قبل الحديد + 15 دقيقة بعده', 0],
-  ['الأحد', '40 دقيقة شدة متوسطة — تلهث بس تقدر تتكلم', 0],
-  ['الاثنين', 'تسخين 10 دقائق قبل الحديد + 15 دقيقة بعده', 0],
-  ['الثلاثاء', '40 دقيقة شدة متوسطة', 0],
-  ['الأربعاء', 'تسخين 10 دقائق قبل الحديد + 15 دقيقة بعده', 0],
-  ['الخميس', '45 دقيقة — أطول يوم كارديو', 0],
-  ['الجمعة', 'راحة كاملة. الراحة جزء من البرنامج مو كسل', 1],
+  ['السبت', 'تسخين 10 دقائق قبل الحديد + 15 دقيقة بعده', 0, 25],
+  ['الأحد', '40 دقيقة شدة متوسطة — تلهث بس تقدر تتكلم', 0, 40],
+  ['الاثنين', 'تسخين 10 دقائق قبل الحديد + 15 دقيقة بعده', 0, 25],
+  ['الثلاثاء', '40 دقيقة شدة متوسطة', 0, 40],
+  ['الأربعاء', 'تسخين 10 دقائق قبل الحديد + 15 دقيقة بعده', 0, 25],
+  ['الخميس', '45 دقيقة — أطول يوم كارديو', 0, 45],
+  ['الجمعة', 'راحة كاملة. الراحة جزء من البرنامج مو كسل', 1, 0],
 ];
 
+/** Most machines a single cardio day may be split across. */
+export const MAX_MACHINES_PER_DAY = 3;
+
 export const MACH = [
-  { k: 'walk', n: 'سير مائل', d: 'أعلى حرق بأقل ضرر للركبة. ميلان 8–12% وسرعة 5–5.5' },
-  { k: 'bike', n: 'سيكل', d: 'أرحم شي على المفاصل. أفضل خيار بعد يوم الرجل' },
-  { k: 'ellip', n: 'غزالة', d: 'صفر صدمة على الركبة، ويشغّل يدك بعد. مريح لو ركبتك تعبانة' },
-  { k: 'stair', n: 'درج', d: 'أعلى حرق بالكل، وأقساها على ركبتك وفخذك. لا تسويه قبل أو بعد يوم الرجل' },
-  { k: 'row', n: 'تجديف', d: 'جسم كامل، بس يشتغل ظهرك — لا تسويه ثقيل يوم الأربعاء' },
+  { k: 'walk', n: 'سير مائل', en: 'Incline Treadmill', d: 'أعلى حرق بأقل ضرر للركبة. ميلان 8–12% وسرعة 5–5.5' },
+  { k: 'bike', n: 'سيكل', en: 'Stationary Bike', d: 'أرحم شي على المفاصل. أفضل خيار بعد يوم الرجل' },
+  { k: 'ellip', n: 'غزالة', en: 'Elliptical', d: 'صفر صدمة على الركبة، ويشغّل يدك بعد. مريح لو ركبتك تعبانة' },
+  { k: 'stair', n: 'درج', en: 'Stair Climber', d: 'أعلى حرق بالكل، وأقساها على ركبتك وفخذك. لا تسويه قبل أو بعد يوم الرجل' },
+  { k: 'row', n: 'تجديف', en: 'Rowing Machine', d: 'جسم كامل، بس يشتغل ظهرك — لا تسويه ثقيل يوم الأربعاء' },
 ];
 
 export const DAY_NAMES = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
@@ -402,6 +429,38 @@ const BY_ID = new Map(ALL_EXERCISES.map((e) => [e.id, e]));
 export const exById = (id) => BY_ID.get(id);
 export const dayOf = (id) => DAYS.find((d) => PLAN[d].ex.some((x) => x.id === id));
 export const machName = (k) => MACH.find((x) => x.k === k)?.n || '';
+
+/**
+ * A day's machines, always as an array of { k, m }.
+ *
+ * The field used to hold a single machine key, so a stored string is read as a
+ * one-machine day taking the whole budget. Anything unrecognised is dropped
+ * rather than guessed at.
+ */
+export function machinesOfDay(stored, totalMinutes = 0) {
+  if (!stored) return [];
+  const raw = typeof stored === 'string' ? [{ k: stored, m: totalMinutes }] : stored;
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set();
+  const out = [];
+  for (const item of raw) {
+    const k = typeof item === 'string' ? item : item?.k;
+    if (!MACHINE_KEYS.includes(k) || seen.has(k)) continue;
+    seen.add(k);
+    const m = Number(typeof item === 'string' ? totalMinutes : item?.m);
+    out.push({ k, m: Number.isFinite(m) && m >= 0 ? Math.round(m) : 0 });
+    if (out.length >= MAX_MACHINES_PER_DAY) break;
+  }
+  return out;
+}
+
+/** Split `total` minutes as evenly as possible across `count` machines. */
+export function splitMinutes(total, count) {
+  if (count <= 0) return [];
+  const base = Math.floor(total / count);
+  const extra = total - base * count;
+  return Array.from({ length: count }, (_, i) => base + (i < extra ? 1 : 0));
+}
 
 /** Starting weights for week 1. */
 export function baseWeights() {

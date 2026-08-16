@@ -1,13 +1,13 @@
 import { el } from '../dom.js';
 import { bulletList } from '../ui.js';
-import { CARDIO, MACH } from '../program.js';
+import { CARDIO, MACH, MAX_MACHINES_PER_DAY, machinesOfDay } from '../program.js';
 
 export function renderCardio(ctx) {
-  const { store, navigate } = ctx;
+  const { store } = ctx;
   const week = store.week();
 
   const rows = CARDIO.map((entry, i) => {
-    const [name, detail, isRest] = entry;
+    const [name, detail, isRest, totalMinutes] = entry;
     if (isRest) {
       return el(
         'div',
@@ -18,7 +18,66 @@ export function renderCardio(ctx) {
     }
 
     const done = !!week.cardio[String(i)];
-    const selected = week.cmach[String(i)];
+    const picked = machinesOfDay(week.cmach[String(i)], totalMinutes);
+    const pickedKeys = new Set(picked.map((p) => p.k));
+    const spent = picked.reduce((sum, p) => sum + p.m, 0);
+
+    /* One chip per machine. Tapping toggles it in or out of the day. */
+    const chips = MACH.map((m) => {
+      const on = pickedKeys.has(m.k);
+      const full = !on && picked.length >= MAX_MACHINES_PER_DAY;
+      return el('button', {
+        class: ['mchip', on ? 'on' : '', full ? 'full' : ''],
+        text: m.n,
+        disabled: full,
+        attrs: {
+          'aria-pressed': String(on),
+          'aria-label': `${m.n} — ${m.en}`,
+          title: full ? `أقصى ${MAX_MACHINES_PER_DAY} أجهزة باليوم` : m.en,
+        },
+        on: { click: () => ctx.toggleMachine(i, m.k) },
+      });
+    });
+
+    /* Minute steppers appear only once the day is actually shared. */
+    let split = null;
+    if (picked.length > 1) {
+      split = el(
+        'div',
+        { class: 'split' },
+        picked.map((p) => {
+          const mach = MACH.find((x) => x.k === p.k);
+          return el(
+            'div',
+            { class: 'srow' },
+            el('span', { class: 'sname', text: mach?.n || p.k }),
+            el(
+              'div',
+              { class: 'sadj' },
+              el('button', {
+                text: '−',
+                attrs: { 'aria-label': `قلّل دقائق ${mach?.n || ''}` },
+                disabled: p.m <= 0,
+                on: { click: () => ctx.setMachineMinutes(i, p.k, p.m - 5) },
+              }),
+              el('span', { class: 'smin n' }, String(p.m), el('span', { class: 'u', text: ' د' })),
+              el('button', {
+                text: '+',
+                attrs: { 'aria-label': `زد دقائق ${mach?.n || ''}` },
+                on: { click: () => ctx.setMachineMinutes(i, p.k, p.m + 5) },
+              })
+            )
+          );
+        }),
+        el('div', {
+          class: ['stotal', spent === totalMinutes ? 'ok' : ''],
+          text:
+            spent === totalMinutes
+              ? `المجموع ${spent} دقيقة ✓`
+              : `المجموع ${spent} من ${totalMinutes} دقيقة`,
+        })
+      );
+    }
 
     return el(
       'div',
@@ -26,7 +85,12 @@ export function renderCardio(ctx) {
       el(
         'div',
         { class: 'chead' },
-        el('div', {}, el('b', { text: name }), el('span', { text: detail })),
+        el(
+          'div',
+          {},
+          el('b', { text: name }),
+          el('span', { text: detail })
+        ),
         el('button', {
           class: ['ck', done ? 'on' : ''],
           text: done ? '✓' : '',
@@ -34,29 +98,18 @@ export function renderCardio(ctx) {
           on: { click: () => ctx.toggleCardio(i) },
         })
       ),
-      el(
-        'div',
-        { class: 'mchips' },
-        MACH.map((m) =>
-          el('button', {
-            class: ['mchip', selected === m.k ? 'on' : ''],
-            text: m.n,
-            attrs: { 'aria-pressed': String(selected === m.k) },
-            on: { click: () => ctx.toggleMachine(i, m.k) },
-          })
-        )
-      )
+      el('div', { class: 'mchips' }, chips),
+      split
     );
   });
 
   return el(
     'div',
     { class: 'wrap' },
-    el('button', { class: 'back', text: '‹ رجوع', on: { click: () => navigate('home') } }),
     el('h3', { class: 'first', text: 'الكارديو — 6 أيام' }),
     el('div', {
       class: 'hint-lg',
-      text: 'اختر جهازك لكل يوم. كلها تسوي نفس الشي للحرق — الفرق في مفاصلك وفي تعارضها مع الحديد.',
+      text: `اختر جهازك لكل يوم — وتقدر تختار لين ${MAX_MACHINES_PER_DAY} أجهزة وتقسّم الدقائق بينهم. كلها تسوي نفس الشي للحرق، الفرق في مفاصلك وفي تعارضها مع الحديد.`,
     }),
     el('div', { class: 'card tight-sm' }, rows),
     el('h3', { text: 'وش الفرق بين الأجهزة' }),
@@ -67,7 +120,7 @@ export function renderCardio(ctx) {
         el(
           'div',
           { class: 'row' },
-          el('span', { class: 'a', text: m.n }),
+          el('span', { class: 'a' }, m.n, el('small', { class: 'en', text: m.en })),
           el('span', { class: 'b', text: m.d })
         )
       )
