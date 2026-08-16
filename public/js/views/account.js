@@ -20,17 +20,15 @@ const errorText = (err, fallback) =>
     : fallback || 'صار خطأ غير متوقع. حدّث الصفحة وجرّب مرة ثانية.';
 
 export function renderAccount(ctx) {
-  const { store, navigate } = ctx;
-  const back = el('button', { class: 'back', text: '‹ رجوع', on: { click: () => navigate('home') } });
+  const { store } = ctx;
 
   if (!store.user) {
-    return el('div', { class: 'wrap' }, back, authForms(ctx));
+    return el('div', { class: 'wrap' }, authForms(ctx));
   }
 
   return el(
     'div',
     { class: 'wrap' },
-    back,
     el('h3', { class: 'first', text: 'حسابك' }),
     el(
       'div',

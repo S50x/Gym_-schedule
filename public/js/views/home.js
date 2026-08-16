@@ -1,7 +1,7 @@
 import { el } from '../dom.js';
-import { fmt, fmtN, sparkline } from '../ui.js';
-import { PLAN, WEEK, CARDIO, DAY_NAMES, exById, machName } from '../program.js';
-import { todayKey, verdict, MAX_WEEK } from '../engine.js';
+import { fmtN, sparkline } from '../ui.js';
+import { PLAN, WEEK, CARDIO, DAY_NAMES, exById, machName, machinesOfDay } from '../program.js';
+import { todayKey, MAX_WEEK } from '../engine.js';
 import { SYNC } from '../store.js';
 
 const RAIL_IDS = ['chest_db', 'sh_press', 'lat_pull', 'cable_row', 'leg_press', 'row_1arm'];
@@ -200,8 +200,12 @@ export function renderHome(ctx) {
         on: { click: () => navigate('week') },
       });
     } else {
-      const machine = week.cmach[String(day.c)];
-      sub = CARDIO[day.c][1] + (machine ? ' · ' + machName(machine) : '');
+      // A day split across machines reads "…· سيكل 20د + غزالة 20د".
+      const picked = machinesOfDay(week.cmach[String(day.c)], CARDIO[day.c][3]);
+      const label = picked
+        .map((p) => (picked.length > 1 ? `${machName(p.k)} ${p.m}د` : machName(p.k)))
+        .join(' + ');
+      sub = CARDIO[day.c][1] + (label ? ' · ' + label : '');
     }
 
     const checkbox = day.rest
@@ -224,35 +228,6 @@ export function renderHome(ctx) {
     );
   });
 
-  /* ── tiles ── */
-  const v = verdict(week.body, store.week(wk - 1).body);
-  const nutrition = store.doc.nutrition;
-
-  const tiles = el(
-    'div',
-    { class: 'grid' },
-    el(
-      'button',
-      { class: 'tile', on: { click: () => navigate('nutri') } },
-      el('b', { text: 'السعرات' }),
-      el('span', {
-        text: nutrition ? `${fmt(nutrition.target)} سعرة · هدفك اليومي` : 'ما ضبطته بعد',
-      })
-    ),
-    el(
-      'button',
-      { class: 'tile', on: { click: () => navigate('cardio') } },
-      el('b', { text: 'تفاصيل الكارديو' }),
-      el('span', { text: 'كم دقيقة وكم شدة' })
-    ),
-    el(
-      'button',
-      { class: 'tile', on: { click: () => navigate('week') } },
-      el('b', { text: 'قياس الأسبوع' }),
-      el('span', { text: week.body ? v.t : 'ما سجّلت بعد' })
-    )
-  );
-
   return el(
     'div',
     { class: 'wrap' },
@@ -265,7 +240,6 @@ export function renderHome(ctx) {
     el('div', {
       class: 'hint',
       text: 'الدائرة = علّم الكارديو لما تخلّصه · الرقم = تمارين الحديد المكتملة',
-    }),
-    tiles
+    })
   );
 }
