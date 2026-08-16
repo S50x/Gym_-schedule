@@ -140,9 +140,15 @@ export function dayVolume(dayExercises, weights, sets) {
 
 /* ────────────────────────── nutrition ────────────────────────── */
 
-/** Mifflin-St Jeor, male, fixed height. */
-export function tdeeFormula(kg, age, activity) {
-  const bmr = 10 * kg + 6.25 * HEIGHT_CM - 5 * age + 5;
+/**
+ * Mifflin-St Jeor, male.
+ * Height matters: a taller body burns more at rest, so two people at the same
+ * weight get different maintenance numbers. `height` falls back to a sane
+ * default only for legacy records saved before the field existed.
+ */
+export function tdeeFormula(kg, age, activity, height = HEIGHT_CM) {
+  const cm = Number.isFinite(height) ? height : HEIGHT_CM;
+  const bmr = 10 * kg + 6.25 * cm - 5 * age + 5;
   return Math.round(bmr * activity);
 }
 

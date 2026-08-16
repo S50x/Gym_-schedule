@@ -5,7 +5,7 @@
     <!-- user-scalable=no was removed on purpose: blocking pinch-zoom fails
          WCAG 1.4.4 and makes the app unusable for anyone who needs to zoom. -->
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#131A2E" />
+    <meta name="theme-color" content="#131512" />
     <meta name="color-scheme" content="dark" />
     <meta name="description" content="سجل تمرين حديد — برنامج تمرين وتغذية مع مزامنة بين الأجهزة." />
     <meta name="referrer" content="no-referrer" />
@@ -54,6 +54,30 @@
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <!-- ══════ bottom navigation ══════ -->
+    <nav id="tabbar" aria-label="التنقّل الرئيسي">
+      <button class="tab" type="button" data-view="home" aria-label="الرئيسية">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" /></svg>
+        <span>الرئيسية</span>
+      </button>
+      <button class="tab" type="button" data-view="cardio" aria-label="الكارديو">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l2-5 3.5 10L15 9l2 3h4" /></svg>
+        <span>الكارديو</span>
+      </button>
+      <button class="tab" type="button" data-view="nutri" aria-label="السعرات">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c3 3 4 5 4 8a4 4 0 0 1-8 0c0-1 .4-2 1-2.6C9.3 10 11 9 12 3z" /></svg>
+        <span>السعرات</span>
+      </button>
+      <button class="tab" type="button" data-view="week" aria-label="القياس">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V12M10 20V5M16 20v-8M3 20h18" /></svg>
+        <span>القياس</span>
+      </button>
+      <button class="tab" type="button" data-view="account" aria-label="الحساب">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.4" /><path d="M5 20c0-3.6 3.1-5.5 7-5.5s7 1.9 7 5.5" /></svg>
+        <span>الحساب</span>
+      </button>
+    </nav>
 
     <script type="module" src="/js/main.js"></script>
   </body>
