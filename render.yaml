@@ -1,0 +1,52 @@
+# مخطط Render — ينشئ الخدمة وقاعدة البيانات ويربطهم تلقائياً.
+#
+# Render Blueprint. Instead of filling the "New Web Service" form by hand,
+# use New → Blueprint and point it at this repository: Render reads this file,
+# creates both the web service and the Postgres database, and injects
+# DATABASE_URL into the service for you.
+#
+# The database is a separate resource from the web service on purpose. A free
+# web instance has no persistent disk, so anything stored on its filesystem is
+# erased whenever it restarts. Keeping the data in Postgres is what makes the
+# free tier actually usable.
+#
+# After the first deploy: create your account, then set ALLOW_REGISTRATION=0
+# so nobody else can sign up on your server.
+
+databases:
+  - name: hadeed-db
+    databaseName: hadeed
+    user: hadeed
+    plan: free
+    # اختر المنطقة الأقرب لك — لازم تطابق منطقة الخدمة تحت.
+    region: frankfurt
+
+services:
+  - type: web
+    name: hadeed
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: '1'
+      - key: ALLOW_REGISTRATION
+        value: '1'
+      # يُولَّد مرة وحدة ويبقى ثابت. لو تغيّر، كل الأجهزة تطلع من الحساب.
+      - key: SESSION_SECRET
+        generateValue: true
+      # الربط بقاعدة البيانات — Render يعبّيه تلقائياً، لا تكتبه بيدك.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: hadeed-db
+          property: connectionString
+      # لازم يطابق رابط موقعك بالضبط، وإلا تسجيل الدخول يُرفض (فحص CSRF).
+      # عدّله بعد أول نشر لما يعطيك Render الرابط النهائي.
+      - key: ORIGIN
+        sync: false

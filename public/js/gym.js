@@ -1,0 +1,500 @@
+/** وضع النادي: شاشة تمرين واحدة في كل مرة + مؤقّت الراحة. */
+
+import { el, clear, richText, safeUrl } from './dom.js';
+import { fmt, fmtN, toast, buzz, beep, primeAudio } from './ui.js';
+import { PLAN } from './program.js';
+import { dayVolume, formatRest } from './engine.js';
+
+const FEEDBACK = [
+  { v: 'light', label: 'كان خفيف', toast: 'بنزيده قفزتين الأسبوع الجاي' },
+  { v: 'ok', label: 'مضبوط', toast: 'بنزيده قفزة الأسبوع الجاي' },
+  { v: 'heavy', label: 'ثقيل عليّ', toast: 'بيثبت الأسبوع الجاي' },
+];
+
+export class GymMode {
+  constructor(ctx) {
+    this.ctx = ctx;
+    this.store = ctx.store;
+    this.state = null; // { day, index }
+    this.cueOpen = false;
+    this.sessionStart = 0;
+    this.wakeLock = null;
+    // Module-level, not rebuilt on every repaint. The original guard lived in
+    // the handler closure and was recreated by the redraw it triggered, so it
+    // never actually blocked a double tap.
+    this.busyUntil = 0;
+
+    this.rest = { end: 0, total: 0, timer: null };
+
+    this.nodes = {
+      gym: document.getElementById('gym'),
+      count: document.getElementById('gcount'),
+      dots: document.getElementById('gdots'),
+      body: document.getElementById('gbody'),
+      foot: document.getElementById('gfoot'),
+      rest: document.getElementById('rest'),
+      restBar: document.getElementById('restbar'),
+      restTime: document.getElementById('rtm'),
+      restNext: document.getElementById('rnx'),
+      fin: document.getElementById('fin'),
+      finP: document.getElementById('finp'),
+      finStats: document.getElementById('finstats'),
+    };
+
+    document.getElementById('gx').addEventListener('click', () => this.close());
+    document.getElementById('finx').addEventListener('click', () => {
+      this.hide(this.nodes.fin);
+      this.close();
+    });
+    document.getElementById('rskip').addEventListener('click', () => this.stopRest());
+    document.getElementById('radd').addEventListener('click', () => {
+      this.rest.end += 30000;
+      this.rest.total += 30;
+      this.tickRest();
+    });
+
+    this.bindSwipe();
+    this.bindKeys();
+
+    // A screen wake lock is dropped whenever the tab is hidden (screen off,
+    // app switch). Without re-requesting it the phone starts sleeping again
+    // halfway through a workout.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && this.state) this.requestWakeLock();
+    });
+  }
+
+  /* ── open / close ───────────────────────────────────────── */
+
+  async open(day) {
+    if (!PLAN[day]) return;
+    const week = this.store.week();
+    const index = Math.max(
+      0,
+      PLAN[day].ex.findIndex((e) => !isDone(e, week))
+    );
+    this.state = { day, index: index === -1 ? 0 : index };
+    this.cueOpen = false;
+    // Reset per session. The original kept the previous session's start time,
+    // so the "minutes" stat kept growing across days.
+    this.sessionStart = Date.now();
+    this.show(this.nodes.gym);
+    primeAudio();
+    this.draw();
+    this.requestWakeLock();
+  }
+
+  close() {
+    this.state = null;
+    this.stopRest();
+    this.hide(this.nodes.gym);
+    this.releaseWakeLock();
+    this.ctx.refresh();
+  }
+
+  show(node) {
+    node.hidden = false;
+    node.classList.add('on');
+  }
+
+  hide(node) {
+    node.classList.remove('on');
+    node.hidden = true;
+  }
+
+  async requestWakeLock() {
+    try {
+      if ('wakeLock' in navigator && !this.wakeLock) {
+        this.wakeLock = await navigator.wakeLock.request('screen');
+        this.wakeLock.addEventListener?.('release', () => {
+          this.wakeLock = null;
+        });
+      }
+    } catch {
+      this.wakeLock = null;
+    }
+  }
+
+  releaseWakeLock() {
+    try {
+      this.wakeLock?.release();
+    } catch {
+      /* already released */
+    }
+    this.wakeLock = null;
+  }
+
+  /* ── drawing ────────────────────────────────────────────── */
+
+  current() {
+    const plan = PLAN[this.state.day];
+    return { plan, exercise: plan.ex[this.state.index] };
+  }
+
+  draw() {
+    if (!this.state) return;
+    const { plan, exercise } = this.current();
+    const week = this.store.week();
+    const weights = this.store.weightsFor();
+    const sets = week.sets[exercise.id] || [];
+    const nextSet = nextSetIndex(sets, exercise.sets);
+    const weight = weights[exercise.id];
+
+    this.nodes.count.textContent = `${this.state.index + 1} / ${plan.ex.length} · ${plan.day}`;
+
+    clear(this.nodes.dots);
+    plan.ex.forEach((x, i) => {
+      this.nodes.dots.appendChild(
+        el('i', { class: isDone(x, week) ? 'd' : i === this.state.index ? 'c' : '' })
+      );
+    });
+
+    /* body */
+    const bigValue = exercise.body
+      ? el('span', { class: 'wnum sm', text: 'وزن الجسم' })
+      : [
+          el('span', { class: 'wnum n', text: fmtN(weight) }),
+          el('span', { class: 'wunit', text: exercise.time ? 'ثانية' : 'كجم' }),
+        ];
+
+    const adjust = exercise.body
+      ? null
+      : el(
+          'div',
+          { class: 'adj' },
+          el('button', {
+            text: '+',
+            attrs: { 'aria-label': 'زد الوزن' },
+            on: { click: () => this.adjust(1) },
+          }),
+          el('button', {
+            text: '−',
+            attrs: { 'aria-label': 'قلّل الوزن' },
+            on: { click: () => this.adjust(-1) },
+          })
+        );
+
+    const chips = el('div', { class: 'chips' });
+    if (exercise.hand) chips.appendChild(el('span', { class: 'chip', text: 'لكل يد' }));
+    if (exercise.inverse) {
+      chips.appendChild(
+        el('span', { class: 'chip', text: 'وزن المساعدة — كل ما قلّ صرت أقوى' })
+      );
+    }
+    if (!exercise.body && !exercise.inverse) {
+      chips.appendChild(
+        el('span', {
+          class: 'chip g',
+          text: `خطوة التعديل ${exercise.step} ${exercise.time ? 'ثانية' : 'كجم'}`,
+        })
+      );
+    }
+
+    const setButtons = Array.from({ length: exercise.sets }, (_, k) =>
+      el('button', {
+        class: ['sdot', sets[k] ? 'done' : k === nextSet ? 'now' : ''],
+        text: sets[k] ? '✓' : `SET ${k + 1}`,
+        attrs: { 'aria-pressed': String(!!sets[k]), 'aria-label': `مجموعة ${k + 1}` },
+        on: { click: () => this.toggleSet(k) },
+      })
+    );
+
+    clear(this.nodes.body);
+    this.nodes.body.append(
+      el('div', { class: 'gname', text: exercise.n }),
+      el('div', {
+        class: 'gsub',
+        text: `${exercise.sets} مجموعات × ${exercise.reps} · راحة ${formatRest(exercise.rest)}`,
+      }),
+      el('div', { class: 'wbox' }, el('div', { class: 'val' }, bigValue), adjust),
+      chips,
+      el('div', { class: 'sets' }, setButtons)
+    );
+
+    /* foot */
+    const allDone = isDone(exercise, week);
+    const feedback = week.fb[exercise.id];
+    clear(this.nodes.foot);
+
+    if (allDone) {
+      this.nodes.foot.appendChild(
+        el(
+          'div',
+          { class: 'fbwrap' },
+          el('div', { class: 'fblbl', text: 'كيف حسيت الوزن؟ (يحدد زيادة الأسبوع الجاي)' }),
+          el(
+            'div',
+            { class: 'fb' },
+            FEEDBACK.map((option) =>
+              el('button', {
+                text: option.label,
+                data: { v: option.v },
+                // Only the actual stored choice reads as pressed. The original
+                // marked "مضبوط" pressed even when nothing had been chosen.
+                attrs: { 'aria-pressed': String(feedback === option.v) },
+                on: {
+                  click: () => {
+                    this.store.update(this.store.viewWeek, (w) => {
+                      w.fb = { ...w.fb, [exercise.id]: option.v };
+                    });
+                    toast(option.toast);
+                    this.draw();
+                  },
+                },
+              })
+            )
+          )
+        )
+      );
+      this.nodes.foot.appendChild(
+        el('button', {
+          class: 'big mint',
+          text: this.state.index < plan.ex.length - 1 ? 'التمرين الجاي ←' : 'خلّصت التمرين 🎉',
+          on: { click: () => this.advance() },
+        })
+      );
+    } else {
+      this.nodes.foot.appendChild(
+        el('button', {
+          class: 'big',
+          text: `خلّصت المجموعة ${nextSet + 1}`,
+          on: { click: () => this.advance() },
+        })
+      );
+    }
+
+    this.nodes.foot.append(
+      el(
+        'div',
+        { class: 'glinks' },
+        el(
+          'a',
+          {
+            class: 'glink',
+            href: safeUrl(exercise.v),
+            target: '_blank',
+            rel: 'noopener noreferrer',
+          },
+          el('b', { text: '▶' }),
+          ` ${exercise.vlbl}`
+        ),
+        el('button', {
+          class: 'glink',
+          text: `الشرح ${this.cueOpen ? '▴' : '▾'}`,
+          attrs: { 'aria-expanded': String(this.cueOpen) },
+          on: {
+            click: () => {
+              this.cueOpen = !this.cueOpen;
+              this.draw();
+            },
+          },
+        })
+      ),
+      el(
+        'div',
+        { class: ['cue', this.cueOpen ? 'open' : ''] },
+        el('div', {}, ...richText(exercise.cue))
+      ),
+      el(
+        'div',
+        { class: 'arrows' },
+        el('button', {
+          text: '← السابق',
+          disabled: this.state.index === 0,
+          on: { click: () => this.step(-1) },
+        }),
+        el('button', {
+          text: 'التالي →',
+          disabled: this.state.index === plan.ex.length - 1,
+          on: { click: () => this.step(1) },
+        })
+      )
+    );
+  }
+
+  /* ── actions ────────────────────────────────────────────── */
+
+  step(direction) {
+    const { plan } = this.current();
+    const next = this.state.index + direction;
+    if (next < 0 || next >= plan.ex.length) return;
+    this.state.index = next;
+    this.cueOpen = false;
+    this.draw();
+  }
+
+  adjust(direction) {
+    const { exercise } = this.current();
+    const step = exercise.step || 1;
+    const weights = this.store.weightsFor();
+    const value = Math.max(0, Math.round(((weights[exercise.id] || 0) + direction * step) * 10) / 10);
+    // Stored as a manual override for this week; later weeks progress from it.
+    this.store.update(this.store.viewWeek, (w) => {
+      w.weights = { ...w.weights, [exercise.id]: value };
+    });
+    this.draw();
+  }
+
+  toggleSet(index) {
+    const { exercise } = this.current();
+    this.store.update(this.store.viewWeek, (w) => {
+      const sets = [...(w.sets[exercise.id] || [])];
+      while (sets.length < exercise.sets) sets.push(false);
+      sets[index] = !sets[index];
+      w.sets = { ...w.sets, [exercise.id]: sets };
+    });
+    this.draw();
+  }
+
+  advance() {
+    const now = Date.now();
+    if (now < this.busyUntil) return;
+    this.busyUntil = now + 400;
+
+    const { plan, exercise } = this.current();
+    const week = this.store.week();
+
+    if (isDone(exercise, week)) {
+      if (this.state.index < plan.ex.length - 1) this.step(1);
+      else this.finish();
+      return;
+    }
+
+    let completedIndex = -1;
+    this.store.update(this.store.viewWeek, (w) => {
+      const sets = [...(w.sets[exercise.id] || [])];
+      while (sets.length < exercise.sets) sets.push(false);
+      completedIndex = sets.findIndex((x) => !x);
+      if (completedIndex === -1) return;
+      sets[completedIndex] = true;
+      w.sets = { ...w.sets, [exercise.id]: sets };
+    });
+
+    buzz(35);
+    this.draw();
+
+    const nowDone = isDone(exercise, this.store.week());
+    const next = plan.ex[this.state.index + 1];
+    this.startRest(
+      exercise.rest,
+      nowDone
+        ? `خلّصت ${exercise.n} — الجاي: ${next ? next.n : 'نهاية التمرين'}`
+        : `الجاي: مجموعة ${completedIndex + 2} من ${exercise.n}`
+    );
+  }
+
+  finish() {
+    const { plan } = this.current();
+    const week = this.store.week();
+    const minutes = Math.max(1, Math.round((Date.now() - this.sessionStart) / 60000));
+    const setCount = plan.ex.reduce(
+      (acc, e) => acc + (week.sets[e.id] || []).filter(Boolean).length,
+      0
+    );
+    const volume = dayVolume(plan.ex, this.store.weightsFor(), week.sets);
+
+    this.nodes.finP.textContent = `${plan.day} — ${plan.title}`;
+    clear(this.nodes.finStats);
+    const stat = (value, label) =>
+      el('div', { class: 'stat' }, el('b', { class: 'n', text: value }), el('span', { text: label }));
+    this.nodes.finStats.append(
+      stat(String(plan.ex.length), 'تمارين'),
+      stat(String(setCount), 'مجموعات'),
+      stat(fmt(volume), 'كجم حمل'),
+      stat(String(minutes), 'دقيقة')
+    );
+
+    this.stopRest();
+    this.show(this.nodes.fin);
+    buzz([60, 60, 60, 60, 180]);
+    this.sessionStart = Date.now();
+  }
+
+  /* ── rest timer ─────────────────────────────────────────── */
+
+  startRest(seconds, nextText) {
+    this.rest.total = seconds;
+    this.rest.end = Date.now() + seconds * 1000;
+    this.nodes.restNext.textContent = nextText || '';
+    this.show(this.nodes.rest);
+    this.nodes.restBar.style.display = 'block';
+    this.tickRest();
+    clearInterval(this.rest.timer);
+    this.rest.timer = setInterval(() => this.tickRest(), 200);
+  }
+
+  tickRest() {
+    const left = Math.max(0, this.rest.end - Date.now());
+    const seconds = Math.ceil(left / 1000);
+    this.nodes.restTime.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+    // Clamp: adding +30s past the original total used to push the bar over 100%.
+    const ratio = this.rest.total > 0 ? Math.min(1, left / (this.rest.total * 1000)) : 0;
+    this.nodes.restBar.style.width = `${(ratio * 100).toFixed(1)}%`;
+    if (left <= 0) {
+      beep();
+      buzz([220, 110, 220]);
+      this.stopRest();
+    }
+  }
+
+  stopRest() {
+    clearInterval(this.rest.timer);
+    this.rest.timer = null;
+    this.hide(this.nodes.rest);
+    this.nodes.restBar.style.display = 'none';
+  }
+
+  /* ── input ──────────────────────────────────────────────── */
+
+  bindSwipe() {
+    let x0 = null;
+    let y0 = null;
+    const node = this.nodes.gym;
+    node.addEventListener(
+      'touchstart',
+      (event) => {
+        x0 = event.touches[0].clientX;
+        y0 = event.touches[0].clientY;
+      },
+      { passive: true }
+    );
+    node.addEventListener(
+      'touchend',
+      (event) => {
+        if (x0 === null || !this.state) return;
+        const dx = event.changedTouches[0].clientX - x0;
+        const dy = event.changedTouches[0].clientY - y0;
+        x0 = null;
+        if (Math.abs(dx) < 70 || Math.abs(dy) > 60) return;
+        this.step(dx < 0 ? 1 : -1);
+      },
+      { passive: true }
+    );
+  }
+
+  bindKeys() {
+    document.addEventListener('keydown', (event) => {
+      if (!this.state) return;
+      if (event.key === 'Escape') {
+        if (!this.nodes.rest.hidden) this.stopRest();
+        else this.close();
+      }
+      // RTL: ArrowLeft moves forward on screen.
+      if (event.key === 'ArrowLeft') this.step(1);
+      if (event.key === 'ArrowRight') this.step(-1);
+    });
+  }
+}
+
+/* ── helpers ─────────────────────────────────────────────── */
+
+export function isDone(exercise, week) {
+  const sets = week.sets?.[exercise.id] || [];
+  return sets.length === exercise.sets && sets.every(Boolean);
+}
+
+function nextSetIndex(sets, total) {
+  const firstUnchecked = sets.findIndex((x) => !x);
+  if (firstUnchecked >= 0) return firstUnchecked;
+  return sets.length < total ? sets.length : -1;
+}

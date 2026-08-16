@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#131A2E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>حديد — سعد</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Archivo:wght@600;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#131A2E;
+  --ink-2:#1B2440;
+  --surf:#1F2A48;
+  --surf-2:#27345A;
+  --line:rgba(190,205,255,.13);
+  --line-2:rgba(190,205,255,.26);
+  --txt:#EEF2FF;
+  --mut:#93A0C4;
+  --orange:#FF7A2F;
+  --mint:#3FD69B;
+  --blue:#4FA8FF;
+  --coral:#FF5C5C;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;overscroll-behavior:none}
+body{
+  background:radial-gradient(1200px 600px at 80% -15%,#243055 0%,transparent 60%),var(--ink);
+  background-attachment:fixed;color:var(--txt);
+  font-family:"IBM Plex Sans Arabic",system-ui,sans-serif;font-size:15px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit;cursor:pointer;border:0;background:none;color:inherit}
+.n{font-family:"Archivo",system-ui;font-variant-numeric:tabular-nums;direction:ltr;display:inline-block}
+.wrap{max-width:560px;margin:0 auto;padding:0 15px 60px}
+
+/* ══════ shared ══════ */
+.hd{display:flex;align-items:center;justify-content:space-between;padding:18px 0 12px;gap:10px}
+.logo{font-family:"Cairo";font-weight:900;font-size:21px}
+.logo small{display:block;font-family:"IBM Plex Sans Arabic";font-weight:400;font-size:11.5px;color:var(--mut);margin-top:-3px}
+.wk{display:flex;align-items:center;gap:6px;background:var(--surf);border:1px solid var(--line);border-radius:999px;padding:4px 5px}
+.wk button{color:var(--mut);font-size:16px;padding:2px 8px;line-height:1}
+.wk button:disabled{opacity:.25}
+.wk .v{font-family:"Archivo";font-weight:800;font-size:13px;color:var(--orange);min-width:56px;text-align:center;direction:ltr}
+
+.card{background:var(--surf);border:1px solid var(--line);border-radius:20px;padding:16px;margin-bottom:12px}
+h3{font-family:"Cairo";font-weight:900;font-size:15px;margin:22px 0 9px;color:var(--txt)}
+.mut{color:var(--mut);font-size:13px}
+ul.t{margin:8px 0 0;padding-right:17px}
+ul.t li{margin-bottom:6px;font-size:13.5px;color:#C5CFEA}
+ul.t b{color:var(--txt);font-weight:600}
+
+/* ══════ home: today card ══════ */
+.today{
+  position:relative;overflow:hidden;border-radius:22px;padding:20px;margin-bottom:14px;
+  background:linear-gradient(140deg,var(--orange),#E0521A);color:#1A0B02;
+}
+.today.rest{background:linear-gradient(140deg,var(--surf-2),var(--surf));color:var(--txt)}
+.today .lbl{font-family:"Archivo";font-weight:800;font-size:11px;letter-spacing:.16em;opacity:.72;direction:ltr}
+.today h2{font-family:"Cairo";font-weight:900;font-size:24px;margin:4px 0 4px}
+.today p{margin:0 0 16px;font-size:13px;opacity:.85;line-height:1.5}
+.go{display:block;width:100%;background:#1A0B02;color:#fff;border-radius:14px;padding:15px;
+  font-family:"Cairo";font-weight:900;font-size:16px;text-align:center}
+.today.rest .go{background:var(--txt);color:var(--ink)}
+.go:active{transform:scale(.99)}
+
+/* ══════ progression rail (signature) ══════ */
+.prog{margin-bottom:12px}
+.prow{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--line)}
+.prow:last-child{border:0}
+.pname{font-family:"Cairo";font-weight:600;font-size:13px;flex:1;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spark{flex:0 0 96px;height:30px}
+.spark path{fill:none;stroke:var(--mint);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.spark circle{fill:var(--mint)}
+.pnow{font-family:"Archivo";font-weight:800;font-size:15px;direction:ltr;flex:0 0 auto;min-width:52px;text-align:left}
+.pdel{font-family:"Archivo";font-weight:800;font-size:10.5px;color:var(--mint);direction:ltr;
+  background:rgba(63,214,155,.15);padding:2px 6px;border-radius:6px}
+.pdel.flat{color:var(--mut);background:rgba(190,205,255,.09)}
+
+/* ══════ week strip ══════ */
+.wrow{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line)}
+.wrow:last-child{border:0}
+.wrow.now{margin:0 -14px;padding:13px 14px;background:rgba(255,122,47,.10);
+  border-radius:14px;border-bottom-color:transparent}
+.wrow.dim{opacity:.55}
+.wl{flex:1;min-width:0}
+.wl b{display:block;font-family:"Cairo";font-weight:900;font-size:14px}
+.wl span{display:block;font-size:11.5px;color:var(--mut);overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.wr{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.wlift{background:var(--surf-2);border:1px solid var(--line-2);border-radius:11px;
+  padding:8px 12px;font-family:"Archivo";font-weight:800;font-size:12.5px;color:var(--txt)}
+.wlift.full{background:rgba(63,214,155,.18);border-color:rgba(63,214,155,.45);color:var(--mint)}
+.wlift.ghost{font-family:"Cairo";font-weight:600;color:var(--mut);background:transparent}
+.ck{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--line-2);
+  color:var(--mint);font-size:15px;display:grid;place-items:center;transition:.2s}
+.ck.on{background:var(--mint);border-color:var(--mint);color:#04251A}
+
+.crow{padding:13px 0;border-bottom:1px solid var(--line)}
+.crow:last-child{border:0}
+.chead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.chead b{display:block;font-family:"Cairo";font-weight:900;font-size:14px}
+.chead span{display:block;font-size:11.5px;color:var(--mut)}
+.mchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.mchip{border:1px solid var(--line-2);border-radius:9px;padding:6px 11px;font-size:12px;color:var(--mut)}
+.mchip.on{background:var(--orange);border-color:var(--orange);color:#1A0B02;font-weight:600}
+
+.nrow{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
+.nrow:last-child{border:0}
+.nd{flex:0 0 62px;font-family:"Cairo";font-weight:600;font-size:13px}
+.ni{flex:1;min-width:0;background:var(--ink-2);border:1px solid var(--line-2);border-radius:11px;
+  padding:11px 8px;color:var(--txt);font-family:"Archivo";font-weight:800;font-size:15px;
+  text-align:center;direction:ltr}
+.ni::placeholder{font-family:"IBM Plex Sans Arabic";font-weight:400;font-size:12px;color:var(--mut)}
+.ni.p{flex:0 0 88px}
+.ni:focus{outline:2px solid var(--orange);outline-offset:1px}
+.cchart{display:flex;gap:6px;align-items:flex-end;height:110px}
+.cb{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%}
+.cbar{flex:1;width:100%;background:rgba(190,205,255,.07);border-radius:7px;
+  display:flex;align-items:flex-end;overflow:hidden;position:relative}
+.cbar::after{content:"";position:absolute;right:0;left:0;bottom:var(--tl,74%);height:1px;
+  background:rgba(63,214,155,.55)}
+.cbar i{width:100%;border-radius:7px;transition:height .5s cubic-bezier(.16,.84,.32,1)}
+.cb span{font-size:10px;color:var(--mut)}
+.tline{font-size:10.5px;color:var(--mut);margin-top:8px;text-align:center}
+
+/* ══════ nav grid ══════ */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.tile{background:var(--surf);border:1px solid var(--line);border-radius:18px;padding:14px;text-align:right}
+.tile b{display:block;font-family:"Cairo";font-weight:900;font-size:14.5px;margin-bottom:2px}
+.tile span{font-size:11.5px;color:var(--mut)}
+.tile .bar{height:4px;border-radius:99px;background:rgba(190,205,255,.12);margin-top:10px;overflow:hidden}
+.tile .bar i{display:block;height:100%;background:var(--mint);width:0;transition:width .6s cubic-bezier(.16,.84,.32,1)}
+.tile.full{border-color:rgba(63,214,155,.4)}
+
+/* ══════ GYM MODE ══════ */
+#gym{position:fixed;inset:0;z-index:50;display:none;flex-direction:column;
+  background:radial-gradient(900px 500px at 50% -10%,#26315A 0%,transparent 60%),var(--ink);
+  padding:calc(env(safe-area-inset-top) + 10px) 16px calc(env(safe-area-inset-bottom) + 14px)}
+#gym.on{display:flex}
+.gtop{display:flex;align-items:center;justify-content:space-between;gap:10px;flex:0 0 auto}
+.gtop .x{font-size:22px;color:var(--mut);padding:4px 8px;line-height:1}
+.gcount{font-family:"Archivo";font-weight:800;font-size:12px;color:var(--mut);direction:ltr;letter-spacing:.06em}
+.gdots{display:flex;gap:4px;margin-top:10px;flex:0 0 auto}
+.gdots i{flex:1;height:3px;border-radius:99px;background:rgba(190,205,255,.14)}
+.gdots i.d{background:var(--mint)}
+.gdots i.c{background:var(--orange)}
+
+.gbody{flex:1;display:flex;flex-direction:column;justify-content:center;min-height:0;overflow-y:auto;padding:8px 0}
+.gname{font-family:"Cairo";font-weight:900;font-size:23px;line-height:1.25;margin-bottom:2px}
+.gsub{font-size:12.5px;color:var(--mut);margin-bottom:18px}
+
+.wbox{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+.wnum{font-family:"Archivo";font-weight:900;font-size:88px;line-height:.82;letter-spacing:-.045em;direction:ltr}
+.wnum.sm{font-size:52px}
+.wunit{font-size:14px;color:var(--mut);font-family:"IBM Plex Sans Arabic"}
+.adj{display:flex;flex-direction:column;gap:7px}
+.adj button{width:44px;height:38px;border-radius:11px;background:var(--surf);border:1px solid var(--line-2);
+  font-size:19px;font-family:"Archivo";font-weight:800;color:var(--txt);display:grid;place-items:center}
+.adj button:active{background:var(--surf-2)}
+.chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px}
+.chip{font-size:11.5px;padding:4px 10px;border-radius:8px;background:rgba(255,122,47,.14);color:var(--orange)}
+.chip.g{background:rgba(190,205,255,.09);color:var(--mut)}
+
+.sets{display:flex;gap:8px;margin-bottom:20px}
+.sdot{flex:1;height:52px;border-radius:14px;border:1.5px solid var(--line-2);
+  display:grid;place-items:center;font-family:"Archivo";font-weight:800;font-size:14px;
+  color:var(--mut);direction:ltr;transition:.25s}
+.sdot.done{background:var(--mint);border-color:var(--mint);color:#04251A}
+.sdot.now{border-color:var(--orange);color:var(--orange);box-shadow:0 0 0 3px rgba(255,122,47,.14)}
+
+.gfoot{flex:0 0 auto}
+.big{width:100%;border-radius:18px;padding:19px;font-family:"Cairo";font-weight:900;font-size:17px;
+  background:var(--orange);color:#1A0B02;display:flex;align-items:center;justify-content:center;gap:9px}
+.big:active{transform:scale(.99)}
+.big.mint{background:var(--mint);color:#04251A}
+.glinks{display:flex;gap:8px;margin-top:10px}
+.glink{flex:1;text-align:center;background:var(--surf);border:1px solid var(--line);border-radius:13px;
+  padding:11px;font-size:12.5px;color:var(--txt);text-decoration:none;display:block}
+.glink b{color:var(--orange)}
+.cue{max-height:0;overflow:hidden;transition:max-height .32s ease}
+.cue.open{max-height:400px}
+.cue div{margin-top:10px;background:var(--surf);border:1px solid var(--line);border-radius:14px;
+  padding:13px;font-size:13px;line-height:1.75;color:#C5CFEA}
+.cue b{color:var(--txt);font-weight:600}
+.arrows{display:flex;justify-content:space-between;margin-top:12px}
+.arrows button{font-size:12.5px;color:var(--mut);padding:6px 4px}
+.arrows button:disabled{opacity:.25}
+
+/* rest overlay */
+#rest{position:fixed;inset:0;z-index:60;display:none;flex-direction:column;
+  align-items:center;justify-content:center;background:rgba(11,16,32,.94);
+  padding:24px;text-align:center}
+#rest.on{display:flex}
+#rest .fr{position:fixed;inset:0;border:5px solid var(--blue);border-radius:2px;pointer-events:none;
+  animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.28}50%{opacity:.9}}
+#rest .lb{font-family:"Cairo";font-weight:900;font-size:16px;color:var(--blue);margin-bottom:6px}
+#rest .tm{font-family:"Archivo";font-weight:900;font-size:82px;line-height:1;direction:ltr;letter-spacing:-.03em}
+#rest .nx{font-size:13px;color:var(--mut);margin-top:14px;max-width:280px}
+#rest .btns{display:flex;gap:10px;margin-top:26px}
+#rest .btns button{background:var(--surf);border:1px solid var(--line-2);border-radius:13px;
+  padding:13px 20px;font-family:"Cairo";font-weight:600;font-size:14px}
+#restbar{position:fixed;top:0;right:0;height:5px;background:var(--blue);z-index:61;width:0;display:none}
+
+/* feedback */
+.fbwrap{margin-top:14px}
+.fblbl{font-size:12px;color:var(--mut);margin-bottom:8px}
+.fb{display:flex;gap:8px}
+.fb button{flex:1;border:1.5px solid var(--line-2);border-radius:13px;padding:12px 4px;
+  font-family:"Cairo";font-weight:600;font-size:13px;color:var(--mut)}
+.fb button[aria-pressed="true"][data-v="light"]{background:rgba(63,214,155,.18);color:var(--mint);border-color:transparent}
+.fb button[aria-pressed="true"][data-v="ok"]{background:rgba(255,122,47,.18);color:var(--orange);border-color:transparent}
+.fb button[aria-pressed="true"][data-v="heavy"]{background:rgba(255,92,92,.18);color:var(--coral);border-color:transparent}
+
+/* finish screen */
+#fin{position:fixed;inset:0;z-index:70;display:none;flex-direction:column;align-items:center;
+  justify-content:center;background:var(--ink);padding:28px;text-align:center}
+#fin.on{display:flex}
+#fin .tick{width:74px;height:74px;border-radius:50%;background:var(--mint);color:#04251A;
+  display:grid;place-items:center;font-size:36px;margin-bottom:18px}
+#fin h2{font-family:"Cairo";font-weight:900;font-size:25px;margin:0 0 6px}
+#fin p{color:var(--mut);font-size:13.5px;margin:0 0 24px}
+.stats{display:flex;gap:10px;width:100%;max-width:360px;margin-bottom:26px}
+.stat{flex:1;background:var(--surf);border:1px solid var(--line);border-radius:16px;padding:13px 8px}
+.stat b{display:block;font-family:"Archivo";font-weight:800;font-size:21px;direction:ltr}
+.stat span{font-size:11px;color:var(--mut)}
+
+/* week / check-in */
+.inp{display:block;margin-top:13px}
+.inp span{font-size:12.5px;color:var(--mut);display:block;margin-bottom:6px}
+.inp input{width:100%;background:var(--ink-2);border:1px solid var(--line-2);border-radius:13px;
+  padding:14px;color:var(--txt);font-family:"Archivo";font-weight:800;font-size:20px;text-align:center;direction:ltr}
+.inp input:focus{outline:2px solid var(--orange);outline-offset:1px}
+.cta{width:100%;margin-top:15px;background:var(--orange);border-radius:14px;padding:15px;
+  font-family:"Cairo";font-weight:900;font-size:15px;color:#1A0B02}
+.verdict{border-radius:20px;padding:17px;margin-bottom:12px;border:1px solid}
+.verdict.go{background:linear-gradient(160deg,rgba(63,214,155,.15),rgba(63,214,155,.03));border-color:rgba(63,214,155,.4)}
+.verdict.hold{background:linear-gradient(160deg,rgba(255,122,47,.15),rgba(255,122,47,.03));border-color:rgba(255,122,47,.4)}
+.verdict.warn{background:linear-gradient(160deg,rgba(255,92,92,.15),rgba(255,92,92,.03));border-color:rgba(255,92,92,.4)}
+.verdict h4{font-family:"Cairo";font-weight:900;font-size:17px;margin:0 0 6px}
+.verdict p{margin:0;font-size:13.5px;line-height:1.7;color:#D3DBF2}
+.deltas{display:flex;gap:9px;margin-top:13px;flex-wrap:wrap}
+.deltas span{background:rgba(0,0,0,.25);border-radius:10px;padding:7px 10px;font-size:11px;color:var(--mut)}
+.deltas span b{display:block;font-family:"Archivo";font-weight:800;font-size:16px;color:var(--txt);direction:ltr;margin-top:1px}
+.row{display:flex;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border:0;padding-bottom:0}
+.row .a{font-family:"Cairo";font-weight:600;font-size:13.5px}
+.row .b{font-size:12.5px;color:var(--mut);text-align:left;max-width:62%}
+.dim{opacity:.45}
+.back{color:var(--mut);font-size:13px;padding:14px 0 4px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translate(-50%,100px);background:var(--txt);
+  color:var(--ink);padding:11px 20px;border-radius:999px;font-size:13px;font-weight:600;
+  transition:transform .3s cubic-bezier(.16,.84,.32,1);z-index:99}
+.toast.show{transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<!-- ══════ GYM MODE ══════ -->
+<div id="gym">
+  <div class="gtop">
+    <button class="x" id="gx">✕</button>
+    <span class="gcount" id="gcount"></span>
+  </div>
+  <div class="gdots" id="gdots"></div>
+  <div class="gbody" id="gbody"></div>
+  <div class="gfoot" id="gfoot"></div>
+</div>
+
+<div id="restbar"></div>
+<div id="rest">
+  <div class="fr"></div>
+  <div class="lb">راحة</div>
+  <div class="tm n" id="rtm">1:30</div>
+  <div class="nx" id="rnx"></div>
+  <div class="btns">
+    <button id="radd">+30 ثانية</button>
+    <button id="rskip">تخطّي</button>
+  </div>
+</div>
+
+<div id="fin">
+  <div class="tick">✓</div>
+  <h2 id="finh">خلّصت</h2>
+  <p id="finp"></p>
+  <div class="stats" id="finstats"></div>
+  <button class="cta" style="max-width:360px" id="finx">تمام</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════ storage ═══════════ */
+const STORE={
+  async get(k){
+    if(window.storage){try{const r=await window.storage.get(k);return r?r.value:null}catch(e){return null}}
+    try{return localStorage.getItem(k)}catch(e){return null}
+  },
+  async set(k,v){
+    if(window.storage){try{await window.storage.set(k,v);return true}catch(e){return false}}
+    try{localStorage.setItem(k,v);return true}catch(e){return false}
+  }
+};
+const jget=async k=>{const v=await STORE.get(k);try{return v?JSON.parse(v):null}catch(e){return null}};
+const jset=async(k,o)=>{
+  const ok=await STORE.set(k,JSON.stringify(o));
+  if(!ok) toast("⚠ ما انحفظ — ذاكرة المتصفح ممتلئة أو مقفلة");
+  return ok;
+};
+
+/* ═══════════ program ═══════════ */
+const PLAN={
+  sat:{day:"السبت",title:"علوي — دفع",focus:"صدر وكتف وظهر. هذا يومك الأهم، لأن ضعفك بالعلوي.",ex:[
+    {id:"chest_db",n:"ضغط صدر دمبل مستوي",sets:3,reps:"8–12",base:10,step:2,hand:1,rest:"90 ث",
+     cue:"نزّل الدمبل لين يوصل مستوى صدرك بالضبط. <b>لا تقفل كوعك بعنف فوق</b>، وخلّ لوح كتفك مضغوط للخلف طول التمرين.",
+     v:"https://www.youtube.com/watch?v=D4wTbsN_7lI",vlbl:"مقطع يوتيوب (عربي)",vok:1},
+    {id:"sh_press",n:"ضغط كتف دمبل جالس",sets:3,reps:"8–12",base:8,step:2,hand:1,rest:"90 ث",
+     cue:"ظهرك ملتصق بالكرسي و<b>لا تقوّس ظهرك أبداً</b>. خلّ كوعك شوي للقدام مو مفتوح 90 درجة كامل، أرحم لكتفك.",
+     v:"https://www.youtube.com/watch?v=lfb3ffbrd4Q",vlbl:"مقطع يوتيوب",vok:1},
+    {id:"lat_pull",n:"سحب أمامي (لات بولداون)",sets:3,reps:"10–12",base:35,step:2.5,rest:"75 ث",
+     cue:"اسحب البار لأعلى صدرك، <b>مو خلف رقبتك</b>. وفكّر إن كوعك ينزل لتحت، لا تفكر إن يدك تسحب — الفرق كبير بالإحساس.",
+     v:"https://www.youtube.com/watch?v=CAwf7n6Luuc",vlbl:"مقطع يوتيوب",vok:1},
+    {id:"cable_row",n:"تجديف كيبل جالس",sets:3,reps:"10–12",base:35,step:2.5,rest:"75 ث",
+     cue:"ظهرك مستقيم و<b>لا ترجع بجسمك للخلف</b> عشان تسحب وزن أثقل. اسحب لجهة سرّتك واعصر لوح كتفك ثانية وحدة.",
+     v:"https://www.youtube.com/watch?v=7o2oolbmzeI",vlbl:"مقطع يوتيوب",vok:1},
+    {id:"lat_raise",n:"رفرفة جانبي دمبل",sets:3,reps:"12–15",base:5,step:2,hand:1,rest:"60 ث",
+     cue:"وزن خفيف صدق، هذا تمرين عزل. ارفع لين مستوى كتفك بس، <b>وبدون أي رجّة بالجسم</b>.",
+     v:"https://www.youtube.com/watch?v=pgrWjBfaFe8",vlbl:"مقطع يوتيوب",vok:1},
+    {id:"tri_push",n:"ترايسبس بوش داون حبل",sets:3,reps:"12–15",base:15,step:2.5,rest:"60 ث",
+     cue:"كوعك ملزوق بجنبك وما يتحرك من مكانه. افتح الحبل بنهاية الحركة واعصر.",
+     v:"https://www.youtube.com/watch?v=RhkRr9eyOzQ",vlbl:"مقطع يوتيوب (نسخة يد وحدة)",vok:0},
+    {id:"plank",n:"بلانك",sets:3,reps:"ثواني",base:30,step:5,time:1,rest:"45 ث",
+     cue:"1) انزل على مرفقك وأطراف قدمك، والمرفق تحت كتفك بالضبط. 2) جسمك خط مستقيم من كعبك لرأسك. 3) <b>شد بطنك ومؤخرتك مع بعض</b> وكأن أحد بيضربك ببطنك. 4) خلّ حوضك مدحور شوي لتحت عشان ظهرك ما يتقوّس. 5) رقبتك امتداد لظهرك — عينك على الأرض قدامك مو للأمام. <b>أول ما ينزل خصرك أو يطلع مؤخرتك، وقف</b> — الوقت الصحيح أهم من الوقت الطويل.",
+     v:"https://www.muscleandstrength.com/exercises/hover.html",vlbl:"صفحة فيها مقطع",vok:0}
+  ]},
+  mon:{day:"الاثنين",title:"سفلي + وسط",focus:"رجلك قوية أصلاً — نحافظ عليها ونزيدها بدون ما تسرق وقت العلوي.",ex:[
+    {id:"leg_press",n:"لبج بريس",sets:3,reps:"10–12",base:60,step:5,rest:"دقيقتين",
+     cue:"نزّل لين تقارب 90 درجة بالركبة. <b>لا ترفع ظهرك أو مؤخرتك عن الكرسي</b>، ولا تقفل ركبتك فوق.",
+     v:"https://www.youtube.com/watch?v=K5n2vg3oZa4",vlbl:"مقطع يوتيوب",vok:1},
+    {id:"rdl",n:"رومانيان ديدليفت دمبل",sets:3,reps:"10",base:12,step:2,hand:1,rest:"دقيقتين",
+     cue:"ركبتك شبه مستقيمة، ارجع بحوضك للخلف والدمبل يمشي قريب من رجلك. <b>ظهرك مستقيم دايم</b> ولازم تحس بشد خلف فخذك.",
+     v:"https://www.youtube.com/watch?v=hQgFixeXdZo",vlbl:"مقطع يوتيوب",vok:1},
+    {id:"leg_ext",n:"تمديد الأرجل",sets:3,reps:"12",base:25,step:2.5,rest:"60 ث",
+     cue:"اعصر فوق ثانية وحدة ونزّل ببطء. لا ترمي الوزن بالنزول.",
+     v:"https://www.muscleandstrength.com/exercises/leg-extension.html",vlbl:"صفحة فيها مقطع",vok:0},
+    {id:"leg_curl",n:"ثني الأرجل",sets:3,reps:"12",base:25,step:2.5,rest:"60 ث",
+     cue:"حوضك ملزوق بالجهاز و<b>لا ترفعه</b> وقت السحب — لو رفعته، الوزن ثقيل.",
+     v:"https://www.muscleandstrength.com/exercises/leg-curl.html",vlbl:"صفحة فيها مقطع",vok:0},
+    {id:"calf",n:"رفع السمانة واقف",sets:3,reps:"15",base:30,step:5,rest:"45 ث",
+     cue:"مدى كامل: نزّل كعبك تحت مستوى الدرجة، ثم اطلع لأقصى نقطة وثبّت ثانية.",
+     v:"https://www.youtube.com/watch?v=H6WptvjXkgw",vlbl:"مقطع يوتيوب",vok:1},
+    {id:"deadbug",n:"ديد بق",sets:3,reps:"10 لكل جهة",base:0,step:0,body:1,rest:"45 ث",
+     cue:"1) نم على ظهرك، ارفع يديك عمودي فوق صدرك، وارفع رجولك وركبتك مثنية 90 درجة. 2) الزق أسفل ظهرك بالأرض ولا تخليه يرتفع أبداً. 3) نزّل يدك اليمنى فوق رأسك ورجلك اليسرى للأمام <b>مع بعض وببطء</b>. 4) رجّعهم لمكانهم وبدّل الجهة. 5) <b>لو ارتفع ظهرك عن الأرض، صغّر المدى</b> — لا تنزّل رجلك كثير.",
+     v:"https://www.youtube.com/watch?v=JrcoGEZn6L4",vlbl:"مقطع يوتيوب",vok:1}
+  ]},
+  wed:{day:"الأربعاء",title:"علوي — سحب",focus:"ظهر وذراع. زاوية ثانية للعلوي عشان يقوى أسرع.",ex:[
+    {id:"incline_db",n:"ضغط صدر مائل دمبل",sets:3,reps:"8–12",base:8,step:2,hand:1,rest:"90 ث",
+     cue:"ميلان البنش 30 درجة بس. <b>أكثر من كذا يتحول التمرين لكتف مو صدر</b>.",
+     v:"https://www.youtube.com/watch?v=hChjZQhX1Ls",vlbl:"مقطع يوتيوب",vok:1},
+    {id:"pullup",n:"عقلة بمساعدة الجهاز",sets:3,reps:"6–10",base:40,step:5,inverse:1,rest:"90 ث",
+     cue:"الرقم هنا <b>وزن المساعدة</b> — كل ما نزل الرقم يعني إنك صرت أقوى. لو ما فيه جهاز مساعدة، بدّلها لات بولداون قبضة ضيقة.",
+     v:"https://www.youtube.com/watch?v=CAwf7n6Luuc",vlbl:"مقطع اللات بولداون (البديل)",vok:0},
+    {id:"row_1arm",n:"تجديف دمبل بيد وحدة",sets:3,reps:"10 لكل يد",base:14,step:2,hand:1,rest:"75 ث",
+     cue:"ظهرك موازي للأرض، اسحب الدمبل لجنب خصرك مو لجنب صدرك. <b>لا تلف جسمك</b> مع السحبة.",
+     v:"https://www.youtube.com/watch?v=PgpQ4-jHiq4",vlbl:"مقطع يوتيوب",vok:1},
+    {id:"face_pull",n:"فيس بول كيبل",sets:3,reps:"15",base:15,step:2.5,rest:"60 ث",
+     cue:"اسحب الحبل لجهة وجهك وكوعك عالي. هذا التمرين يحمي كتفك على المدى الطويل — لا تتجاهله ولا تثقّله.",
+     v:"https://www.youtube.com/watch?v=GJn1gzxS5bw",vlbl:"مقطع يوتيوب",vok:1},
+    {id:"curl",n:"بايسبس مطرقة بالدمبل",sets:3,reps:"12",base:8,step:2,hand:1,rest:"60 ث",
+     cue:"كوعك ثابت بجنبك، <b>وبدون رجّة بالظهر</b>. لو رجّيت، الوزن أثقل من مستواك.",
+     v:"https://www.youtube.com/watch?v=BRVDS6HVR9Q",vlbl:"مقطع يوتيوب",vok:1},
+    {id:"tri_oh",n:"ترايسبس خلف الرأس بالدمبل",sets:3,reps:"12",base:10,step:2,rest:"60 ث",
+     cue:"دمبل واحد بيدينك الثنتين فوق راسك. <b>كوعك عالي وثابت ولا يفتح للجناب</b>، ونزّل خلف راسك للمدى الكامل. لو حسيت ضغط بكتفك، خفّف الوزن.",
+     v:"https://www.youtube.com/watch?v=X-iV-cG8cYs",vlbl:"مقطع يوتيوب",vok:1}
+  ]}
+};
+const DAYS=["sat","mon","wed"];
+/* الأسبوع كامل: c = رقم اليوم في جدول الكارديو */
+const WEEK=[
+  {d:"السبت",   lift:"sat", c:0, js:6},
+  {d:"الأحد",             c:1, js:0},
+  {d:"الاثنين", lift:"mon", c:2, js:1},
+  {d:"الثلاثاء",          c:3, js:2},
+  {d:"الأربعاء",lift:"wed", c:4, js:3},
+  {d:"الخميس",            c:5, js:4},
+  {d:"الجمعة",  rest:1,    c:6, js:5}
+];
+const CARDIO=[
+  ["السبت","تسخين 10 دقائق قبل الحديد + 15 دقيقة بعده",0],
+  ["الأحد","40 دقيقة شدة متوسطة — تلهث بس تقدر تتكلم",0],
+  ["الاثنين","تسخين 10 دقائق قبل الحديد + 15 دقيقة بعده",0],
+  ["الثلاثاء","40 دقيقة شدة متوسطة",0],
+  ["الأربعاء","تسخين 10 دقائق قبل الحديد + 15 دقيقة بعده",0],
+  ["الخميس","45 دقيقة — أطول يوم كارديو",0],
+  ["الجمعة","راحة كاملة. الراحة جزء من البرنامج مو كسل",1]
+];
+const MACH=[
+  {k:"walk", n:"سير مائل", d:"أعلى حرق بأقل ضرر للركبة. ميلان 8–12% وسرعة 5–5.5"},
+  {k:"bike", n:"سيكل",     d:"أرحم شي على المفاصل. أفضل خيار بعد يوم الرجل"},
+  {k:"ellip",n:"غزالة",    d:"صفر صدمة على الركبة، ويشغّل يدك بعد. مريح لو ركبتك تعبانة"},
+  {k:"stair",n:"درج",      d:"أعلى حرق بالكل، وأقساها على ركبتك وفخذك. لا تسويه قبل أو بعد يوم الرجل"},
+  {k:"row",  n:"تجديف",    d:"جسم كامل، بس يشتغل ظهرك — لا تسويه ثقيل يوم الأربعاء"}
+];
+const machName=k=>{const m=MACH.find(x=>x.k===k);return m?m.n:""};
+
+/* ═══════════ engine ═══════════ */
+function baseW(){const o={};DAYS.forEach(d=>PLAN[d].ex.forEach(e=>o[e.id]=e.base));return o}
+const exById=id=>{for(const d of DAYS){const e=PLAN[d].ex.find(x=>x.id===id);if(e)return e}};
+const dayOf=id=>DAYS.find(d=>PLAN[d].ex.some(x=>x.id===id));
+
+function verdict(cur,prev){
+  if(!cur||!cur.weight) return {gate:"go",kind:"go",t:"ما فيه قياس لهالأسبوع",
+    p:"بنزيد على أساس إحساسك بالأوزان بس. سجّل وزنك آخر يوم بالأسبوع عشان القرار يصير أدق."};
+  if(!prev||!prev.weight) return {gate:"go",kind:"go",t:"قياس الأساس انحفظ",
+    p:"هذا أول قياس، منه نبدأ نقيس. الأسبوع الجاي بتشوف المقارنة."};
+  const dW=+(cur.weight-prev.weight).toFixed(1);
+  const pct=(dW/prev.weight)*100;
+  const dM=(cur.muscle&&prev.muscle)?+(cur.muscle-prev.muscle).toFixed(1):null;
+  if(pct<=-1.2) return {gate:"hold",kind:"warn",t:"نزولك أسرع من اللازم",dW:dW,dM:dM,
+    p:"نزلت أكثر من 1.2% من وزنك بأسبوع واحد. بهالسرعة جزء من النزول عضل مو دهون، وجسمك ما يقدر يتعافى من زيادة أوزان. <b>ثبّت الأوزان هالأسبوع</b> وارفع أكلك شوي — خصوصاً البروتين."};
+  if(dM!==null&&dM<=-0.5) return {gate:"hold",kind:"warn",t:"الكتلة العضلية نازلة",dW:dW,dM:dM,
+    p:"نزلت كتلتك العضلية نص كيلو أو أكثر. ثبّت الأوزان، ارفع البروتين، وخفّف الكارديو يوم واحد هالأسبوع. لو تكررت 3 أسابيع، العجز عندك كبير زيادة."};
+  if(pct>=0.6) return {gate:"go",kind:"hold",t:"وزنك طالع",dW:dW,dM:dM,
+    p:"وزنك زاد هالأسبوع. لو هدفك التنشيف، راجع أكلك. الأوزان بالحديد بتزيد عادي — ما تتأثر بهذا."};
+  return {gate:"go",kind:"go",t:"وضعك سليم — نزيد",dW:dW,dM:dM,
+    p:"نزولك بالمعدل الصحي (نصف كيلو لكيلو بالأسبوع تقريباً) وجسمك يتحمل زيادة الحمل. نمشي للأمام."};
+}
+function progress(weights,log,v){
+  const out={};
+  Object.keys(weights).forEach(id=>{
+    const e=exById(id),w=weights[id];
+    if(!e||e.body){out[id]=w;return}
+    const fb=(log.fb||{})[id];
+    const st=(log.sets||{})[id]||[];
+    const done=st.length===e.sets&&st.every(Boolean);
+    if(v.gate==="hold"||!done||fb==="heavy"){out[id]=w;return}
+    let m=fb==="light"?2:1;
+    if(m===2&&!e.inverse&&e.step*2>w*0.2) m=1;
+    out[id]=e.inverse?Math.max(0,w-e.step*m):+(w+e.step*m).toFixed(1);
+  });
+  return out;
+}
+
+/* ═══════════ nutrition ═══════════ */
+const DAYN=["السبت","الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة"];
+const KCAL_PER_KG=7700;
+
+function tdeeFormula(kg,age,act){
+  /* Mifflin-St Jeor، طول 183 */
+  const bmr=10*kg+6.25*183-5*age+5;
+  return Math.round(bmr*act);
+}
+function safeTarget(tdee){
+  /* عجز 500 سعرة، بس ما ننزل تحت 75% من احتياجك ولا تحت 1700 */
+  const floor=Math.max(1700,Math.round(tdee*0.75));
+  return Math.max(floor,tdee-500);
+}
+const avgCal=c=>{
+  if(!c||!c.d)return null;
+  const v=c.d.filter(x=>x>0);
+  return v.length?{avg:Math.round(v.reduce((a,b)=>a+b,0)/v.length),days:v.length,sum:v.reduce((a,b)=>a+b,0)}:null;
+};
+const avgPro=c=>{
+  if(!c||!c.p)return null;
+  const v=c.p.filter(x=>x>0);
+  return v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length):null;
+};
+/* السعرات الحقيقية للثبات = متوسط أكلك + (تغير الوزن × 7700 ÷ 7) */
+function measuredTDEE(){
+  const out=[];
+  Object.keys(CALHIST).map(Number).forEach(i=>{
+    const a=avgCal(CALHIST[i]);
+    const b1=BODYHIST[i-1],b2=BODYHIST[i];
+    if(a&&a.days>=4&&b1&&b2&&b1.weight&&b2.weight){
+      const dkg=b2.weight-b1.weight;
+      out.push(Math.round(a.avg-(dkg*KCAL_PER_KG/7)));
+    }
+  });
+  if(!out.length)return null;
+  return {val:Math.round(out.reduce((a,b)=>a+b,0)/out.length),weeks:out.length};
+}
+
+/* ═══════════ state ═══════════ */
+let wk=1,W={},PREVW=null,WHIST={},LOG={sets:{},fb:{}},BODY=null,PREVBODY=null;
+let NUT=null,CAL={d:[],p:[]},CALHIST={},BODYHIST={};
+let view="home",gym=null,cueOpen=false,sessStart=0,wakeLock=null;
+let restEnd=0,restTotal=0,restTick=null;
+
+async function ensureWeights(n){
+  const k="w:"+n;let w=await jget(k);
+  if(w&&Object.keys(w).length) return w;
+  if(n<=1){w=baseW()}
+  else{
+    const pw=await ensureWeights(n-1);
+    const pl=await jget("log:"+(n-1))||{sets:{},fb:{}};
+    const b=await jget("body:"+(n-1)),b2=await jget("body:"+(n-2));
+    w=progress(pw,pl,verdict(b,b2));
+  }
+  await jset(k,w);return w;
+}
+async function loadWeek(n){
+  W=await ensureWeights(n);
+  LOG=await jget("log:"+n)||{sets:{},fb:{}};
+  if(!LOG.sets)LOG.sets={}; if(!LOG.fb)LOG.fb={}; if(!LOG.cardio)LOG.cardio={}; if(!LOG.cmach)LOG.cmach={};
+  BODY=await jget("body:"+n);
+  PREVBODY=await jget("body:"+(n-1));
+  PREVW=n>1?await jget("w:"+(n-1)):null;
+  WHIST={};CALHIST={};BODYHIST={};
+  for(let i=1;i<=n;i++){
+    const x=await jget("w:"+i); if(x) WHIST[i]=x;
+    const c=await jget("cal:"+i); if(c) CALHIST[i]=c;
+    const b=await jget("body:"+i); if(b) BODYHIST[i]=b;
+  }
+  NUT=await jget("nutri");
+  CAL=await jget("cal:"+n)||{d:[],p:[]};
+  if(!CAL.d)CAL.d=[]; if(!CAL.p)CAL.p=[];
+  await STORE.set("meta:wk",String(n));
+}
+const saveLog=()=>jset("log:"+wk,LOG);
+function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");
+  clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),1700)}
+function buzz(p){try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}}
+let AC=null;
+function beep(){
+  try{
+    AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+    [0,.22,.44].forEach(t=>{
+      const o=AC.createOscillator(),g=AC.createGain();
+      o.frequency.value=880;o.connect(g);g.connect(AC.destination);
+      g.gain.setValueAtTime(.0001,AC.currentTime+t);
+      g.gain.exponentialRampToValueAtTime(.25,AC.currentTime+t+.01);
+      g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+t+.16);
+      o.start(AC.currentTime+t);o.stop(AC.currentTime+t+.18);
+    });
+  }catch(e){}
+}
+
+/* ═══════════ helpers ═══════════ */
+const fmtN=n=>Number.isInteger(n)?n:(+n).toFixed(1);
+const fmt=n=>Math.round(n).toLocaleString("en-US");
+const setsOf=id=>LOG.sets[id]||[];
+const isDone=e=>{const s=setsOf(e.id);return s.length===e.sets&&s.every(Boolean)};
+const doneCount=d=>PLAN[d].ex.filter(isDone).length;
+function restSec(e){
+  const r=e.rest||"";
+  if(r.indexOf("دقيقتين")>=0) return 120;
+  const m=r.match(/(\d+)/);
+  return m?parseInt(m[1]):75;
+}
+function dayVolume(d){
+  let v=0;
+  PLAN[d].ex.forEach(e=>{
+    if(e.body||e.time||e.inverse) return;
+    const reps=parseInt(String(e.reps))||10;
+    setsOf(e.id).forEach(x=>{if(x) v+=(W[e.id]||0)*reps*(e.hand?2:1)});
+  });
+  return v;
+}
+function todayKey(){
+  const g=new Date().getDay(); /* 0 أحد .. 6 سبت */
+  if(g===6) return "sat"; if(g===1) return "mon"; if(g===3) return "wed";
+  if(g===5) return "rest";
+  return "cardio";
+}
+
+/* ═══════════ HOME ═══════════ */
+function vHome(){
+  const tk=todayKey();
+  const dayNames={0:"الأحد",1:"الاثنين",2:"الثلاثاء",3:"الأربعاء",4:"الخميس",5:"الجمعة",6:"السبت"};
+  const today=dayNames[new Date().getDay()];
+  let hero;
+  if(tk==="rest"){
+    hero=`<div class="today rest"><div class="lbl">TODAY · ${today}</div>
+      <h2>راحة كاملة</h2><p>لا حديد ولا كارديو. الراحة جزء من البرنامج، وجسمك يبني فيها مو بالنادي.</p>
+      <button class="go" data-nav="week">سجّل قياس الأسبوع</button></div>`;
+  }else if(tk==="cardio"){
+    hero=`<div class="today rest"><div class="lbl">TODAY · ${today}</div>
+      <h2>يوم كارديو</h2><p>40 دقيقة مشي مائل أو دراجة. تلهث بس تقدر تتكلم.</p>
+      <button class="go" data-nav="cardio">شوف تفاصيل الكارديو</button></div>`;
+  }else{
+    const p=PLAN[tk],n=doneCount(tk),tot=p.ex.length;
+    hero=`<div class="today"><div class="lbl">TODAY · ${today}</div>
+      <h2>${p.title}</h2><p>${tot} تمارين${n?` · خلّصت ${n} منها`:""}</p>
+      <button class="go" data-gym="${tk}">${n?"كمّل التمرين":"ابدأ التمرين"} ←</button></div>`;
+  }
+
+  /* progression rail */
+  const keys=["chest_db","sh_press","lat_pull","cable_row","leg_press","row_1arm"];
+  const weeks=Object.keys(WHIST).map(Number).sort((a,b)=>a-b);
+  let rail="";
+  keys.forEach(id=>{
+    const e=exById(id);if(!e)return;
+    const vals=weeks.map(w=>WHIST[w][id]).filter(v=>v!=null);
+    if(!vals.length)return;
+    const now=vals[vals.length-1],first=vals[0];
+    const mn=Math.min(...vals),mx=Math.max(...vals),rng=(mx-mn)||1;
+    let pts;
+    if(vals.length===1){pts=[[0,15],[96,15]]}
+    else pts=vals.map((v,i)=>[i*(96/(vals.length-1)),27-((v-mn)/rng)*24]);
+    const d="M"+pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" L");
+    const last=pts[pts.length-1];
+    const delta=+(now-first).toFixed(1);
+    rail+=`<div class="prow">
+      <span class="pname">${e.n}</span>
+      <svg class="spark" viewBox="0 0 96 30"><path d="${d}"></path>
+        <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3"></circle></svg>
+      <span class="pnow n">${fmtN(now)}<span style="font-size:10px;color:var(--mut)"> ${e.time?"ث":"كجم"}</span></span>
+      <span class="pdel ${delta?"":"flat"}">${delta>0?"+":""}${delta||"—"}</span></div>`;
+  });
+
+  const jsToday=new Date().getDay();
+  const strip=WEEK.map(x=>{
+    const isToday=x.js===jsToday;
+    const ck=!!(LOG.cardio||{})[x.c];
+    let right,sub;
+    if(x.lift){
+      const n=doneCount(x.lift),t=PLAN[x.lift].ex.length;
+      sub=`حديد — ${PLAN[x.lift].title}`;
+      right=`<button class="wlift ${n===t?"full":""}" data-gym="${x.lift}"><span class="n">${n}/${t}</span></button>`;
+    }else if(x.rest){
+      sub="راحة كاملة — لا حديد ولا كارديو";
+      right=`<button class="wlift ghost" data-nav="week">قياس</button>`;
+    }else{
+      const mk=(LOG.cmach||{})[x.c];
+      sub=CARDIO[x.c][1]+(mk?" · "+machName(mk):"");
+      right="";
+    }
+    const cbtn=x.rest?"":`<button class="ck ${ck?"on":""}" data-ck="${x.c}" title="الكارديو">${ck?"✓":""}</button>`;
+    return `<div class="wrow ${isToday?"now":""} ${x.rest?"dim":""}">
+      <div class="wl"><b>${x.d}</b><span>${sub}</span></div>
+      <div class="wr">${right}${cbtn}</div></div>`;
+  }).join("");
+
+  const v=verdict(BODY,PREVBODY);
+
+  return `<div class="wrap">
+    <div class="hd">
+      <div class="logo">حديد<small>سجل تمرين سعد</small></div>
+      <div class="wk"><button id="pv">‹</button><span class="v">WEEK ${wk}</span><button id="nx">›</button></div>
+    </div>
+    ${hero}
+    <h3>أوزانك وهي تطلع</h3>
+    <div class="card prog">${rail||'<div class="mut">أول أسبوع — بعد ما تخلّصه بيبان لك خط التقدم هنا.</div>'}</div>
+    <h3>الأسبوع كامل</h3>
+    <div class="card" style="padding:6px 14px">${strip}</div>
+    <div class="mut" style="font-size:11.5px;margin:-4px 2px 12px">
+      الدائرة = علّم الكارديو لما تخلّصه · الرقم = تمارين الحديد المكتملة
+    </div>
+    <div class="grid">
+      <button class="tile" data-nav="nutri"><b>السعرات</b><span>${NUT?fmt(NUT.target)+" سعرة · هدفك اليومي":"ما ضبطته بعد"}</span></button>
+      <button class="tile" data-nav="cardio"><b>تفاصيل الكارديو</b><span>كم دقيقة وكم شدة</span></button>
+      <button class="tile" data-nav="week"><b>قياس الأسبوع</b><span>${BODY?v.t:"ما سجّلت بعد"}</span></button>
+    </div>
+  </div>`;
+}
+
+/* ═══════════ CARDIO ═══════════ */
+function vCardio(){
+  const sel=LOG.cmach||{};
+  const rows=CARDIO.map((c,i)=>{
+    if(c[2]) return `<div class="row dim"><span class="a">${c[0]}</span><span class="b">${c[1]}</span></div>`;
+    return `<div class="crow">
+      <div class="chead">
+        <div><b>${c[0]}</b><span>${c[1]}</span></div>
+        <button class="ck ${sel_ck(i)?"on":""}" data-ck="${i}">${sel_ck(i)?"✓":""}</button>
+      </div>
+      <div class="mchips">${MACH.map(m=>
+        `<button class="mchip ${sel[i]===m.k?"on":""}" data-m="${i}:${m.k}">${m.n}</button>`).join("")}</div>
+    </div>`;
+  }).join("");
+  return `<div class="wrap">
+    <button class="back" data-nav="home">‹ رجوع</button>
+    <h3 style="margin-top:6px">الكارديو — 6 أيام</h3>
+    <div class="mut" style="margin:-4px 2px 10px;font-size:12.5px">اختر جهازك لكل يوم. كلها تسوي نفس الشي للحرق — الفرق في مفاصلك وفي تعارضها مع الحديد.</div>
+    <div class="card" style="padding:4px 14px">${rows}</div>
+    <h3>وش الفرق بين الأجهزة</h3>
+    <div class="card">${MACH.map(m=>
+      `<div class="row"><span class="a">${m.n}</span><span class="b">${m.d}</span></div>`).join("")}</div>
+    <h3>قواعد تخصك أنت</h3>
+    <div class="card"><ul class="t" style="margin:0">
+      <li><b>يوم الاثنين (رجل): سيكل أو غزالة بس.</b> الدرج والسير المائل يضربون نفس العضلات اللي دمّرتها بالحديد، وبتجي الأسبوع الجاي ما تقدر تزيد وزن.</li>
+      <li><b>الدرج أقوى جهاز حرق، بس بوزن 102 هو أقسى شي على ركبتك.</b> لو تبيه، خله يوم واحد بالأسبوع (الخميس) وابدأ 20 دقيقة.</li>
+      <li><b>نوّع بين جهازين على الأقل.</b> نفس الجهاز 6 أيام = إجهاد متكرر بنفس المفصل، وملل يخليك تترك.</li>
+      <li><b>لا تركض ركض عنيف حالياً.</b> بعد ما تنزل تحت 90 كجم نتكلم عن الركض.</li>
+      <li><b>أفضل جهاز هو اللي بتلتزم فيه 6 أيام.</b> الفرق بينهم بالحرق أصغر بكثير من الفرق بين إنك تروح وإنك ما تروح.</li>
+    </ul></div></div>`;
+}
+function sel_ck(i){return !!(LOG.cardio||{})[i]}
+
+function nutriSummary(){
+  if(!NUT) return "";
+  const kgNow=(BODY&&BODY.weight)||102;
+  const tgt=NUT.target, pro=Math.round(kgNow*1.6), tdee=NUT.tdee;
+  const a=avgCal(CAL), p=avgPro(CAL);
+  const mx=Math.max(tgt*1.35, ...(CAL.d.filter(x=>x>0).concat([tgt])));
+  const bars=DAYN.map((d,i)=>{
+    const v=CAL.d[i]||0;
+    const h=v?Math.max(4,Math.round(v/mx*100)):0;
+    const col=!v?"transparent":(v<tgt*0.7?"var(--coral)":v>tgt*1.15?"var(--orange)":"var(--mint)");
+    return `<div class="cb"><div class="cbar" style="--tl:${(tgt/mx*100).toFixed(1)}%"><i style="height:${h}%;background:${col}"></i></div><span>${d.slice(0,3)}</span></div>`;
+  }).join("");
+  const m=measuredTDEE();
+  let mcard="";
+  if(m){
+    const diff=m.val-tdee;
+    mcard=`<div class="verdict ${Math.abs(diff)<150?"go":"hold"}">
+      <h4>سعراتك الحقيقية: <span class="n">${fmt(m.val)}</span></h4>
+      <p>هذا محسوب من <b>أكلك الفعلي مقابل تغير وزنك</b> عبر ${m.weeks} أسبوع — مو من معادلة.
+      ${Math.abs(diff)<150?"قريب من التقدير، يعني المعادلة كانت مضبوطة عليك.":
+        diff<0?`أقل من التقدير بـ ${fmt(Math.abs(diff))} سعرة. جسمك يحرق أقل مما توقعنا، فهدفك لازم ينزل.`:
+               `أعلى من التقدير بـ ${fmt(diff)} سعرة. تقدر تاكل أكثر وأنت لسا تنقص.`}</p>
+      ${Math.abs(diff)>=150?`<button class="cta" id="retune" style="margin-top:12px">حدّث هدفي إلى ${fmt(safeTarget(m.val))}</button>`:""}
+    </div>`;
+  }
+  let flag="";
+  if(a&&a.days>=3){
+    if(a.avg<Math.max(1700,tdee*0.7)) flag=`<div class="verdict warn"><h4>أكلك أقل من اللازم</h4>
+      <p>متوسطك <b class="n">${fmt(a.avg)}</b> سعرة وهذا تحت الحد الآمن لك. هالمستوى ينزل وزنك بسرعة بس أغلبه عضل وماء،
+      وبيخليك تعبان بالنادي وأوزانك تثبت. <b>ارفع أكلك</b> — الهدف ${fmt(tgt)} مو أقل.</p></div>`;
+    else if(p&&p<pro*0.75) flag=`<div class="verdict hold"><h4>بروتينك ناقص</h4>
+      <p>متوسطك <b class="n">${p}</b> جرام والهدف ${pro}. السعرات مضبوطة بس بدون بروتين كافي بتنقص عضل مع الدهون.</p></div>`;
+  }
+  return `<div class="card">
+      <div class="cchart">${bars}</div>
+      <div class="tline"><span>الخط الأخضر = هدفك (${fmt(tgt)})</span></div>
+      <div class="deltas" style="margin-top:12px">
+        <span>متوسط اليوم<b class="n">${a?fmt(a.avg):"—"}</b></span>
+        <span>أيام مسجّلة<b class="n">${a?a.days:0}/7</b></span>
+        <span>متوسط البروتين<b class="n">${p||"—"}</b></span>
+      </div>
+    </div>${flag}${mcard}`;
+}
+
+/* ═══════════ WEEK ═══════════ */
+function vWeek(){
+  const v=verdict(BODY,PREVBODY);
+  let ups=[],holds=[];
+  if(BODY){
+    const nx=progress(W,LOG,v);
+    Object.keys(nx).forEach(id=>{const e=exById(id);if(!e||e.body)return;
+      (nx[id]!==W[id]?ups:holds).push(e.n)});
+  }
+  const dn=DAYS.reduce((a,d)=>a+doneCount(d),0);
+  const tot=DAYS.reduce((a,d)=>a+PLAN[d].ex.length,0);
+
+  let h=`<div class="wrap"><button class="back" data-nav="home">‹ رجوع</button>
+    <h3 style="margin-top:6px">قياس نهاية الأسبوع</h3>
+    <div class="card">
+      <div class="mut" style="margin-bottom:2px">سجّلها الجمعة الصبح على الريق، قبل ما تاكل أو تشرب.</div>
+      <label class="inp"><span>وزنك بالكيلو</span>
+        <input id="bw" type="number" inputmode="decimal" step="0.1" placeholder="102.0" value="${BODY&&BODY.weight!=null?BODY.weight:""}"></label>
+      <label class="inp"><span>الكتلة العضلية بالكيلو (اختياري)</span>
+        <input id="bm" type="number" inputmode="decimal" step="0.1" placeholder="لو ميزانك يعطيها" value="${BODY&&BODY.muscle!=null?BODY.muscle:""}"></label>
+      <button class="cta" id="saveBody">احسب قرار الأسبوع</button>
+    </div>
+    <div class="verdict ${v.kind}"><h4>${v.t}</h4><p>${v.p}</p>
+      <div class="deltas">
+        ${v.dW!==undefined?`<span>فرق الوزن<b>${v.dW>0?"+":""}${v.dW} kg</b></span>`:""}
+        ${v.dM!=null?`<span>فرق الكتلة العضلية<b>${v.dM>0?"+":""}${v.dM} kg</b></span>`:""}
+        <span>تمارين مكتملة<b>${dn}/${tot}</b></span>
+      </div></div>`;
+
+  if(BODY){
+    h+=`<div class="card"><b style="font-family:Cairo;font-size:14.5px">اللي بيصير بأسبوع ${wk+1}</b>
+      <div class="mut" style="margin:8px 0">${ups.length?`<span style="color:var(--mint)">${ups.length} تمرين بيزيد وزنه</span>`:"ما فيه زيادة — كل الأوزان تثبت"}</div>
+      ${ups.length?`<ul class="t">${ups.map(x=>`<li>${x}</li>`).join("")}</ul>`:""}
+      <button class="cta" id="goNext" style="margin-top:14px">افتح أسبوع ${wk+1}</button></div>`;
+  }
+
+  h+=`<h3>ليش القرار بهالطريقة</h3><div class="card"><ul class="t" style="margin:0">
+    <li><b>نزول أكثر من 1.2% من وزنك بأسبوع = خطر.</b> بهالسرعة تخسر عضل مع الدهون وجسمك ما يتحمل زيادة الأوزان.</li>
+    <li><b>الكتلة العضلية من الميزان الذكي رقم تقريبي.</b> يتأثر بالماء والملح والنوم — اللي يهم اتجاهها بعد 3–4 أسابيع مو قراءة أسبوع.</li>
+    <li><b>"كان خفيف" = قفزتين، "مضبوط" = قفزة، "ثقيل" = ثبات.</b> ولو ما ضغطت شي بيحسبها مضبوط.</li>
+    <li><b>التمرين اللي ما كمّلت مجموعاته ما يزيد وزنه.</b></li>
+    <li><b>لو عدّلت الوزن بنفسك داخل النادي، التطبيق يعتمد رقمك الجديد</b> ويبني عليه الأسبوع الجاي.</li>
+  </ul></div>
+  <h3>الشي اللي يحدد النتيجة كلها</h3><div class="card">
+    <p style="margin:0;font-size:13.5px;color:#C5CFEA;line-height:1.75">وأنت بعجز سعرات،
+    <b style="color:var(--txt)">البروتين</b> هو الفرق بين إنك تنقص دهون وإنك تنقص عضل. وزنك 102 فهدفك
+    <b style="color:var(--txt)">150–180 جرام باليوم</b>. لو ما وصلته، بتشوف الأوزان تثبت أسبوع ورا أسبوع وأنت ما تدري ليش.</p></div>
+  </div>`;
+  return h;
+}
+
+
+/* ═══════════ NUTRITION VIEW ═══════════ */
+function vNutri(){
+  const kg=(BODY&&BODY.weight)||102;
+  if(!NUT) return `<div class="wrap"><button class="back" data-nav="home">‹ رجوع</button>
+    <h3 style="margin-top:6px">إعداد لمرة وحدة</h3>
+    <div class="card">
+      <div class="mut" style="margin-bottom:2px">أحتاج رقمين عشان أحسب لك احتياجك. وزنك يجي تلقائي من قياس الأسبوع (${kg} كجم).</div>
+      <label class="inp"><span>عمرك</span>
+        <input id="nage" type="number" inputmode="numeric" placeholder="مثال 28"></label>
+      <div class="inp"><span>نشاطك خارج النادي</span>
+        <div class="mchips" id="nact">
+          <button class="mchip" data-a="1.375">مكتبي — أجلس أغلب اليوم</button>
+          <button class="mchip on" data-a="1.55">متوسط — أتحرك عادي</button>
+          <button class="mchip" data-a="1.725">عالي — شغلي حركة</button>
+        </div></div>
+      <button class="cta" id="nsave">احسب هدفي</button>
+    </div>
+    <div class="card"><ul class="t" style="margin:0">
+      <li>النادي محسوب أصلاً بالمعادلة — لا تحسبه مرتين.</li>
+      <li>الرقم اللي بيطلع <b>تقدير أولي</b>. بعد أسبوعين من التسجيل بيحسب لك رقمك الحقيقي من بياناتك أنت.</li>
+    </ul></div></div>`;
+
+  const tdee=NUT.tdee, tgt=NUT.target, pro=Math.round(kg*1.6);
+  const a=avgCal(CAL), p=avgPro(CAL);
+  const mx=Math.max(tgt*1.35, ...(CAL.d.filter(x=>x>0).concat([tgt])));
+  const bars=DAYN.map((d,i)=>{
+    const v=CAL.d[i]||0;
+    const h=v?Math.max(4,Math.round(v/mx*100)):0;
+    const col=!v?"transparent":(v<tgt*0.7?"var(--coral)":v>tgt*1.15?"var(--orange)":"var(--mint)");
+    return `<div class="cb"><div class="cbar" style="--tl:${(tgt/mx*100).toFixed(1)}%"><i style="height:${h}%;background:${col}"></i></div><span>${d.slice(0,3)}</span></div>`;
+  }).join("");
+
+  const rows=DAYN.map((d,i)=>`<div class="nrow">
+      <span class="nd">${d}</span>
+      <input class="ni" data-c="${i}" type="number" inputmode="numeric" placeholder="سعرات" value="${CAL.d[i]||""}">
+      <input class="ni p" data-p="${i}" type="number" inputmode="numeric" placeholder="بروتين" value="${CAL.p[i]||""}">
+    </div>`).join("");
+
+  const m=measuredTDEE();
+  let mcard="";
+  if(m){
+    const diff=m.val-tdee;
+    mcard=`<div class="verdict ${Math.abs(diff)<150?"go":"hold"}">
+      <h4>سعراتك الحقيقية: <span class="n">${fmt(m.val)}</span></h4>
+      <p>هذا محسوب من <b>أكلك الفعلي مقابل تغير وزنك</b> عبر ${m.weeks} أسبوع — مو من معادلة.
+      ${Math.abs(diff)<150?"قريب من التقدير، يعني المعادلة كانت مضبوطة عليك.":
+        diff<0?`أقل من التقدير بـ ${fmt(Math.abs(diff))} سعرة. جسمك يحرق أقل مما توقعنا، فهدفك لازم ينزل.`:
+               `أعلى من التقدير بـ ${fmt(diff)} سعرة. تقدر تاكل أكثر وأنت لسا تنقص.`}</p>
+      ${Math.abs(diff)>=150?`<button class="cta" id="retune" style="margin-top:12px">حدّث هدفي إلى ${fmt(safeTarget(m.val))}</button>`:""}
+    </div>`;
+  }
+
+  let flag="";
+  if(a&&a.days>=3){
+    if(a.avg<Math.max(1700,tdee*0.7)) flag=`<div class="verdict warn"><h4>أكلك أقل من اللازم</h4>
+      <p>متوسطك <b class="n">${fmt(a.avg)}</b> سعرة وهذا تحت الحد الآمن لك. هالمستوى ينزل وزنك بسرعة بس أغلبه عضل وماء،
+      وبيخليك تعبان بالنادي وأوزانك تثبت. <b>ارفع أكلك</b> — الهدف ${fmt(tgt)} مو أقل.</p></div>`;
+    else if(p&&p<pro*0.75) flag=`<div class="verdict hold"><h4>بروتينك ناقص</h4>
+      <p>متوسطك <b class="n">${p}</b> جرام والهدف ${pro}. السعرات مضبوطة بس بدون بروتين كافي بتنقص عضل مع الدهون.</p></div>`;
+  }
+
+  return `<div class="wrap"><button class="back" data-nav="home">‹ رجوع</button>
+    <div class="today" style="margin-top:6px">
+      <div class="lbl">DAILY TARGET</div>
+      <h2><span class="n">${fmt(tgt)}</span> سعرة</h2>
+      <p>بروتين ${pro} جرام · احتياجك للثبات ${fmt(tdee)} · العجز ${fmt(tdee-tgt)} سعرة</p>
+    </div>
+    <h3>سجّل يومك</h3>
+    <div class="card" style="padding:8px 14px">${rows}</div>
+    <div id="nsum">${nutriSummary()}</div>
+    <h3>ليش هالصفحة أهم من الحديد</h3>
+    <div class="card"><ul class="t" style="margin:0">
+      <li><b>الحديد يقرر إذا بتحافظ على عضلك. السعرات تقرر إذا بتنزل دهون.</b> واحد بدون الثاني ما يوصلك.</li>
+      <li><b>ما راح أطلب منك تنزل تحت ${fmt(Math.max(1700,Math.round(tdee*0.75)))} سعرة أبداً</b>، مهما كان الهدف. تحتها تخسر عضل وتتعب ويرجع لك الوزن.</li>
+      <li><b>سجّل ولو تقريبي.</b> تسجيل 5 أيام بدقة 80% أنفع من تسجيل يومين بدقة 100%.</li>
+      <li><b>بعد أسبوعين بيصير عندك رقمك الحقيقي</b> بدل تقدير المعادلة — وهذا اللي ما يعطيك إياه أي تطبيق جاهز.</li>
+    </ul></div></div>`;
+}
+
+/* ═══════════ GYM MODE ═══════════ */
+async function openGym(d){
+  const p=PLAN[d];
+  let i=p.ex.findIndex(e=>!isDone(e));
+  if(i<0) i=0;
+  gym={d:d,i:i};sessStart=sessStart||Date.now();cueOpen=false;
+  document.getElementById("gym").classList.add("on");
+  drawGym();
+  try{if("wakeLock" in navigator) wakeLock=await navigator.wakeLock.request("screen")}catch(e){}
+}
+function closeGym(){
+  gym=null;stopRest();
+  document.getElementById("gym").classList.remove("on");
+  try{wakeLock&&wakeLock.release();wakeLock=null}catch(e){}
+  draw();
+}
+function drawGym(){
+  if(!gym)return;
+  const p=PLAN[gym.d],e=p.ex[gym.i],st=setsOf(e.id);
+  const nextSet=st.findIndex(x=>!x)>=0?st.findIndex(x=>!x):(st.length<e.sets?st.length:-1);
+  const w=W[e.id];
+
+  document.getElementById("gcount").textContent=`${gym.i+1} / ${p.ex.length} · ${p.day}`;
+  document.getElementById("gdots").innerHTML=p.ex.map((x,k)=>
+    `<i class="${isDone(x)?"d":(k===gym.i?"c":"")}"></i>`).join("");
+
+  let big;
+  if(e.body) big=`<span class="wnum sm">وزن الجسم</span>`;
+  else big=`<span class="wnum n">${fmtN(w)}</span><span class="wunit">${e.time?"ثانية":"كجم"}</span>`;
+
+  document.getElementById("gbody").innerHTML=`
+    <div class="gname">${e.n}</div>
+    <div class="gsub">${e.sets} مجموعات × ${e.reps} · راحة ${e.rest}</div>
+    <div class="wbox">
+      <div style="display:flex;align-items:baseline;gap:9px;flex:1">${big}</div>
+      ${e.body?"":`<div class="adj"><button id="wup">+</button><button id="wdn">−</button></div>`}
+    </div>
+    <div class="chips">
+      ${e.hand?'<span class="chip">لكل يد</span>':""}
+      ${e.inverse?'<span class="chip">وزن المساعدة — كل ما قلّ صرت أقوى</span>':""}
+      ${!e.body&&!e.inverse?`<span class="chip g">خطوة التعديل ${e.step} ${e.time?"ثانية":"كجم"}</span>`:""}
+    </div>
+    <div class="sets">${Array.from({length:e.sets},(_,k)=>{
+      const done=st[k];
+      return `<button class="sdot ${done?"done":(k===nextSet?"now":"")}" data-set="${k}">
+        ${done?"✓":"SET "+(k+1)}</button>`}).join("")}</div>`;
+
+  const allDone=isDone(e);
+  const fb=LOG.fb[e.id];
+  document.getElementById("gfoot").innerHTML=`
+    ${allDone?`
+      <div class="fbwrap"><div class="fblbl">كيف حسيت الوزن؟ (يحدد زيادة الأسبوع الجاي)</div>
+      <div class="fb">
+        <button data-v="light" aria-pressed="${fb==="light"}">كان خفيف</button>
+        <button data-v="ok" aria-pressed="${fb==="ok"||!fb}">مضبوط</button>
+        <button data-v="heavy" aria-pressed="${fb==="heavy"}">ثقيل عليّ</button>
+      </div></div>
+      <button class="big mint" id="doit" style="margin-top:12px">${gym.i<p.ex.length-1?"التمرين الجاي ←":"خلّصت التمرين 🎉"}</button>`
+    :`<button class="big" id="doit">خلّصت المجموعة ${nextSet+1}</button>`}
+    <div class="glinks">
+      <a class="glink" href="${e.v}" target="_blank" rel="noopener"><b>▶</b> ${e.vlbl}</a>
+      <button class="glink" id="cueb">الشرح ${cueOpen?"▴":"▾"}</button>
+    </div>
+    <div class="cue ${cueOpen?"open":""}"><div>${e.cue}</div></div>
+    <div class="arrows">
+      <button id="gprev" ${gym.i===0?"disabled":""}>← السابق</button>
+      <button id="gnext" ${gym.i===p.ex.length-1?"disabled":""}>التالي →</button>
+    </div>`;
+  bindGym();
+}
+function bindGym(){
+  const p=PLAN[gym.d],e=p.ex[gym.i];
+  const q=id=>document.getElementById(id);
+  const adj=(dir)=>{
+    const step=e.step||1;
+    W[e.id]=Math.max(0,+((W[e.id]||0)+dir*step).toFixed(1));
+    jset("w:"+wk,W);drawGym();
+  };
+  q("wup")&&(q("wup").onclick=()=>adj(1));
+  q("wdn")&&(q("wdn").onclick=()=>adj(-1));
+  q("cueb").onclick=()=>{cueOpen=!cueOpen;drawGym()};
+  q("gprev")&&(q("gprev").onclick=()=>{gym.i--;cueOpen=false;drawGym()});
+  q("gnext")&&(q("gnext").onclick=()=>{gym.i++;cueOpen=false;drawGym()});
+  document.querySelectorAll(".sdot").forEach(b=>b.onclick=()=>{
+    const k=+b.dataset.set,st=setsOf(e.id).slice();
+    while(st.length<e.sets) st.push(false);
+    st[k]=!st[k];LOG.sets[e.id]=st;
+    if(isDone(e)&&!LOG.fb[e.id]) LOG.fb[e.id]="ok";
+    saveLog();drawGym();
+  });
+  document.querySelectorAll(".fb button").forEach(b=>b.onclick=()=>{
+    LOG.fb[e.id]=b.dataset.v;saveLog();drawGym();
+    toast(b.dataset.v==="light"?"بنزيده قفزتين الأسبوع الجاي":
+          b.dataset.v==="heavy"?"بيثبت الأسبوع الجاي":"بنزيده قفزة الأسبوع الجاي");
+  });
+  let busy=false;
+  q("doit").onclick=()=>{
+    if(busy) return; busy=true; setTimeout(()=>busy=false,450);
+    if(isDone(e)){
+      if(gym.i<p.ex.length-1){gym.i++;cueOpen=false;drawGym()}
+      else finish();
+      return;
+    }
+    const st=setsOf(e.id).slice();
+    while(st.length<e.sets) st.push(false);
+    const k=st.findIndex(x=>!x);
+    st[k]=true;LOG.sets[e.id]=st;
+    if(isDone(e)&&!LOG.fb[e.id]) LOG.fb[e.id]="ok";
+    saveLog();buzz(35);drawGym();
+    if(!isDone(e)) startRest(restSec(e),`الجاي: مجموعة ${k+2} من ${e.n}`);
+    else startRest(restSec(e),`خلّصت ${e.n} — الجاي: ${p.ex[gym.i+1]?p.ex[gym.i+1].n:"نهاية التمرين"}`);
+  };
+}
+
+/* ══ rest timer ══ */
+function startRest(sec,nextTxt){
+  restTotal=sec;restEnd=Date.now()+sec*1000;
+  document.getElementById("rnx").textContent=nextTxt||"";
+  document.getElementById("rest").classList.add("on");
+  document.getElementById("restbar").style.display="block";
+  tickRest();
+  restTick=setInterval(tickRest,200);
+}
+function tickRest(){
+  const left=Math.max(0,restEnd-Date.now());
+  const s=Math.ceil(left/1000);
+  document.getElementById("rtm").textContent=Math.floor(s/60)+":"+String(s%60).padStart(2,"0");
+  document.getElementById("restbar").style.width=(left/(restTotal*1000)*100)+"%";
+  if(left<=0){beep();buzz([220,110,220]);stopRest()}
+}
+function stopRest(){
+  clearInterval(restTick);restTick=null;
+  document.getElementById("rest").classList.remove("on");
+  document.getElementById("restbar").style.display="none";
+}
+document.getElementById("rskip").onclick=stopRest;
+document.getElementById("radd").onclick=()=>{restEnd+=30000;restTotal+=30;tickRest()};
+
+/* ══ finish ══ */
+function finish(){
+  const d=gym.d,p=PLAN[d];
+  const mins=Math.max(1,Math.round((Date.now()-sessStart)/60000));
+  const sets=p.ex.reduce((a,e)=>a+setsOf(e.id).filter(Boolean).length,0);
+  document.getElementById("finp").textContent=`${p.day} — ${p.title}`;
+  document.getElementById("finstats").innerHTML=`
+    <div class="stat"><b class="n">${p.ex.length}</b><span>تمارين</span></div>
+    <div class="stat"><b class="n">${sets}</b><span>مجموعات</span></div>
+    <div class="stat"><b class="n">${fmt(dayVolume(d))}</b><span>كجم حمل</span></div>
+    <div class="stat"><b class="n">${mins}</b><span>دقيقة</span></div>`;
+  document.getElementById("fin").classList.add("on");
+  buzz([60,60,60,60,180]);
+  sessStart=0;
+}
+document.getElementById("finx").onclick=()=>{
+  document.getElementById("fin").classList.remove("on");closeGym();
+};
+document.getElementById("gx").onclick=closeGym;
+
+/* ══ swipe ══ */
+(function(){
+  let x0=null,y0=null;
+  const g=document.getElementById("gym");
+  g.addEventListener("touchstart",ev=>{x0=ev.touches[0].clientX;y0=ev.touches[0].clientY},{passive:true});
+  g.addEventListener("touchend",ev=>{
+    if(x0===null||!gym)return;
+    const dx=ev.changedTouches[0].clientX-x0, dy=ev.changedTouches[0].clientY-y0;
+    x0=null;
+    if(Math.abs(dx)<70||Math.abs(dy)>60) return;
+    const n=PLAN[gym.d].ex.length;
+    if(dx<0&&gym.i<n-1){gym.i++;cueOpen=false;drawGym()}
+    if(dx>0&&gym.i>0){gym.i--;cueOpen=false;drawGym()}
+  },{passive:true});
+})();
+
+/* ═══════════ router ═══════════ */
+function draw(){
+  const app=document.getElementById("app");
+  app.innerHTML=view==="cardio"?vCardio():view==="week"?vWeek():view==="nutri"?vNutri():vHome();
+  app.querySelectorAll("[data-nav]").forEach(b=>b.onclick=()=>{view=b.dataset.nav;draw();window.scrollTo(0,0)});
+  app.querySelectorAll("[data-gym]").forEach(b=>b.onclick=()=>openGym(b.dataset.gym));
+  app.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{
+    if(!LOG.cmach) LOG.cmach={};
+    const p=b.dataset.m.split(":");
+    LOG.cmach[p[0]]=LOG.cmach[p[0]]===p[1]?null:p[1];
+    saveLog();draw();
+  });
+  app.querySelectorAll("[data-ck]").forEach(b=>b.onclick=()=>{
+    if(!LOG.cardio) LOG.cardio={};
+    const k=b.dataset.ck;
+    LOG.cardio[k]=!LOG.cardio[k];
+    saveLog();buzz(25);draw();
+  });
+  const pv=document.getElementById("pv"),nx=document.getElementById("nx");
+  if(pv){pv.disabled=wk<=1;pv.onclick=async()=>{if(wk<=1)return;wk--;await loadWeek(wk);draw()}}
+  if(nx){nx.onclick=async()=>{wk++;await loadWeek(wk);draw()}}
+  let act=1.55;
+  app.querySelectorAll("#nact .mchip").forEach(b=>b.onclick=()=>{
+    app.querySelectorAll("#nact .mchip").forEach(x=>x.classList.remove("on"));
+    b.classList.add("on");act=parseFloat(b.dataset.a);
+  });
+  const ns=document.getElementById("nsave");
+  if(ns) ns.onclick=async()=>{
+    const age=parseInt(document.getElementById("nage").value);
+    if(!age||age<14||age>90){toast("اكتب عمرك");return}
+    const kg=(BODY&&BODY.weight)||102;
+    const td=tdeeFormula(kg,age,act);
+    NUT={age:age,act:act,tdee:td,target:safeTarget(td),protein:Math.round(kg*1.6)};
+    await jset("nutri",NUT);draw();
+  };
+  app.querySelectorAll("[data-c],[data-p]").forEach(inp=>{
+    inp.onchange=async()=>{
+      let v=parseInt(inp.value)||0;
+      if(v<0) v=0;
+      if(v>20000) v=20000;
+      inp.value=v||"";
+      if(inp.dataset.c!==undefined) CAL.d[+inp.dataset.c]=v;
+      else CAL.p[+inp.dataset.p]=v;
+      await jset("cal:"+wk,CAL);CALHIST[wk]=CAL;
+      const box=document.getElementById("nsum");
+      if(box) box.innerHTML=nutriSummary();else draw();
+    };
+  });
+  const rt=document.getElementById("retune");
+  if(rt) rt.onclick=async()=>{
+    const m=measuredTDEE();
+    NUT.tdee=m.val;NUT.target=safeTarget(m.val);
+    await jset("nutri",NUT);toast("انحدّث هدفك");draw();
+  };
+  const sb=document.getElementById("saveBody");
+  if(sb) sb.onclick=async()=>{
+    const w=parseFloat(document.getElementById("bw").value);
+    if(!w){toast("اكتب وزنك أول");return}
+    const m=parseFloat(document.getElementById("bm").value);
+    BODY={weight:w,muscle:isNaN(m)?null:m};
+    await jset("body:"+wk,BODY);
+    toast("انحفظ — شوف القرار تحت");draw();
+  };
+  const gn=document.getElementById("goNext");
+  if(gn) gn.onclick=async()=>{
+    const nxw=progress(W,LOG,verdict(BODY,PREVBODY));
+    await jset("w:"+(wk+1),nxw);
+    wk++;await loadWeek(wk);view="home";draw();toast("أسبوع "+wk+" جاهز");
+  };
+}
+
+(async function(){
+  const m=await STORE.get("meta:wk");wk=parseInt(m)||1;
+  await loadWeek(wk);draw();
+})();
+</script>
+</body>
+</html>

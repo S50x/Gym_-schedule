@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <!-- user-scalable=no was removed on purpose: blocking pinch-zoom fails
+         WCAG 1.4.4 and makes the app unusable for anyone who needs to zoom. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#131A2E" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="description" content="سجل تمرين حديد — برنامج تمرين وتغذية مع مزامنة بين الأجهزة." />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="حديد" />
+    <title>حديد — سجل التمرين</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/img/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/img/icon-180.png" />
+    <link rel="stylesheet" href="/css/app.css" />
+  </head>
+  <body>
+    <main id="app" aria-live="polite"></main>
+
+    <!-- ══════ GYM MODE ══════ -->
+    <div id="gym" role="dialog" aria-modal="true" aria-label="وضع التمرين" hidden>
+      <div class="gtop">
+        <button class="x" id="gx" aria-label="إغلاق وضع التمرين">✕</button>
+        <span class="gcount" id="gcount"></span>
+      </div>
+      <div class="gdots" id="gdots" aria-hidden="true"></div>
+      <div class="gbody" id="gbody"></div>
+      <div class="gfoot" id="gfoot"></div>
+    </div>
+
+    <div id="restbar" aria-hidden="true"></div>
+    <div id="rest" role="dialog" aria-modal="true" aria-label="مؤقّت الراحة" hidden>
+      <div class="fr" aria-hidden="true"></div>
+      <div class="lb">راحة</div>
+      <div class="tm n" id="rtm" role="timer" aria-live="off">1:30</div>
+      <div class="nx" id="rnx"></div>
+      <div class="btns">
+        <button id="radd">+30 ثانية</button>
+        <button id="rskip">تخطّي</button>
+      </div>
+    </div>
+
+    <div id="fin" role="dialog" aria-modal="true" aria-label="نهاية التمرين" hidden>
+      <div class="tick" aria-hidden="true">✓</div>
+      <h2>خلّصت</h2>
+      <p id="finp"></p>
+      <div class="stats" id="finstats"></div>
+      <button class="cta max" id="finx">تمام</button>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script type="module" src="/js/main.js"></script>
+  </body>
+</html>
