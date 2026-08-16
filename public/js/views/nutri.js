@@ -84,7 +84,6 @@ export function renderNutri(ctx) {
   return el(
     'div',
     { class: 'wrap' },
-    el('button', { class: 'back', text: '‹ رجوع', on: { click: () => navigate('home') } }),
     el(
       'div',
       { class: 'today top' },
@@ -203,7 +202,6 @@ function setupView(ctx, bodyWeight) {
   return el(
     'div',
     { class: 'wrap' },
-    el('button', { class: 'back', text: '‹ رجوع', on: { click: () => navigate('home') } }),
     el('h3', { class: 'first', text: 'إعداد لمرة وحدة' }),
     el(
       'div',

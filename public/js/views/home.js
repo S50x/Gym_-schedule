@@ -1,7 +1,7 @@
 import { el } from '../dom.js';
-import { fmt, fmtN, sparkline } from '../ui.js';
-import { PLAN, WEEK, CARDIO, DAY_NAMES, exById, machName } from '../program.js';
-import { todayKey, verdict, MAX_WEEK } from '../engine.js';
+import { fmtN, sparkline } from '../ui.js';
+import { PLAN, WEEK, CARDIO, DAY_NAMES, exById, machName, machinesOfDay } from '../program.js';
+import { todayKey, MAX_WEEK } from '../engine.js';
 import { SYNC } from '../store.js';
 
 const RAIL_IDS = ['chest_db', 'sh_press', 'lat_pull', 'cable_row', 'leg_press', 'row_1arm'];
@@ -133,9 +133,9 @@ export function renderHome(ctx) {
     );
   }
 
-  /* ── progression rail ── */
+  /* ── progression cards ── */
   const history = store.weightHistory(wk);
-  const railRows = [];
+  const cards = [];
   for (const id of RAIL_IDS) {
     const e = exById(id);
     const values = history[id];
@@ -144,35 +144,43 @@ export function renderHome(ctx) {
     const now = values[values.length - 1];
     const first = values[0];
     const delta = Math.round((now - first) * 10) / 10;
+    // On an assisted lift the number falls as you get stronger, so the badge
+    // has to read the direction rather than the sign.
     const improved = e.inverse ? delta < 0 : delta > 0;
 
-    railRows.push(
+    cards.push(
       el(
         'div',
-        { class: 'prow' },
-        el('span', { class: 'pname', text: e.n, attrs: { title: e.n } }),
-        sparkline(values),
+        { class: 'pcard' },
+        delta === 0
+          ? el('span', { class: 'pbadge flat', text: '—' })
+          : el('span', {
+              class: ['pbadge', improved ? '' : 'down'],
+              text: `${delta > 0 ? '+' : ''}${delta}`,
+            }),
         el(
-          'span',
-          { class: 'pnow n' },
+          'div',
+          { class: 'pname' },
+          e.n,
+          e.en ? el('small', { class: 'en', text: e.en }) : null
+        ),
+        el(
+          'div',
+          { class: 'pbig n' },
           fmtN(now),
           el('span', { class: 'unit', text: e.time ? ' ث' : ' كجم' })
         ),
-        el('span', {
-          class: ['pdel', delta === 0 ? 'flat' : improved ? '' : 'down'],
-          text: delta === 0 ? '—' : `${delta > 0 ? '+' : ''}${delta}`,
-        })
+        sparkline(values, { fill: true, stretch: true })
       )
     );
   }
 
-  const rail = el(
-    'div',
-    { class: 'card prog' },
-    railRows.length
-      ? railRows
-      : el('div', { class: 'mut', text: 'أول أسبوع — بعد ما تخلّصه بيبان لك خط التقدم هنا.' })
-  );
+  const rail = cards.length
+    ? el('div', { class: 'pgrid' }, cards)
+    : el('div', { class: 'card' }, el('div', {
+        class: 'mut',
+        text: 'أول أسبوع — بعد ما تخلّصه بيبان لك تقدّمك هنا.',
+      }));
 
   /* ── week strip ── */
   const jsToday = new Date().getDay();
@@ -200,8 +208,12 @@ export function renderHome(ctx) {
         on: { click: () => navigate('week') },
       });
     } else {
-      const machine = week.cmach[String(day.c)];
-      sub = CARDIO[day.c][1] + (machine ? ' · ' + machName(machine) : '');
+      // A day split across machines reads "…· سيكل 20د + غزالة 20د".
+      const picked = machinesOfDay(week.cmach[String(day.c)], CARDIO[day.c][3]);
+      const label = picked
+        .map((p) => (picked.length > 1 ? `${machName(p.k)} ${p.m}د` : machName(p.k)))
+        .join(' + ');
+      sub = CARDIO[day.c][1] + (label ? ' · ' + label : '');
     }
 
     const checkbox = day.rest
@@ -224,35 +236,6 @@ export function renderHome(ctx) {
     );
   });
 
-  /* ── tiles ── */
-  const v = verdict(week.body, store.week(wk - 1).body);
-  const nutrition = store.doc.nutrition;
-
-  const tiles = el(
-    'div',
-    { class: 'grid' },
-    el(
-      'button',
-      { class: 'tile', on: { click: () => navigate('nutri') } },
-      el('b', { text: 'السعرات' }),
-      el('span', {
-        text: nutrition ? `${fmt(nutrition.target)} سعرة · هدفك اليومي` : 'ما ضبطته بعد',
-      })
-    ),
-    el(
-      'button',
-      { class: 'tile', on: { click: () => navigate('cardio') } },
-      el('b', { text: 'تفاصيل الكارديو' }),
-      el('span', { text: 'كم دقيقة وكم شدة' })
-    ),
-    el(
-      'button',
-      { class: 'tile', on: { click: () => navigate('week') } },
-      el('b', { text: 'قياس الأسبوع' }),
-      el('span', { text: week.body ? v.t : 'ما سجّلت بعد' })
-    )
-  );
-
   return el(
     'div',
     { class: 'wrap' },
@@ -265,7 +248,6 @@ export function renderHome(ctx) {
     el('div', {
       class: 'hint',
       text: 'الدائرة = علّم الكارديو لما تخلّصه · الرقم = تمارين الحديد المكتملة',
-    }),
-    tiles
+    })
   );
 }
