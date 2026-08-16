@@ -8,6 +8,7 @@ import { renderWeek } from './views/week.js';
 import { renderNutri } from './views/nutri.js';
 import { renderAccount } from './views/account.js';
 import { MAX_WEEK } from './engine.js';
+import { CARDIO, MAX_MACHINES_PER_DAY, machinesOfDay, splitMinutes } from './program.js';
 
 const VIEWS = {
   home: renderHome,
@@ -62,11 +63,46 @@ const ctx = {
     render();
   },
 
+  /**
+   * Add or remove a machine for one cardio day.
+   *
+   * The day's minutes are re-split evenly on every change, so picking a second
+   * machine immediately halves the session instead of leaving it at zero.
+   * Minutes the user set by hand are replaced — that is the intent of adding
+   * or dropping a machine.
+   */
   toggleMachine(index, key) {
+    const total = CARDIO[index]?.[3] || 0;
     store.update(store.viewWeek, (w) => {
       const machines = { ...w.cmach };
-      if (machines[String(index)] === key) delete machines[String(index)];
-      else machines[String(index)] = key;
+      const current = machinesOfDay(machines[String(index)], total);
+      const without = current.filter((m) => m.k !== key);
+
+      let next;
+      if (without.length !== current.length) next = without; // was on → drop it
+      else if (current.length >= MAX_MACHINES_PER_DAY) next = current;
+      else next = [...current, { k: key, m: 0 }];
+
+      if (!next.length) {
+        delete machines[String(index)];
+      } else {
+        const share = splitMinutes(total, next.length);
+        machines[String(index)] = next.map((m, i) => ({ k: m.k, m: share[i] }));
+      }
+      w.cmach = machines;
+    });
+    buzz(20);
+    render();
+  },
+
+  setMachineMinutes(index, key, minutes) {
+    const value = Math.max(0, Math.min(300, Math.round(minutes)));
+    const total = CARDIO[index]?.[3] || 0;
+    store.update(store.viewWeek, (w) => {
+      const machines = { ...w.cmach };
+      const current = machinesOfDay(machines[String(index)], total);
+      if (!current.some((m) => m.k === key)) return;
+      machines[String(index)] = current.map((m) => (m.k === key ? { ...m, m: value } : m));
       w.cmach = machines;
     });
     render();

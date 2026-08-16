@@ -144,7 +144,6 @@ export function renderWeek(ctx) {
   return el(
     'div',
     { class: 'wrap' },
-    el('button', { class: 'back', text: '‹ رجوع', on: { click: () => navigate('home') } }),
     el('h3', { class: 'first', text: `قياس نهاية الأسبوع ${wk}` }),
     form,
     verdictCard,

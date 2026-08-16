@@ -13,6 +13,7 @@ import {
   MACHINE_KEYS,
   FEEDBACK_VALUES,
   MAX_SETS,
+  MAX_MACHINES_PER_DAY,
   exById,
 } from '../public/js/program.js';
 import { MAX_WEEK } from '../public/js/engine.js';
@@ -92,14 +93,41 @@ function dayFlagsOf(raw, path) {
   return out;
 }
 
+/**
+ * A cardio day may now be split across several machines, so each value is a
+ * list of { k, m }. A bare string is still accepted: that is what older clients
+ * stored, and rejecting it would drop a day's machine on the first sync.
+ */
 function machinesOf(raw, path) {
   if (!isPlainObject(raw)) return {};
   const out = {};
   for (const [key, value] of Object.entries(raw)) {
     if (!DAY_KEYS.has(String(key))) continue;
     if (value === null || value === undefined) continue;
-    if (!MACHINES.has(value)) throw new Invalid(`${path}.${key}`, 'جهاز غير معروف');
-    out[String(key)] = value;
+
+    if (typeof value === 'string') {
+      if (!MACHINES.has(value)) throw new Invalid(`${path}.${key}`, 'جهاز غير معروف');
+      out[String(key)] = value;
+      continue;
+    }
+
+    if (!Array.isArray(value)) throw new Invalid(`${path}.${key}`, 'شكل غير صحيح');
+    if (value.length > MAX_MACHINES_PER_DAY) {
+      throw new Invalid(`${path}.${key}`, `أجهزة أكثر من ${MAX_MACHINES_PER_DAY}`);
+    }
+    const seen = new Set();
+    const list = [];
+    for (const [i, item] of value.entries()) {
+      if (!isPlainObject(item)) throw new Invalid(`${path}.${key}[${i}]`, 'شكل غير صحيح');
+      if (!MACHINES.has(item.k)) throw new Invalid(`${path}.${key}[${i}].k`, 'جهاز غير معروف');
+      if (seen.has(item.k)) throw new Invalid(`${path}.${key}[${i}].k`, 'جهاز مكرر');
+      seen.add(item.k);
+      list.push({
+        k: item.k,
+        m: num(item.m ?? 0, `${path}.${key}[${i}].m`, { min: 0, max: 300, integer: true }),
+      });
+    }
+    if (list.length) out[String(key)] = list;
   }
   return out;
 }

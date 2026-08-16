@@ -55,6 +55,39 @@ test('state validation', async (t) => {
     assert.equal(validateState(docWith({ 1: { cmach: { 0: 'rocket' } } })).ok, false);
   });
 
+  await t.test('a cardio day may be split across machines', () => {
+    const res = validateState(
+      docWith({ 1: { cmach: { 0: [{ k: 'bike', m: 20 }, { k: 'ellip', m: 20 }] } } })
+    );
+    assert.equal(res.ok, true);
+    assert.deepEqual(res.doc.weeks['1'].cmach['0'], [
+      { k: 'bike', m: 20 },
+      { k: 'ellip', m: 20 },
+    ]);
+  });
+
+  await t.test('a machine stored as a bare string still validates', () => {
+    // What older clients wrote. Rejecting it would drop the day's machine.
+    const res = validateState(docWith({ 1: { cmach: { 0: 'bike' } } }));
+    assert.equal(res.ok, true);
+    assert.equal(res.doc.weeks['1'].cmach['0'], 'bike');
+  });
+
+  await t.test('rejects bad machine splits', () => {
+    const bad = [
+      { 0: [{ k: 'rocket', m: 10 }] }, // unknown machine
+      { 0: [{ k: 'bike', m: 10 }, { k: 'bike', m: 10 }] }, // duplicate
+      { 0: [{ k: 'bike', m: -5 }] }, // negative minutes
+      { 0: [{ k: 'bike', m: 9999 }] }, // absurd minutes
+      { 0: [{ k: 'bike' }, { k: 'ellip' }, { k: 'row' }, { k: 'walk' }] }, // too many
+      { 0: [{ m: 10 }] }, // no machine key
+      { 0: ['bike'] }, // wrong element shape
+    ];
+    for (const cmach of bad) {
+      assert.equal(validateState(docWith({ 1: { cmach } })).ok, false, JSON.stringify(cmach));
+    }
+  });
+
   await t.test('rejects nonsense week keys', () => {
     for (const key of ['0', '-1', 'abc', '__proto__', '1.5', '99999']) {
       assert.equal(validateState(docWith({ [key]: {} })).ok, false, `key ${key} must be rejected`);

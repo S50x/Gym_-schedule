@@ -1398,6 +1398,151 @@ ol.steps b {
   margin-bottom: 6px;
 }
 
+/* ══════ bilingual names ══════ */
+/* English sits under the Arabic as a quieter second line, LTR regardless of
+   the page direction. */
+small.en {
+  display: block;
+  font-family: 'Archivo', system-ui;
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  color: var(--mut);
+  direction: ltr;
+  text-align: right;
+  margin-top: 2px;
+  line-height: 1.3;
+}
+.row .a small.en {
+  text-align: right;
+}
+
+/* ══════ timed hold (plank) ══════ */
+.holdwrap {
+  margin-bottom: 16px;
+}
+.hold {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--surf);
+  border: 1.5px solid var(--line-2);
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+.hold .hlbl {
+  font-family: 'Cairo';
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--mut);
+}
+.hold .htime {
+  font-family: 'Archivo';
+  font-weight: 800;
+  font-size: 26px;
+  color: var(--txt);
+  direction: ltr;
+}
+.hold.run {
+  border-color: var(--orange);
+  background: rgba(196, 255, 54, 0.08);
+}
+.hold.run .hlbl {
+  color: var(--orange);
+}
+.hold.run .htime {
+  color: var(--orange);
+}
+.hold:active {
+  transform: scale(0.995);
+}
+.hbar {
+  height: 5px;
+  border-radius: 4px;
+  background: rgba(190, 205, 255, 0.08);
+  margin-top: 7px;
+  overflow: hidden;
+}
+.hbar .hfill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 4px;
+  background: var(--orange);
+}
+
+/* ══════ cardio: minutes split across machines ══════ */
+.mchip.full {
+  opacity: 0.32;
+  cursor: default;
+}
+.split {
+  margin-top: 11px;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px 12px;
+}
+.srow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+}
+.srow .sname {
+  font-family: 'Cairo';
+  font-weight: 600;
+  font-size: 12.5px;
+}
+.sadj {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.sadj button {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--surf-2);
+  border: 1px solid var(--line-2);
+  color: var(--txt);
+  font-family: 'Archivo';
+  font-weight: 800;
+  font-size: 16px;
+  display: grid;
+  place-items: center;
+}
+.sadj button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.smin {
+  min-width: 52px;
+  text-align: center;
+  font-family: 'Archivo';
+  font-weight: 800;
+  font-size: 14px;
+  direction: ltr;
+}
+.smin .u {
+  font-size: 10px;
+  color: var(--mut);
+}
+.stotal {
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  color: var(--mut);
+  text-align: center;
+}
+.stotal.ok {
+  color: var(--mint);
+}
+
 /* ══════ bottom tab bar ══════ */
 #tabbar {
   position: fixed;
