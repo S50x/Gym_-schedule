@@ -140,7 +140,8 @@ export function renderNutri(ctx) {
 
 function setupView(ctx, bodyWeight) {
   const { store, navigate } = ctx;
-  let activity = 1.55;
+  const saved = store.doc.nutrition || {};
+  let activity = saved.act || 1.55;
 
   const ageInput = el('input', {
     id: 'nage',
@@ -149,6 +150,17 @@ function setupView(ctx, bodyWeight) {
     min: '14',
     max: '90',
     placeholder: 'مثال 28',
+    value: saved.age != null ? String(saved.age) : '',
+  });
+
+  const heightInput = el('input', {
+    id: 'nheight',
+    type: 'number',
+    inputmode: 'numeric',
+    min: '120',
+    max: '230',
+    placeholder: 'مثال 175',
+    value: saved.height != null ? String(saved.height) : '',
   });
 
   const chips = ACTIVITY.map((option) =>
@@ -172,9 +184,14 @@ function setupView(ctx, bodyWeight) {
   const save = () => {
     const age = Number.parseInt(ageInput.value, 10);
     if (!Number.isFinite(age) || age < 14 || age > 90) return toast('اكتب عمرك (14–90)');
-    const tdee = tdeeFormula(bodyWeight, age, activity);
+    const height = Number.parseInt(heightInput.value, 10);
+    if (!Number.isFinite(height) || height < 120 || height > 230) {
+      return toast('اكتب طولك بالسنتيمتر (120–230)');
+    }
+    const tdee = tdeeFormula(bodyWeight, age, activity, height);
     store.updateNutrition((n) => {
       n.age = age;
+      n.height = height;
       n.act = activity;
       n.tdee = tdee;
       n.target = safeTarget(tdee);
@@ -193,9 +210,10 @@ function setupView(ctx, bodyWeight) {
       { class: 'card' },
       el('div', {
         class: 'mut',
-        text: `أحتاج رقمين عشان أحسب لك احتياجك. وزنك يجي تلقائي من قياس الأسبوع (${bodyWeight} كجم).`,
+        text: `أحتاج عمرك وطولك عشان أحسب لك احتياجك. وزنك يجي تلقائي من قياس الأسبوع (${bodyWeight} كجم).`,
       }),
       el('label', { class: 'inp' }, el('span', { text: 'عمرك' }), ageInput),
+      el('label', { class: 'inp' }, el('span', { text: 'طولك بالسنتيمتر' }), heightInput),
       el(
         'div',
         { class: 'inp' },
