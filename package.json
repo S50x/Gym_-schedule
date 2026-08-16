@@ -1,0 +1,28 @@
+{
+  "name": "hadeed-training-log",
+  "version": "1.0.0",
+  "description": "حديد — سجل تمرين مع مزامنة عبر الأجهزة (Arabic training log with cross-device sync)",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "NODE_ENV=development node --watch server/index.js",
+    "test": "node --test 'test/**/*.test.js'",
+    "fonts": "node scripts/fetch-fonts.mjs"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.5",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "pg": "^8.23.0"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "qrcode": "^1.5.4"
+  }
+}
