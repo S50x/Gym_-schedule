@@ -2,6 +2,7 @@ import { el } from '../dom.js';
 import { toast, bulletList, qrSvg } from '../ui.js';
 import { api, ApiError, NetworkError } from '../api.js';
 import { SYNC } from '../store.js';
+import { goalOf, levelOf } from '../program.js';
 
 const SYNC_TEXT = {
   [SYNC.OFF]: 'ما سجّلت دخول — بياناتك محفوظة على هذا الجهاز بس.',
@@ -19,17 +20,55 @@ const errorText = (err, fallback) =>
     ? err.message
     : fallback || 'صار خطأ غير متوقع. حدّث الصفحة وجرّب مرة ثانية.';
 
+/**
+ * The programme card. Shown whether or not there is an account: the app is
+ * usable signed out, and the goal is the single most important setting in it.
+ */
+function programmeCard(ctx) {
+  const { store } = ctx;
+  return el(
+    'div',
+    { class: 'card' },
+    el(
+      'div',
+      { class: 'acctrow' },
+      el('span', { class: 'a', text: 'هدفك' }),
+      el('span', { class: 'b', text: goalOf(store.goal).n })
+    ),
+    el(
+      'div',
+      { class: 'acctrow' },
+      el('span', { class: 'a', text: 'مستواك' }),
+      el('span', { class: 'b', text: levelOf(store.level).n })
+    ),
+    el('button', {
+      class: 'cta ghost',
+      text: 'عدّل هدفك ومستواك',
+      on: { click: () => ctx.editProfile() },
+    })
+  );
+}
+
 export function renderAccount(ctx) {
   const { store } = ctx;
 
   if (!store.user) {
-    return el('div', { class: 'wrap' }, authForms(ctx));
+    return el(
+      'div',
+      { class: 'wrap' },
+      el('h3', { class: 'first', text: 'برنامجك' }),
+      programmeCard(ctx),
+      el('h3', { text: 'حسابك' }),
+      authForms(ctx)
+    );
   }
 
   return el(
     'div',
     { class: 'wrap' },
-    el('h3', { class: 'first', text: 'حسابك' }),
+    el('h3', { class: 'first', text: 'برنامجك' }),
+    programmeCard(ctx),
+    el('h3', { text: 'حسابك' }),
     el(
       'div',
       { class: 'card' },

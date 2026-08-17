@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { startServer, makeClient, registerAndLogin } from './helpers.js';
 import { validateState, mergeStates } from '../server/state-schema.js';
+import { MAX_SETS } from '../public/js/program.js';
 
 const docWith = (weeks, extra = {}) => ({ meta: { week: 1 }, weeks, nutrition: null, ...extra });
 
@@ -88,6 +89,57 @@ test('state validation', async (t) => {
     }
   });
 
+  await t.test('accepts a valid profile', () => {
+    const res = validateState(
+      docWith({}, { profile: { goal: 'muscle', level: 'adv', startWeight: 88.5, ts: 5 } })
+    );
+    assert.equal(res.ok, true);
+    assert.deepEqual(res.doc.profile, {
+      goal: 'muscle',
+      level: 'adv',
+      startWeight: 88.5,
+      ts: 5,
+    });
+  });
+
+  await t.test('a document with no profile is valid — that is every old one', () => {
+    const res = validateState(docWith({}));
+    assert.equal(res.ok, true);
+    assert.equal(res.doc.profile, null);
+  });
+
+  await t.test('rejects a made-up goal or level', () => {
+    const bad = [
+      { goal: 'shredded' },
+      { goal: '__proto__' },
+      { goal: 'constructor' },
+      { goal: 'muscle', level: 'pro' },
+      { goal: 1 },
+      { goal: ['muscle'] },
+      { goal: 'muscle', ts: -1 },
+    ];
+    for (const profile of bad) {
+      assert.equal(
+        validateState(docWith({}, { profile })).ok,
+        false,
+        JSON.stringify(profile)
+      );
+    }
+  });
+
+  await t.test('a profile cannot smuggle extra keys through', () => {
+    const res = validateState(
+      docWith({}, { profile: { goal: 'cut', level: 'int', evil: 'x', ts: 1 } })
+    );
+    assert.equal(res.ok, true);
+    assert.deepEqual(Object.keys(res.doc.profile).sort(), [
+      'goal',
+      'level',
+      'startWeight',
+      'ts',
+    ]);
+  });
+
   await t.test('rejects nonsense week keys', () => {
     for (const key of ['0', '-1', 'abc', '__proto__', '1.5', '99999']) {
       assert.equal(validateState(docWith({ [key]: {} })).ok, false, `key ${key} must be rejected`);
@@ -100,10 +152,20 @@ test('state validation', async (t) => {
     assert.equal({}.polluted, undefined);
   });
 
-  await t.test('caps the number of stored sets per exercise', () => {
+  await t.test('bounds stored sets by the programme-wide maximum', () => {
+    // The limit is deliberately not the exercise's own set count, which now
+    // depends on the goal. A lift run for five sets under "strength" must stay
+    // valid after switching to a three-set goal — otherwise the switch would
+    // make the whole document unsyncable.
     assert.equal(
-      validateState(docWith({ 1: { sets: { chest_db: [true, true, true, true, true] } } })).ok,
-      false
+      validateState(docWith({ 1: { sets: { chest_db: Array(MAX_SETS).fill(true) } } })).ok,
+      true,
+      'a document saved under a higher-set goal must survive a goal switch'
+    );
+    assert.equal(
+      validateState(docWith({ 1: { sets: { chest_db: Array(MAX_SETS + 1).fill(true) } } })).ok,
+      false,
+      'but nothing beyond the programme maximum is storable'
     );
   });
 
@@ -119,6 +181,39 @@ test('state validation', async (t) => {
     assert.deepEqual(merged.weeks['1'].sets.chest_db, [true, true, true], 'newer week 1 wins');
     assert.ok(merged.weeks['2'], 'week only on one side is kept');
     assert.ok(merged.weeks['3'], 'week only on the other side is kept');
+  });
+
+  await t.test('the most recent goal change wins the merge', () => {
+    const older = validateState(docWith({}, { profile: { goal: 'cut', level: 'int', ts: 100 } })).doc;
+    const newer = validateState(
+      docWith({}, { profile: { goal: 'muscle', level: 'adv', ts: 300 } })
+    ).doc;
+
+    assert.equal(mergeStates(older, newer).profile.goal, 'muscle', 'newer incoming wins');
+    assert.equal(mergeStates(newer, older).profile.goal, 'muscle', 'older incoming does not undo it');
+  });
+
+  await t.test('a device that has no profile does not erase one', () => {
+    const withProfile = validateState(
+      docWith({}, { profile: { goal: 'strength', level: 'int', ts: 50 } })
+    ).doc;
+    const without = validateState(docWith({})).doc;
+    assert.equal(mergeStates(withProfile, without).profile?.goal, 'strength');
+  });
+
+  await t.test('switching to a goal with fewer sets keeps the document syncable', () => {
+    // A strength user logs five sets, then switches to a three-set goal. The
+    // stored array is longer than the new goal asks for and must still validate,
+    // or every later sync would 400 and their history would stop moving.
+    const logged = docWith(
+      { 1: { sets: { squat_bb: [true, true, true, true, true] } } },
+      { profile: { goal: 'strength', level: 'int', ts: 1 } }
+    );
+    assert.equal(validateState(logged).ok, true);
+
+    const switched = { ...logged, profile: { goal: 'cut', level: 'int', ts: 2 } };
+    assert.equal(validateState(switched).ok, true, 'still valid after the switch');
+    assert.deepEqual(validateState(switched).doc.weeks['1'].sets.squat_bb.length, 5);
   });
 });
 

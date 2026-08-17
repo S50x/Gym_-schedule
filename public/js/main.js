@@ -7,8 +7,9 @@ import { renderCardio } from './views/cardio.js';
 import { renderWeek } from './views/week.js';
 import { renderNutri } from './views/nutri.js';
 import { renderAccount } from './views/account.js';
+import { renderOnboarding } from './views/onboarding.js';
 import { MAX_WEEK } from './engine.js';
-import { CARDIO, MAX_MACHINES_PER_DAY, machinesOfDay, splitMinutes } from './program.js';
+import { cardioOf, MAX_MACHINES_PER_DAY, machinesOfDay, splitMinutes } from './program.js';
 
 const VIEWS = {
   home: renderHome,
@@ -16,6 +17,7 @@ const VIEWS = {
   week: renderWeek,
   nutri: renderNutri,
   account: renderAccount,
+  onboarding: renderOnboarding,
 };
 
 const app = document.getElementById('app');
@@ -23,9 +25,16 @@ const tabbar = document.getElementById('tabbar');
 let view = 'home';
 let gym = null;
 let painting = false;
+// The first paint happens before store.init() has read localStorage, when every
+// document looks empty. Deciding "this user is new" then would send someone with
+// years of history to onboarding, so the gate waits until the data is actually in.
+let loaded = false;
 
 function paintTabs() {
   if (!tabbar) return;
+  // Onboarding owns the whole screen: there is nothing to navigate to until a
+  // goal is chosen, and the tab bar would just be a way to escape half-set-up.
+  tabbar.hidden = view === 'onboarding';
   for (const tab of tabbar.querySelectorAll('.tab')) {
     const on = tab.dataset.view === view;
     tab.classList.toggle('on', on);
@@ -40,6 +49,11 @@ const ctx = {
     view = VIEWS[next] ? next : 'home';
     render();
     window.scrollTo(0, 0);
+  },
+
+  /** Reopen onboarding to change goal or level. */
+  editProfile() {
+    ctx.navigate('onboarding');
   },
 
   setWeek(n) {
@@ -72,7 +86,7 @@ const ctx = {
    * or dropping a machine.
    */
   toggleMachine(index, key) {
-    const total = CARDIO[index]?.[3] || 0;
+    const total = cardioOf(store.goal)[index]?.min || 0;
     store.update(store.viewWeek, (w) => {
       const machines = { ...w.cmach };
       const current = machinesOfDay(machines[String(index)], total);
@@ -97,7 +111,7 @@ const ctx = {
 
   setMachineMinutes(index, key, minutes) {
     const value = Math.max(0, Math.min(300, Math.round(minutes)));
-    const total = CARDIO[index]?.[3] || 0;
+    const total = cardioOf(store.goal)[index]?.min || 0;
     store.update(store.viewWeek, (w) => {
       const machines = { ...w.cmach };
       const current = machinesOfDay(machines[String(index)], total);
@@ -120,6 +134,9 @@ function render() {
   if (painting) return;
   painting = true;
   try {
+    // Only a genuinely empty document is sent to onboarding. Anyone already
+    // mid-programme keeps going on the goal they were implicitly on.
+    if (loaded && store.needsOnboarding && view !== 'onboarding') view = 'onboarding';
     const node = VIEWS[view](ctx);
     clear(app);
     app.appendChild(node);
@@ -163,6 +180,7 @@ async function boot() {
 
   render();
   await store.init();
+  loaded = true;
   render();
 
   if (store.syncState === SYNC.ERROR) toast('ما قدرنا نتزامن مع السيرفر — بياناتك محفوظة محلياً.');

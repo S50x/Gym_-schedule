@@ -1,13 +1,17 @@
 import { el } from '../dom.js';
 import { bulletList } from '../ui.js';
-import { CARDIO, MACH, MAX_MACHINES_PER_DAY, machinesOfDay } from '../program.js';
+import { cardioOf, goalOf, MACH, MAX_MACHINES_PER_DAY, machinesOfDay } from '../program.js';
 
 export function renderCardio(ctx) {
   const { store } = ctx;
   const week = store.week();
+  const goalKey = store.goal;
+  const goal = goalOf(goalKey);
+  const CARDIO = cardioOf(goalKey);
+  const cardioDays = CARDIO.filter((c) => !c.rest).length;
 
   const rows = CARDIO.map((entry, i) => {
-    const [name, detail, isRest, totalMinutes] = entry;
+    const { d: name, detail, rest: isRest, min: totalMinutes } = entry;
     if (isRest) {
       return el(
         'div',
@@ -106,7 +110,7 @@ export function renderCardio(ctx) {
   return el(
     'div',
     { class: 'wrap' },
-    el('h3', { class: 'first', text: 'الكارديو — 6 أيام' }),
+    el('h3', { class: 'first', text: `الكارديو — ${cardioDays} أيام · ${goal.n}` }),
     el('div', {
       class: 'hint-lg',
       text: `اختر جهازك لكل يوم — وتقدر تختار لين ${MAX_MACHINES_PER_DAY} أجهزة وتقسّم الدقائق بينهم. كلها تسوي نفس الشي للحرق، الفرق في مفاصلك وفي تعارضها مع الحديد.`,
