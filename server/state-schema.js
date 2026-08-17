@@ -14,13 +14,16 @@ import {
   FEEDBACK_VALUES,
   MAX_SETS,
   MAX_MACHINES_PER_DAY,
-  exById,
+  GOAL_KEYS,
+  LEVEL_KEYS,
 } from '../public/js/program.js';
 import { MAX_WEEK } from '../public/js/engine.js';
 
 const EX_IDS = new Set(EXERCISE_IDS);
 const MACHINES = new Set(MACHINE_KEYS);
 const FEEDBACK = new Set(FEEDBACK_VALUES);
+const GOALS = new Set(GOAL_KEYS);
+const LEVELS = new Set(LEVEL_KEYS);
 const DAY_KEYS = new Set(['0', '1', '2', '3', '4', '5', '6']);
 
 export const MAX_DOC_BYTES = 512 * 1024;
@@ -59,13 +62,19 @@ function weightsOf(raw, path) {
   return out;
 }
 
+/**
+ * Sets are bounded by the programme-wide maximum rather than the exercise's own
+ * count, because that count now depends on the goal: strength runs five sets of
+ * a lift that fat loss runs three of. Binding the limit to the document's goal
+ * would mean that switching from strength to fat loss makes an already-saved
+ * document invalid, and the user's sync stops entirely with a 400.
+ */
 function setsOf(raw, path) {
   if (!isPlainObject(raw)) return {};
   const out = {};
   for (const [id, value] of Object.entries(raw)) {
     if (!EX_IDS.has(id) || !Array.isArray(value)) continue;
-    const limit = exById(id)?.sets ?? MAX_SETS;
-    if (value.length > limit) throw new Invalid(`${path}.${id}`, 'مجموعات أكثر من المسموح');
+    if (value.length > MAX_SETS) throw new Invalid(`${path}.${id}`, 'مجموعات أكثر من المسموح');
     out[id] = value.map((x) => x === true);
   }
   return out;
@@ -194,6 +203,20 @@ function nutritionOf(raw, path) {
   };
 }
 
+/** The trainee's goal and experience level — what the whole programme hangs on. */
+function profileOf(raw, path) {
+  if (!isPlainObject(raw)) return null;
+  if (raw.goal === undefined || raw.goal === null) return null;
+  if (!GOALS.has(raw.goal)) throw new Invalid(`${path}.goal`, 'هدف غير معروف');
+  const level = raw.level ?? null;
+  if (level !== null && !LEVELS.has(level)) throw new Invalid(`${path}.level`, 'مستوى غير معروف');
+  return {
+    goal: raw.goal,
+    level,
+    ts: num(raw.ts ?? 0, `${path}.ts`, { min: 0, max: 4102444800000, integer: true }),
+  };
+}
+
 /**
  * @returns {{ok:true, doc:object} | {ok:false, message:string, path:string}}
  */
@@ -226,6 +249,7 @@ export function validateState(input) {
       },
       weeks,
       nutrition: nutritionOf(input.nutrition, 'doc.nutrition'),
+      profile: profileOf(input.profile, 'doc.profile'),
     };
 
     const size = Buffer.byteLength(JSON.stringify(doc), 'utf8');
@@ -239,7 +263,7 @@ export function validateState(input) {
 }
 
 export function emptyState() {
-  return { schema: 1, meta: { week: 1 }, weeks: {}, nutrition: null };
+  return { schema: 1, meta: { week: 1 }, weeks: {}, nutrition: null, profile: null };
 }
 
 /**
@@ -258,10 +282,18 @@ export function mergeStates(base, incoming) {
       ? (incoming.nutrition ?? base.nutrition)
       : base.nutrition;
 
+  // Same rule for the profile: the device that changed goal most recently wins,
+  // so switching goal on the phone is not undone by an older tab pushing back.
+  const profile =
+    (incoming.profile?.ts || 0) >= (base.profile?.ts || 0)
+      ? (incoming.profile ?? base.profile)
+      : base.profile;
+
   return {
     schema: 1,
     meta: { week: incoming.meta?.week ?? base.meta?.week ?? 1 },
     weeks,
     nutrition: nutrition ?? null,
+    profile: profile ?? null,
   };
 }

@@ -1,38 +1,48 @@
 import { el, richText } from '../dom.js';
 import { fmt, bulletList, toast } from '../ui.js';
-import { DAY_NAMES } from '../program.js';
-import {
-  tdeeFormula,
-  safeTarget,
-  avgCal,
-  avgPro,
-  measuredTDEE,
-  proteinTarget,
-} from '../engine.js';
-
-const ACTIVITY = [
-  { a: 1.375, label: 'مكتبي — أجلس أغلب اليوم' },
-  { a: 1.55, label: 'متوسط — أتحرك عادي' },
-  { a: 1.725, label: 'عالي — شغلي حركة' },
-];
+import { DAY_NAMES, goalOf } from '../program.js';
+import { safeTarget, avgCal, avgPro, measuredTDEE, proteinTarget } from '../engine.js';
 
 export function renderNutri(ctx) {
-  const { store, navigate } = ctx;
+  const { store } = ctx;
   const wk = store.viewWeek;
   const week = store.week(wk);
-  const bodyWeight = week.body?.weight || lastKnownWeight(store) || 102;
+  const goalKey = store.goal;
+  const goal = goalOf(goalKey);
+  const bodyWeight = week.body?.weight || lastKnownWeight(store) || 80;
 
-  // `age` is the field the setup screen fills in; clearing it is how "edit my
-  // details" sends the user back here.
-  if (!store.doc.nutrition?.age) return setupView(ctx, bodyWeight);
+  // Age and height are collected during onboarding. If they are missing the
+  // document predates it, so send the user through it rather than duplicating
+  // the form here.
+  if (!store.doc.nutrition?.age) {
+    return el(
+      'div',
+      { class: 'wrap' },
+      el('h3', { class: 'first', text: 'ناقص إعداد بسيط' }),
+      el(
+        'div',
+        { class: 'card' },
+        el('div', {
+          class: 'mut',
+          text: 'أحتاج عمرك وطولك ونشاطك عشان أحسب سعراتك. دقيقة وحدة وتخلص.',
+        }),
+        el('button', {
+          class: 'cta',
+          text: 'كمّل الإعداد',
+          on: { click: () => ctx.editProfile() },
+        })
+      )
+    );
+  }
 
   const nut = store.doc.nutrition;
   const target = nut.target;
-  const protein = proteinTarget(bodyWeight);
+  const protein = proteinTarget(bodyWeight, goalKey);
 
   /* ── day rows ── */
   const summaryBox = el('div', {});
-  const paint = () => summaryBox.replaceChildren(summaryCard(store, wk, bodyWeight, ctx));
+  const paint = () =>
+    summaryBox.replaceChildren(summaryCard(store, wk, bodyWeight, ctx, goalKey));
 
   const commit = (index, field, raw, input) => {
     const max = field === 'd' ? 20000 : 1000;
@@ -90,7 +100,15 @@ export function renderNutri(ctx) {
       el('div', { class: 'lbl', text: 'DAILY TARGET' }),
       el('h2', {}, el('span', { class: 'n', text: fmt(target) }), ' سعرة'),
       el('p', {
-        text: `بروتين ${protein} جرام · احتياجك للثبات ${fmt(nut.tdee)} · العجز ${fmt(nut.tdee - target)} سعرة`,
+        // The gap is a deficit when cutting and a surplus when building, so it
+        // is named for whichever it actually is.
+        text:
+          `بروتين ${protein} جرام · احتياجك للثبات ${fmt(nut.tdee)}` +
+          (target === nut.tdee
+            ? ' · بدون عجز ولا زيادة'
+            : target < nut.tdee
+              ? ` · العجز ${fmt(nut.tdee - target)} سعرة`
+              : ` · الزيادة ${fmt(target - nut.tdee)} سعرة`),
       })
     ),
     el('h3', { text: `سجّل يومك — أسبوع ${wk}` }),
@@ -102,12 +120,12 @@ export function renderNutri(ctx) {
       { class: 'card' },
       bulletList([
         [
-          { b: 'الحديد يقرر إذا بتحافظ على عضلك. السعرات تقرر إذا بتنزل دهون.' },
-          ' واحد بدون الثاني ما يوصلك.',
+          { b: 'الحديد يقرر شكل جسمك. السعرات تقرر حجمه.' },
+          ' واحد بدون الثاني ما يوصلك لهدفك.',
         ],
         [
-          { b: `ما راح أطلب منك تنزل تحت ${fmt(Math.max(1700, Math.round(nut.tdee * 0.75)))} سعرة أبداً` },
-          '، مهما كان الهدف. تحتها تخسر عضل وتتعب ويرجع لك الوزن.',
+          { b: `هدفك الحالي مبني على ${goal.n}` },
+          ` — عشان كذا الرقم ${fmt(target)} مو رقم عام، هو محسوب من وزنك وطولك وعمرك ونشاطك.`,
         ],
         [{ b: 'سجّل ولو تقريبي.' }, ' تسجيل 5 أيام بدقة 80% أنفع من تسجيل يومين بدقة 100%.'],
         [
@@ -121,116 +139,9 @@ export function renderNutri(ctx) {
       { class: 'card' },
       el('button', {
         class: 'cta ghost',
-        text: 'عدّل عمرك ونشاطك',
-        on: {
-          click: () => {
-            store.updateNutrition((n) => {
-              n.age = null;
-            });
-            ctx.refresh();
-          },
-        },
+        text: 'عدّل هدفك وبياناتك',
+        on: { click: () => ctx.editProfile() },
       })
-    )
-  );
-}
-
-/* ────────────────────────── first-run setup ────────────────────────── */
-
-function setupView(ctx, bodyWeight) {
-  const { store, navigate } = ctx;
-  const saved = store.doc.nutrition || {};
-  let activity = saved.act || 1.55;
-
-  const ageInput = el('input', {
-    id: 'nage',
-    type: 'number',
-    inputmode: 'numeric',
-    min: '14',
-    max: '90',
-    placeholder: 'مثال 28',
-    value: saved.age != null ? String(saved.age) : '',
-  });
-
-  const heightInput = el('input', {
-    id: 'nheight',
-    type: 'number',
-    inputmode: 'numeric',
-    min: '120',
-    max: '230',
-    placeholder: 'مثال 175',
-    value: saved.height != null ? String(saved.height) : '',
-  });
-
-  const chips = ACTIVITY.map((option) =>
-    el('button', {
-      class: ['mchip', option.a === activity ? 'on' : ''],
-      text: option.label,
-      attrs: { 'aria-pressed': String(option.a === activity) },
-      on: {
-        click: (event) => {
-          activity = option.a;
-          for (const chip of event.currentTarget.parentElement.children) {
-            const on = chip === event.currentTarget;
-            chip.classList.toggle('on', on);
-            chip.setAttribute('aria-pressed', String(on));
-          }
-        },
-      },
-    })
-  );
-
-  const save = () => {
-    const age = Number.parseInt(ageInput.value, 10);
-    if (!Number.isFinite(age) || age < 14 || age > 90) return toast('اكتب عمرك (14–90)');
-    const height = Number.parseInt(heightInput.value, 10);
-    if (!Number.isFinite(height) || height < 120 || height > 230) {
-      return toast('اكتب طولك بالسنتيمتر (120–230)');
-    }
-    const tdee = tdeeFormula(bodyWeight, age, activity, height);
-    store.updateNutrition((n) => {
-      n.age = age;
-      n.height = height;
-      n.act = activity;
-      n.tdee = tdee;
-      n.target = safeTarget(tdee);
-      n.protein = proteinTarget(bodyWeight);
-    });
-    ctx.refresh();
-  };
-
-  return el(
-    'div',
-    { class: 'wrap' },
-    el('h3', { class: 'first', text: 'إعداد لمرة وحدة' }),
-    el(
-      'div',
-      { class: 'card' },
-      el('div', {
-        class: 'mut',
-        text: `أحتاج عمرك وطولك عشان أحسب لك احتياجك. وزنك يجي تلقائي من قياس الأسبوع (${bodyWeight} كجم).`,
-      }),
-      el('label', { class: 'inp' }, el('span', { text: 'عمرك' }), ageInput),
-      el('label', { class: 'inp' }, el('span', { text: 'طولك بالسنتيمتر' }), heightInput),
-      el(
-        'div',
-        { class: 'inp' },
-        el('span', { text: 'نشاطك خارج النادي' }),
-        el('div', { class: 'mchips' }, chips)
-      ),
-      el('button', { class: 'cta', text: 'احسب هدفي', on: { click: save } })
-    ),
-    el(
-      'div',
-      { class: 'card' },
-      bulletList([
-        ['النادي محسوب أصلاً بالمعادلة — لا تحسبه مرتين.'],
-        [
-          'الرقم اللي بيطلع ',
-          { b: 'تقدير أولي' },
-          '. بعد أسبوعين من التسجيل بيحسب لك رقمك الحقيقي من بياناتك أنت.',
-        ],
-      ])
     )
   );
 }
@@ -241,10 +152,10 @@ function setupView(ctx, bodyWeight) {
  * The original file carried this block twice — once in the page and once in a
  * "summary" helper — and the two copies had already drifted. One copy now.
  */
-function summaryCard(store, wk, bodyWeight, ctx) {
+function summaryCard(store, wk, bodyWeight, ctx, goalKey) {
   const nut = store.doc.nutrition;
   const target = nut.target;
-  const protein = proteinTarget(bodyWeight);
+  const protein = proteinTarget(bodyWeight, goalKey);
   const cal = store.week(wk).cal || { d: [], p: [] };
   const avg = avgCal(cal);
   const pro = avgPro(cal);
@@ -337,8 +248,8 @@ function summaryCard(store, wk, bodyWeight, ctx) {
     const explanation = close
       ? 'قريب من التقدير، يعني المعادلة كانت مضبوطة عليك.'
       : diff < 0
-        ? `أقل من التقدير بـ ${fmt(Math.abs(diff))} سعرة. جسمك يحرق أقل مما توقعنا، فهدفك لازم ينزل.`
-        : `أعلى من التقدير بـ ${fmt(diff)} سعرة. تقدر تاكل أكثر وأنت لسا تنقص.`;
+        ? `أقل من التقدير بـ ${fmt(Math.abs(diff))} سعرة. جسمك يحرق أقل مما توقعنا، فهدفك لازم يتعدّل.`
+        : `أعلى من التقدير بـ ${fmt(diff)} سعرة. جسمك يحرق أكثر مما توقعنا.`;
 
     const card = el(
       'div',
@@ -359,12 +270,12 @@ function summaryCard(store, wk, bodyWeight, ctx) {
       card.appendChild(
         el('button', {
           class: 'cta',
-          text: `حدّث هدفي إلى ${fmt(safeTarget(measured.val))}`,
+          text: `حدّث هدفي إلى ${fmt(safeTarget(measured.val, goalKey))}`,
           on: {
             click: () => {
               store.updateNutrition((n) => {
                 n.tdee = measured.val;
-                n.target = safeTarget(measured.val);
+                n.target = safeTarget(measured.val, goalKey);
               });
               toast('انحدّث هدفك');
               ctx.refresh();

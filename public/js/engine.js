@@ -3,7 +3,7 @@
  * Pure functions only — no DOM, no storage. Imported by the app and the tests.
  */
 
-import { ALL_EXERCISES, exById } from './program.js';
+import { ALL_EXERCISES, exById, goalOf, DEFAULT_GOAL } from './program.js';
 
 export const MAX_WEEK = 520; // ~10 years. Bounds the week navigator and the stored doc.
 export const KCAL_PER_KG = 7700;
@@ -12,26 +12,162 @@ export const HEIGHT_CM = 183;
 /* ────────────────────────── weekly verdict ────────────────────────── */
 
 /**
+ * What each outcome says, per goal.
+ *
+ * The same measurement means opposite things depending on the goal: putting on
+ * 0.4 kg is a warning while cutting and the whole point while building. Only
+ * the prose lives here — the thresholds are data on the goal itself.
+ */
+const VERDICT_TEXT = {
+  none: {
+    t: 'ما فيه قياس لهالأسبوع',
+    p: 'بنزيد على أساس إحساسك بالأوزان بس. سجّل وزنك آخر يوم بالأسبوع عشان القرار يصير أدق.',
+  },
+  base: {
+    t: 'قياس الأساس انحفظ',
+    p: 'هذا أول قياس، منه نبدأ نقيس. الأسبوع الجاي بتشوف المقارنة.',
+  },
+  cut: {
+    fast: {
+      t: 'نزولك أسرع من اللازم',
+      p: [
+        'نزلت أكثر من 1.2% من وزنك بأسبوع واحد. بهالسرعة جزء من النزول عضل مو دهون، وجسمك ما يقدر يتعافى من زيادة أوزان. ',
+        { b: 'ثبّت الأوزان هالأسبوع' },
+        ' وارفع أكلك شوي — خصوصاً البروتين.',
+      ],
+    },
+    muscle: {
+      t: 'الكتلة العضلية نازلة',
+      p: [
+        'نزلت كتلتك العضلية نص كيلو أو أكثر. ثبّت الأوزان، ارفع البروتين، وخفّف الكارديو يوم واحد هالأسبوع. لو تكررت 3 أسابيع، العجز عندك كبير زيادة.',
+      ],
+    },
+    gain: {
+      t: 'وزنك طالع',
+      p: [
+        'وزنك زاد هالأسبوع. لو هدفك التنشيف، راجع أكلك. الأوزان بالحديد بتزيد عادي — ما تتأثر بهذا.',
+      ],
+    },
+    ok: {
+      t: 'وضعك سليم — نزيد',
+      p: [
+        'نزولك بالمعدل الصحي (نصف كيلو لكيلو بالأسبوع تقريباً) وجسمك يتحمل زيادة الحمل. نمشي للأمام.',
+      ],
+    },
+  },
+  muscle: {
+    fast: {
+      t: 'تنزل وأنت تبي تكبّر',
+      p: [
+        'وزنك نزل، وما تكبر عضلة بعجز سعرات. ',
+        { b: 'ارفع أكلك ٣٠٠ سعرة' },
+        ' وثبّت الأوزان هالأسبوع لين وزنك يبدأ يطلع.',
+      ],
+    },
+    muscle: {
+      t: 'الكتلة العضلية نازلة',
+      p: ['ثبّت الأوزان وارفع البروتين والسعرات. تنزل كتلة وأنت تبي تكبّر يعني أكلك قليل.'],
+    },
+    gain: {
+      t: 'تكبر بسرعة زيادة',
+      p: [
+        'زيادتك أسرع من ',
+        { b: '٠.٥٪ من وزنك بالأسبوع' },
+        ' — يعني أغلب اللي يجيك دهون مو عضل. نزّل أكلك ١٥٠–٢٠٠ سعرة. الأوزان تكمل تزيد عادي.',
+      ],
+    },
+    stall: {
+      t: 'وزنك ثابت — ارفع أكلك',
+      p: [
+        'ما زاد وزنك هالأسبوع. لو تكرر أسبوعين، ',
+        { b: 'ارفع سعراتك ٢٠٠' },
+        '. الأوزان تكمل تزيد، بس نموّك بيتوقف بدون سعرات زايدة.',
+      ],
+    },
+    ok: {
+      t: 'تكبر بالمعدل الصح',
+      p: [
+        'زيادتك داخل المدى الصحي (٠.١٥–٠.٥٪ بالأسبوع). عضلك يبني وأنت ما تخزّن دهون كثير. كمّل على نفس النظام.',
+      ],
+    },
+  },
+  recomp: {
+    fast: {
+      t: 'نزولك أسرع من اللازم',
+      p: [
+        'هدفك تشد مو تنشّف بسرعة، وبهالمعدل بتخسر عضل معاها. ',
+        { b: 'ثبّت الأوزان وارفع أكلك شوي' },
+        '.',
+      ],
+    },
+    muscle: {
+      t: 'الكتلة العضلية نازلة',
+      p: [
+        'ثبّت الأوزان، ارفع البروتين، وخفّف الكارديو يوم واحد. الشد كله قائم على إن عضلك يبقى.',
+      ],
+    },
+    gain: {
+      t: 'وزنك طالع أكثر من اللازم',
+      p: ['هدفك الثبات تقريبًا، فراجع أكلك. الأوزان بالحديد تكمل تزيد عادي.'],
+    },
+    ok: {
+      t: 'وضعك سليم — نزيد',
+      p: [
+        'وزنك شبه ثابت وهذا بالضبط المطلوب في الشد: جسمك يستبدل دهون بعضل، فالميزان يتحرك ببطء والشكل يتغير.',
+      ],
+    },
+  },
+  fitness: {
+    fast: {
+      t: 'نزولك أسرع من اللازم',
+      p: [
+        'هدفك اللياقة مو النزول السريع. بهالمعدل بتحس بتعب داخل التمرين وأدائك ينزل. ',
+        { b: 'ارفع أكلك' },
+        '.',
+      ],
+    },
+    muscle: {
+      t: 'الكتلة العضلية نازلة',
+      p: ['ارفع البروتين وثبّت الأوزان هالأسبوع.'],
+    },
+    ok: {
+      t: 'وضعك سليم — نكمل',
+      p: [
+        'وزنك بمدى مستقر. مقياسك هنا مو الميزان — هو إنك تكمّل أيامك، ونفسك يطول، ونبضك يرجع أسرع بعد المجهود.',
+      ],
+    },
+  },
+  strength: {
+    fast: {
+      t: 'تنزل وأنت تبي تقوى',
+      p: ['ما تقوى وأنت تنزل وزن. ', { b: 'ارفع أكلك' }, ' وثبّت الأوزان هالأسبوع.'],
+    },
+    muscle: {
+      t: 'الكتلة العضلية نازلة',
+      p: ['ارفع أكلك وبروتينك، وثبّت الأوزان. القوة تنبني على عضل موجود.'],
+    },
+    gain: {
+      t: 'زيادتك أسرع من اللازم',
+      p: ['تقدر تقوى بزيادة أبطأ من كذا. نزّل أكلك شوي — الأوزان تكمل تزيد عادي.'],
+    },
+    ok: {
+      t: 'جاهز تزيد الأوزان',
+      p: ['وزنك ثابت أو طالع شوي، وهذا بالضبط الوضع اللي تقوى فيه. زد الأوزان وحافظ على شكلك.'],
+    },
+  },
+};
+
+/**
  * @param {{weight:number, muscle:number|null}|null} cur  this week's measurement
  * @param {{weight:number, muscle:number|null}|null} prev last week's measurement
+ * @param {string} [goalKey] the trainee's goal; decides which direction is good
  */
-export function verdict(cur, prev) {
-  if (!cur || !cur.weight) {
-    return {
-      gate: 'go',
-      kind: 'go',
-      t: 'ما فيه قياس لهالأسبوع',
-      p: 'بنزيد على أساس إحساسك بالأوزان بس. سجّل وزنك آخر يوم بالأسبوع عشان القرار يصير أدق.',
-    };
-  }
-  if (!prev || !prev.weight) {
-    return {
-      gate: 'go',
-      kind: 'go',
-      t: 'قياس الأساس انحفظ',
-      p: 'هذا أول قياس، منه نبدأ نقيس. الأسبوع الجاي بتشوف المقارنة.',
-    };
-  }
+export function verdict(cur, prev, goalKey = DEFAULT_GOAL) {
+  if (!cur || !cur.weight) return { gate: 'go', kind: 'go', ...VERDICT_TEXT.none };
+  if (!prev || !prev.weight) return { gate: 'go', kind: 'go', ...VERDICT_TEXT.base };
+
+  const rules = goalOf(goalKey).verdict;
+  const text = VERDICT_TEXT[goalKey] || VERDICT_TEXT[DEFAULT_GOAL];
 
   const dW = round1(cur.weight - prev.weight);
   const pct = (dW / prev.weight) * 100;
@@ -40,54 +176,18 @@ export function verdict(cur, prev) {
       ? round1(cur.muscle - prev.muscle)
       : null;
 
-  if (pct <= -1.2) {
-    return {
-      gate: 'hold',
-      kind: 'warn',
-      dW,
-      dM,
-      t: 'نزولك أسرع من اللازم',
-      p: [
-        'نزلت أكثر من 1.2% من وزنك بأسبوع واحد. بهالسرعة جزء من النزول عضل مو دهون، وجسمك ما يقدر يتعافى من زيادة أوزان. ',
-        { b: 'ثبّت الأوزان هالأسبوع' },
-        ' وارفع أكلك شوي — خصوصاً البروتين.',
-      ],
-    };
+  const out = (gate, kind, key) => ({ gate, kind, dW, dM, ...(text[key] || text.ok) });
+
+  // Losing faster than the goal tolerates: no goal adds load on top of that.
+  if (rules.holdLossBelow !== null && pct <= rules.holdLossBelow) return out('hold', 'warn', 'fast');
+  if (rules.muscleDropKg !== null && dM !== null && dM <= rules.muscleDropKg) {
+    return out('hold', 'warn', 'muscle');
   }
-  if (dM !== null && dM <= -0.5) {
-    return {
-      gate: 'hold',
-      kind: 'warn',
-      dW,
-      dM,
-      t: 'الكتلة العضلية نازلة',
-      p: [
-        'نزلت كتلتك العضلية نص كيلو أو أكثر. ثبّت الأوزان، ارفع البروتين، وخفّف الكارديو يوم واحد هالأسبوع. لو تكررت 3 أسابيع، العجز عندك كبير زيادة.',
-      ],
-    };
-  }
-  if (pct >= 0.6) {
-    return {
-      gate: 'go',
-      kind: 'hold',
-      dW,
-      dM,
-      t: 'وزنك طالع',
-      p: [
-        'وزنك زاد هالأسبوع. لو هدفك التنشيف، راجع أكلك. الأوزان بالحديد بتزيد عادي — ما تتأثر بهذا.',
-      ],
-    };
-  }
-  return {
-    gate: 'go',
-    kind: 'go',
-    dW,
-    dM,
-    t: 'وضعك سليم — نزيد',
-    p: [
-      'نزولك بالمعدل الصحي (نصف كيلو لكيلو بالأسبوع تقريباً) وجسمك يتحمل زيادة الحمل. نمشي للأمام.',
-    ],
-  };
+  // Gaining or stalling is worth saying, but neither blocks progression — the
+  // bar does not care why the scale moved.
+  if (rules.warnGainAbove !== null && pct >= rules.warnGainAbove) return out('go', 'hold', 'gain');
+  if (rules.stallBelow !== null && pct < rules.stallBelow) return out('go', 'hold', 'stall');
+  return out('go', 'go', 'ok');
 }
 
 /* ────────────────────────── weight progression ────────────────────────── */
@@ -152,10 +252,21 @@ export function tdeeFormula(kg, age, activity, height = HEIGHT_CM) {
   return Math.round(bmr * activity);
 }
 
-/** 500 kcal deficit, floored at the larger of 1700 kcal or 75% of maintenance. */
-export function safeTarget(tdee) {
-  const floor = Math.max(1700, Math.round(tdee * 0.75));
-  return Math.max(floor, tdee - 500);
+/**
+ * The daily calorie target for a goal.
+ *
+ * A deficit is floored so nobody is ever told to eat too little; a surplus is
+ * capped so "bulking" does not become an excuse to gain mostly fat.
+ */
+export function safeTarget(tdee, goalKey = DEFAULT_GOAL) {
+  const n = goalOf(goalKey).nutrition;
+  const raw = Math.round(tdee + n.delta);
+  if (n.delta < 0) {
+    const floor = Math.max(n.floorKcal ?? 1700, Math.round(tdee * (n.floorPct ?? 0.75)));
+    return Math.max(floor, raw);
+  }
+  if (n.delta > 0) return Math.min(Math.round(tdee * (n.capPct ?? 1.15)), raw);
+  return raw;
 }
 
 export function avgCal(cal) {
@@ -196,8 +307,8 @@ export function measuredTDEE(calHist, bodyHist) {
   };
 }
 
-export function proteinTarget(kg) {
-  return Math.round(kg * 1.6);
+export function proteinTarget(kg, goalKey = DEFAULT_GOAL) {
+  return Math.round(kg * goalOf(goalKey).nutrition.proteinPerKg);
 }
 
 /* ────────────────────────── misc ────────────────────────── */

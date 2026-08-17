@@ -2,7 +2,7 @@
 
 import { el, clear, richText, safeUrl } from './dom.js';
 import { fmt, fmtN, toast, buzz, beep, primeAudio } from './ui.js';
-import { PLAN } from './program.js';
+import { planOf } from './program.js';
 import { dayVolume, formatRest } from './engine.js';
 
 const FEEDBACK = [
@@ -69,12 +69,18 @@ export class GymMode {
 
   /* ── open / close ───────────────────────────────────────── */
 
+  /** The day templates of whichever goal the trainee is on right now. */
+  plan() {
+    return planOf(this.store.goal);
+  }
+
   async open(day) {
-    if (!PLAN[day]) return;
+    const plan = this.plan();
+    if (!plan[day]) return;
     const week = this.store.week();
     const index = Math.max(
       0,
-      PLAN[day].ex.findIndex((e) => !isDone(e, week))
+      plan[day].ex.findIndex((e) => !isDone(e, week))
     );
     this.state = { day, index: index === -1 ? 0 : index };
     this.cueOpen = false;
@@ -131,7 +137,7 @@ export class GymMode {
   /* ── drawing ────────────────────────────────────────────── */
 
   current() {
-    const plan = PLAN[this.state.day];
+    const plan = this.plan()[this.state.day];
     return { plan, exercise: plan.ex[this.state.index] };
   }
 
@@ -279,17 +285,21 @@ export class GymMode {
       el(
         'div',
         { class: 'glinks' },
-        el(
-          'a',
-          {
-            class: 'glink',
-            href: safeUrl(exercise.v),
-            target: '_blank',
-            rel: 'noopener noreferrer',
-          },
-          el('b', { text: '▶' }),
-          ` ${exercise.vlbl}`
-        ),
+        // Not every exercise ships with a verified link; those show no button
+        // rather than one that goes nowhere.
+        exercise.v
+          ? el(
+              'a',
+              {
+                class: 'glink',
+                href: safeUrl(exercise.v),
+                target: '_blank',
+                rel: 'noopener noreferrer',
+              },
+              el('b', { text: '▶' }),
+              ` ${exercise.vlbl || 'شرح'}`
+            )
+          : null,
         el('button', {
           class: 'glink',
           text: `الشرح ${this.cueOpen ? '▴' : '▾'}`,
@@ -575,9 +585,16 @@ export class GymMode {
 
 /* ── helpers ─────────────────────────────────────────────── */
 
+/**
+ * A lift is done when the sets this goal asks for are ticked.
+ *
+ * Deliberately not a length equality: switching from a five-set goal to a
+ * three-set one leaves a longer array behind, and that should read as finished,
+ * not as permanently incomplete.
+ */
 export function isDone(exercise, week) {
   const sets = week.sets?.[exercise.id] || [];
-  return sets.length === exercise.sets && sets.every(Boolean);
+  return sets.length >= exercise.sets && sets.slice(0, exercise.sets).every(Boolean);
 }
 
 function clockText(seconds) {
