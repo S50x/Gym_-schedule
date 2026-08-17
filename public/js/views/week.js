@@ -1,14 +1,18 @@
 import { el, richText } from '../dom.js';
 import { bulletList, toast } from '../ui.js';
-import { PLAN, DAYS, exById } from '../program.js';
-import { verdict, progress, MAX_WEEK } from '../engine.js';
+import { planOf, goalOf, exById } from '../program.js';
+import { verdict, progress, proteinTarget, MAX_WEEK } from '../engine.js';
 
 export function renderWeek(ctx) {
   const { store, navigate } = ctx;
   const wk = store.viewWeek;
   const week = store.week(wk);
   const prevBody = store.week(wk - 1).body;
-  const v = verdict(week.body, prevBody);
+  const goalKey = store.goal;
+  const goal = goalOf(goalKey);
+  const PLAN = planOf(goalKey);
+  const DAYS = Object.keys(PLAN);
+  const v = verdict(week.body, prevBody, goalKey);
 
   /* how many lifts go up next week */
   const ups = [];
@@ -27,7 +31,7 @@ export function renderWeek(ctx) {
       acc +
       PLAN[d].ex.filter((e) => {
         const sets = week.sets[e.id] || [];
-        return sets.length === e.sets && sets.every(Boolean);
+        return sets.length >= e.sets && sets.slice(0, e.sets).every(Boolean);
       }).length,
     0
   );
@@ -148,15 +152,14 @@ export function renderWeek(ctx) {
     form,
     verdictCard,
     nextCard,
-    el('h3', { text: 'ليش القرار بهالطريقة' }),
+    el('h3', { text: `ليش القرار بهالطريقة — ${goal.n}` }),
     el(
       'div',
       { class: 'card' },
       bulletList([
-        [
-          { b: 'نزول أكثر من 1.2% من وزنك بأسبوع = خطر.' },
-          ' بهالسرعة تخسر عضل مع الدهون وجسمك ما يتحمل زيادة الأوزان.',
-        ],
+        // What "good" looks like depends entirely on the goal, so these come
+        // from the goal itself rather than being hard-coded for fat loss.
+        ...goal.notes,
         [
           { b: 'الكتلة العضلية من الميزان الذكي رقم تقريبي.' },
           ' يتأثر بالماء والملح والنوم — اللي يهم اتجاهها بعد 3–4 أسابيع مو قراءة أسبوع.',
@@ -179,10 +182,11 @@ export function renderWeek(ctx) {
       el(
         'p',
         { class: 'lead' },
-        'وأنت بعجز سعرات، ',
         el('b', { text: 'البروتين' }),
-        ' هو الفرق بين إنك تنقص دهون وإنك تنقص عضل. هدفك ',
-        el('b', { text: `${Math.round((week.body?.weight || 102) * 1.6)} جرام باليوم` }),
+        ' هو اللي يحدد إذا اللي تكسبه عضل وإذا اللي تخسره دهون. هدفك ',
+        el('b', {
+          text: `${proteinTarget(week.body?.weight || prevBody?.weight || 80, goalKey)} جرام باليوم`,
+        }),
         '. لو ما وصلته، بتشوف الأوزان تثبت أسبوع ورا أسبوع وأنت ما تدري ليش.'
       )
     )

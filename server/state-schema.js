@@ -14,13 +14,16 @@ import {
   FEEDBACK_VALUES,
   MAX_SETS,
   MAX_MACHINES_PER_DAY,
-  exById,
+  GOAL_KEYS,
+  LEVEL_KEYS,
 } from '../public/js/program.js';
 import { MAX_WEEK } from '../public/js/engine.js';
 
 const EX_IDS = new Set(EXERCISE_IDS);
 const MACHINES = new Set(MACHINE_KEYS);
 const FEEDBACK = new Set(FEEDBACK_VALUES);
+const GOALS = new Set(GOAL_KEYS);
+const LEVELS = new Set(LEVEL_KEYS);
 const DAY_KEYS = new Set(['0', '1', '2', '3', '4', '5', '6']);
 
 export const MAX_DOC_BYTES = 512 * 1024;
@@ -59,13 +62,19 @@ function weightsOf(raw, path) {
   return out;
 }
 
+/**
+ * Sets are bounded by the programme-wide maximum rather than the exercise's own
+ * count, because that count now depends on the goal: strength runs five sets of
+ * a lift that fat loss runs three of. Binding the limit to the document's goal
+ * would mean that switching from strength to fat loss makes an already-saved
+ * document invalid, and the user's sync stops entirely with a 400.
+ */
 function setsOf(raw, path) {
   if (!isPlainObject(raw)) return {};
   const out = {};
   for (const [id, value] of Object.entries(raw)) {
     if (!EX_IDS.has(id) || !Array.isArray(value)) continue;
-    const limit = exById(id)?.sets ?? MAX_SETS;
-    if (value.length > limit) throw new Invalid(`${path}.${id}`, 'مجموعات أكثر من المسموح');
+    if (value.length > MAX_SETS) throw new Invalid(`${path}.${id}`, 'مجموعات أكثر من المسموح');
     out[id] = value.map((x) => x === true);
   }
   return out;
@@ -175,11 +184,31 @@ function nutritionOf(raw, path) {
   if (raw.age === undefined || raw.age === null) return null;
   const age = num(raw.age, `${path}.age`, { min: 14, max: 90, integer: true });
   const act = num(raw.act, `${path}.act`, { min: 1.2, max: 2.5 });
-  const tdee = num(raw.tdee, `${path}.tdee`, { min: 800, max: 8000, integer: true });
-  const target = num(raw.target, `${path}.target`, { min: 800, max: 8000, integer: true });
+  // tdee/target are derived from today's weight now, so they are no longer
+  // required — but older documents still carry them and must keep validating.
+  const tdee = num(raw.tdee ?? null, `${path}.tdee`, {
+    min: 800,
+    max: 8000,
+    integer: true,
+    allowNull: true,
+  });
+  const target = num(raw.target ?? null, `${path}.target`, {
+    min: 800,
+    max: 8000,
+    integer: true,
+    allowNull: true,
+  });
   return {
     age,
     act,
+    // A maintenance figure backed out of real intake vs. weight change. When
+    // present it overrides the formula, so it is stored rather than recomputed.
+    measuredTdee: num(raw.measuredTdee ?? null, `${path}.measuredTdee`, {
+      min: 800,
+      max: 8000,
+      integer: true,
+      allowNull: true,
+    }),
     // Optional so records saved before the height field still validate.
     height: num(raw.height ?? null, `${path}.height`, {
       min: 120,
@@ -190,6 +219,27 @@ function nutritionOf(raw, path) {
     tdee,
     target,
     protein: num(raw.protein ?? 0, `${path}.protein`, { min: 0, max: 500, integer: true }),
+    ts: num(raw.ts ?? 0, `${path}.ts`, { min: 0, max: 4102444800000, integer: true }),
+  };
+}
+
+/** The trainee's goal and experience level — what the whole programme hangs on. */
+function profileOf(raw, path) {
+  if (!isPlainObject(raw)) return null;
+  if (raw.goal === undefined || raw.goal === null) return null;
+  if (!GOALS.has(raw.goal)) throw new Invalid(`${path}.goal`, 'هدف غير معروف');
+  const level = raw.level ?? null;
+  if (level !== null && !LEVELS.has(level)) throw new Invalid(`${path}.level`, 'مستوى غير معروف');
+  return {
+    goal: raw.goal,
+    level,
+    // Body weight when this goal was chosen — the baseline the review prompt
+    // measures progress against.
+    startWeight: num(raw.startWeight ?? null, `${path}.startWeight`, {
+      min: 20,
+      max: 400,
+      allowNull: true,
+    }),
     ts: num(raw.ts ?? 0, `${path}.ts`, { min: 0, max: 4102444800000, integer: true }),
   };
 }
@@ -226,6 +276,7 @@ export function validateState(input) {
       },
       weeks,
       nutrition: nutritionOf(input.nutrition, 'doc.nutrition'),
+      profile: profileOf(input.profile, 'doc.profile'),
     };
 
     const size = Buffer.byteLength(JSON.stringify(doc), 'utf8');
@@ -239,7 +290,7 @@ export function validateState(input) {
 }
 
 export function emptyState() {
-  return { schema: 1, meta: { week: 1 }, weeks: {}, nutrition: null };
+  return { schema: 1, meta: { week: 1 }, weeks: {}, nutrition: null, profile: null };
 }
 
 /**
@@ -258,10 +309,18 @@ export function mergeStates(base, incoming) {
       ? (incoming.nutrition ?? base.nutrition)
       : base.nutrition;
 
+  // Same rule for the profile: the device that changed goal most recently wins,
+  // so switching goal on the phone is not undone by an older tab pushing back.
+  const profile =
+    (incoming.profile?.ts || 0) >= (base.profile?.ts || 0)
+      ? (incoming.profile ?? base.profile)
+      : base.profile;
+
   return {
     schema: 1,
     meta: { week: incoming.meta?.week ?? base.meta?.week ?? 1 },
     weeks,
     nutrition: nutrition ?? null,
+    profile: profile ?? null,
   };
 }

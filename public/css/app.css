@@ -1417,6 +1417,117 @@ ol.steps b {
   margin-bottom: 6px;
 }
 
+/* ══════ goal review prompt ══════ */
+.review {
+  background: linear-gradient(160deg, rgba(196, 255, 54, 0.12), rgba(196, 255, 54, 0.03));
+  border: 1px solid rgba(196, 255, 54, 0.35);
+  border-radius: 20px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+.review h4 {
+  font-family: 'Cairo';
+  font-weight: 900;
+  font-size: 15.5px;
+  margin: 0 0 6px;
+  color: var(--orange);
+}
+.review p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.65;
+  color: #d5dcc8;
+}
+.rbtns {
+  display: flex;
+  gap: 8px;
+  margin-top: 13px;
+}
+.rbtns .cta {
+  margin-top: 0;
+  flex: 1;
+  font-size: 13.5px;
+  padding: 12px 8px;
+}
+
+/* ══════ onboarding ══════ */
+.onb .onbhead {
+  padding: 22px 2px 4px;
+}
+.onb .onbhead .logo {
+  font-size: 30px;
+  margin-bottom: 6px;
+}
+.onb .onbhead p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--mut);
+}
+.gcards,
+.lcards {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-bottom: 12px;
+}
+.gcard,
+.lcard {
+  display: block;
+  width: 100%;
+  text-align: right;
+  background: var(--surf);
+  border: 1.5px solid var(--line);
+  border-radius: 18px;
+  padding: 14px 15px;
+}
+.gcard.on,
+.lcard.on {
+  border-color: var(--orange);
+  background: rgba(196, 255, 54, 0.07);
+}
+.gtitle,
+.ltitle {
+  font-family: 'Cairo';
+  font-weight: 900;
+  font-size: 16px;
+  color: var(--txt);
+}
+.gcard.on .gtitle,
+.lcard.on .ltitle {
+  color: var(--orange);
+}
+.gdesc {
+  font-size: 12.5px;
+  color: var(--mut);
+  line-height: 1.55;
+  margin-top: 4px;
+}
+.gsum {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 10px;
+}
+.gsum span {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--mut);
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 9px;
+}
+.gcard.on .gsum span {
+  color: var(--orange);
+  border-color: rgba(196, 255, 54, 0.35);
+}
+.big-cta {
+  font-size: 17px;
+  padding: 18px;
+  margin-top: 18px;
+}
+
 /* ══════ bilingual names ══════ */
 /* English sits under the Arabic as a quieter second line, LTR regardless of
    the page direction. */
@@ -1579,6 +1690,11 @@ small.en {
   border-top: 1px solid var(--line);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+}
+/* An id selector outranks the browser's own `[hidden] { display: none }`, so
+   setting the property would otherwise leave the bar on screen. */
+#tabbar[hidden] {
+  display: none;
 }
 #tabbar .tab {
   flex: 1;

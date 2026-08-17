@@ -6,12 +6,25 @@ import {
   dayVolume,
   tdeeFormula,
   safeTarget,
+  proteinTarget,
+  effectiveTdee,
+  dailyTarget,
+  goalReview,
   measuredTDEE,
   avgCal,
   todayKey,
   formatRest,
 } from '../public/js/engine.js';
-import { PLAN, baseWeights, exById, EXERCISE_IDS } from '../public/js/program.js';
+import {
+  PLAN,
+  baseWeights,
+  exById,
+  EXERCISE_IDS,
+  GOAL_KEYS,
+  MAX_SETS,
+  planOf,
+  cardioOf,
+} from '../public/js/program.js';
 
 const fullSets = (id) => Array.from({ length: exById(id).sets }, () => true);
 
@@ -46,6 +59,214 @@ test('weekly verdict', async (t) => {
     const v = verdict({ weight: 103 }, { weight: 102 });
     assert.equal(v.gate, 'go');
     assert.equal(v.kind, 'hold');
+  });
+});
+
+test('the goal decides what the scale means', async (t) => {
+  // Same measurement, five goals. +0.69% in a week is over the line for a cut
+  // and comfortably inside the range a bulk is aiming for.
+  const gained = [{ weight: 102.7 }, { weight: 102 }];
+  const lost = [{ weight: 101 }, { weight: 102 }]; // −0.98%
+
+  await t.test('gaining is a warning when cutting, success when building', () => {
+    const cut = verdict(...gained, 'cut');
+    const muscle = verdict(...gained, 'muscle');
+    assert.equal(cut.kind, 'hold', 'cutting: flagged');
+    assert.equal(muscle.kind, 'go', 'building: on target');
+    assert.notEqual(cut.t, muscle.t, 'and they must not say the same thing');
+  });
+
+  await t.test('a healthy cut is a red flag for a bulk', () => {
+    assert.equal(verdict(...lost, 'cut').gate, 'go');
+    const muscle = verdict(...lost, 'muscle');
+    assert.equal(muscle.gate, 'hold', 'you cannot add load while under-eating');
+    assert.equal(muscle.kind, 'warn');
+  });
+
+  await t.test('a stalled scale nags a bulk but not a cut', () => {
+    const flat = [{ weight: 102 }, { weight: 102 }];
+    assert.equal(verdict(...flat, 'cut').kind, 'go');
+    assert.equal(verdict(...flat, 'muscle').kind, 'hold');
+    assert.equal(verdict(...flat, 'muscle').gate, 'go', 'still allowed to progress');
+  });
+
+  await t.test('recomp treats a flat scale as the goal', () => {
+    assert.equal(verdict({ weight: 102.1 }, { weight: 102 }, 'recomp').kind, 'go');
+  });
+
+  await t.test('every goal returns the shape the views rely on', () => {
+    for (const key of GOAL_KEYS) {
+      const v = verdict(...gained, key);
+      assert.ok(['go', 'hold'].includes(v.gate), `${key} gate`);
+      assert.ok(['go', 'hold', 'warn'].includes(v.kind), `${key} kind`);
+      assert.equal(typeof v.t, 'string');
+      assert.ok(v.t.length > 0, `${key} needs a headline`);
+      assert.ok(v.p, `${key} needs an explanation`);
+    }
+  });
+
+  await t.test('an unknown goal falls back instead of throwing', () => {
+    assert.deepEqual(verdict(...gained, 'nonsense'), verdict(...gained, 'cut'));
+  });
+});
+
+test('goal-aware nutrition', async (t) => {
+  await t.test('cutting subtracts and building adds', () => {
+    assert.ok(safeTarget(3000, 'cut') < 3000);
+    assert.ok(safeTarget(3000, 'muscle') > 3000);
+    assert.equal(safeTarget(3000, 'fitness'), 3000, 'fitness eats at maintenance');
+  });
+
+  await t.test('a surplus is capped so bulking is not a free-for-all', () => {
+    // +300 would be 2300 on a 2000 maintenance, but the cap is +10–15%.
+    assert.ok(safeTarget(2000, 'muscle') <= Math.round(2000 * 1.15));
+  });
+
+  await t.test('protein scales with the goal', () => {
+    assert.ok(proteinTarget(100, 'cut') > proteinTarget(100, 'fitness'));
+  });
+});
+
+test('the calorie target follows the body', async (t) => {
+  const nut = { age: 30, height: 180, act: 1.55 };
+
+  await t.test('losing weight lowers maintenance and the target', () => {
+    const heavy = dailyTarget(nut, 100, 'cut');
+    const lighter = dailyTarget(nut, 85, 'cut');
+    assert.ok(lighter < heavy, `${lighter} should be under ${heavy}`);
+    // 15 kg is worth well over a hundred calories a day; a frozen target would
+    // have had them eating for the body they used to have.
+    assert.ok(heavy - lighter > 150, `difference was only ${heavy - lighter}`);
+  });
+
+  await t.test('a measured maintenance overrides the formula', () => {
+    const measured = { ...nut, measuredTdee: 2400 };
+    assert.equal(effectiveTdee(measured, 100), 2400);
+    assert.equal(dailyTarget(measured, 100, 'cut'), safeTarget(2400, 'cut'));
+  });
+
+  await t.test('the same weight gives different targets per goal', () => {
+    const targets = GOAL_KEYS.map((k) => dailyTarget(nut, 90, k));
+    assert.equal(new Set(targets).size, GOAL_KEYS.length);
+  });
+
+  await t.test('falls back to the stored figure when there is nothing to compute from', () => {
+    assert.equal(effectiveTdee({ tdee: 2500 }, null), 2500);
+    assert.equal(effectiveTdee(null, 90), null);
+  });
+});
+
+test('the goal is reviewed, not set and forgotten', async (t) => {
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+
+  await t.test('stays quiet on a fresh goal with little change', () => {
+    const profile = { goal: 'cut', level: 'int', startWeight: 100, ts: now - WEEK_MS };
+    assert.equal(goalReview({ profile, weight: 99, goalKey: 'cut', now }), null);
+  });
+
+  await t.test('speaks up once the body has moved far enough', () => {
+    const profile = { goal: 'cut', level: 'int', startWeight: 100, ts: now - WEEK_MS };
+    const review = goalReview({ profile, weight: 92, goalKey: 'cut', now });
+    assert.ok(review, 'an 8% drop should prompt a review');
+    assert.match(review.t, /نزلت/);
+  });
+
+  await t.test('reads the direction, so a bulk is told it gained', () => {
+    const profile = { goal: 'muscle', level: 'int', startWeight: 80, ts: now - WEEK_MS };
+    const review = goalReview({ profile, weight: 87, goalKey: 'muscle', now });
+    assert.ok(review);
+    assert.match(review.t, /زدت/);
+  });
+
+  await t.test('speaks up on time alone, even if the scale barely moved', () => {
+    const profile = { goal: 'cut', level: 'int', startWeight: 100, ts: now - 9 * WEEK_MS };
+    assert.ok(goalReview({ profile, weight: 99.5, goalKey: 'cut', now }));
+  });
+
+  await t.test('says nothing without a profile', () => {
+    assert.equal(goalReview({ profile: null, weight: 90, now }), null);
+    assert.equal(goalReview({ profile: { goal: 'cut' }, weight: 90, now }), null);
+  });
+});
+
+test('starting weights follow the level', async (t) => {
+  await t.test('intermediate is the catalogue as written', () => {
+    assert.deepEqual(baseWeights('cut', 'int'), baseWeights());
+    assert.equal(baseWeights('cut', 'int').leg_press, exById('leg_press').base);
+  });
+
+  await t.test('beginner is lighter and advanced is heavier', () => {
+    const beg = baseWeights('cut', 'beg').leg_press;
+    const adv = baseWeights('cut', 'adv').leg_press;
+    assert.ok(beg < exById('leg_press').base);
+    assert.ok(adv > exById('leg_press').base);
+  });
+
+  // Only the scaled levels are checked. "int" is passed through verbatim on
+  // purpose — a couple of catalogue values (lat_raise starts at 5 kg with a 2 kg
+  // step) are not multiples of their own step, and rounding them would move an
+  // existing user's starting weight.
+  await t.test('scaled weights land on a real plate, not 38.7 kg', () => {
+    for (const level of ['beg', 'adv']) {
+      for (const [id, value] of Object.entries(baseWeights('cut', level))) {
+        const step = exById(id).step;
+        if (!step) continue;
+        assert.equal(
+          Math.round((value / step) * 1000) % 1000,
+          0,
+          `${id} at ${level} = ${value} is not a multiple of ${step}`
+        );
+      }
+    }
+  });
+
+  await t.test('only the goal\'s own exercises are seeded', () => {
+    const strength = baseWeights('strength', 'int');
+    assert.ok('squat_bb' in strength, 'strength squats');
+    assert.ok(!('plank' in strength), 'and does not carry a lift it never programmes');
+  });
+});
+
+test('goals differ in substance, not just wording', async (t) => {
+  await t.test('each goal has a distinct programme', () => {
+    const shapes = GOAL_KEYS.map((key) => {
+      const plan = planOf(key);
+      return JSON.stringify(
+        Object.values(plan).map((d) => d.ex.map((e) => `${e.id}:${e.sets}x${e.reps}`))
+      );
+    });
+    assert.equal(new Set(shapes).size, GOAL_KEYS.length, 'no two goals share a programme');
+  });
+
+  await t.test('every programmed exercise exists in the catalogue', () => {
+    for (const key of GOAL_KEYS) {
+      for (const day of Object.values(planOf(key))) {
+        assert.ok(day.ex.length > 0, `${key} has an empty day`);
+        for (const e of day.ex) {
+          assert.ok(exById(e.id), `${key} references unknown ${e.id}`);
+          assert.ok(e.sets >= 1 && e.sets <= MAX_SETS, `${key}/${e.id} sets=${e.sets}`);
+        }
+      }
+    }
+  });
+
+  await t.test('cardio load actually varies by goal', () => {
+    const days = GOAL_KEYS.map((k) => cardioOf(k).filter((c) => !c.rest).length);
+    assert.ok(Math.max(...days) > Math.min(...days), 'cardio volume must differ');
+    for (const key of GOAL_KEYS) {
+      assert.equal(cardioOf(key).length, 7, `${key} needs a full week`);
+    }
+  });
+
+  await t.test('the fat-loss programme is unchanged', () => {
+    // The historical programme, so nobody already using the app is moved.
+    const plan = planOf('cut');
+    assert.deepEqual(Object.keys(plan), ['sat', 'mon', 'wed']);
+    assert.equal(plan.sat.ex[0].id, 'chest_db');
+    assert.equal(plan.sat.ex[0].sets, 3);
+    assert.equal(plan.sat.ex.length, 7);
+    assert.equal(cardioOf('cut').filter((c) => !c.rest).length, 6);
   });
 });
 
@@ -221,9 +442,14 @@ test('program data integrity', async (t) => {
     assert.equal(new Set(EXERCISE_IDS).size, EXERCISE_IDS.length);
   });
 
-  await t.test('every video link is https', () => {
+  // A link is optional: an exercise added without one verified is shipped
+  // without it rather than pointing at a guess. What must never happen is a
+  // link over plain http, or anything that is not a link at all.
+  await t.test('a video link, when present, is https', () => {
     for (const id of EXERCISE_IDS) {
-      assert.match(exById(id).v, /^https:\/\//, `${id} link must be https`);
+      const link = exById(id).v;
+      if (link === undefined) continue;
+      assert.match(link, /^https:\/\//, `${id} link must be https`);
     }
   });
 

@@ -65,24 +65,55 @@ server/
   mfa.js            login challenges + recovery codes
   qr.js             QR encoder — no libraries, verified in tests
   security.js       CSP, headers, CSRF, rate limiting
-  state-schema.js   strict validation of synced doc + merge
+  state-schema.js   strict validation of synced doc + merge (incl. profile)
   routes/           auth.js · state.js
 public/
   index.html        structure only — zero inline script/style (strict CSP)
   css/app.css       styling  ·  css/fonts.css (generated)
-  js/program.js     training program (single source, imported by browser AND server)
-  js/engine.js      pure decision/progression/nutrition logic
+  js/program.js     EXERCISES catalogue + 5 GOALS; imported by browser AND server
+  js/engine.js      pure decision/progression/nutrition logic, all goal-aware
   js/dom.js         safe element builder — replaces innerHTML; safeUrl() blocks non-http(s)
-  js/store.js       local storage + sync
-  js/gym.js         gym mode + rest timer
-  js/views/         home · cardio · week · nutri · account
+  js/store.js       local storage + sync; owns goal/level and the onboarding gate
+  js/gym.js         gym mode + rest timer + timed-hold countdown
+  js/views/         onboarding · home · cardio · week · nutri · account
   sw.js             offline
   fonts/            self-hosted fonts (no third party)
-test/               130 tests: auth · security · state · engine · totp · qr · mfa · postgres
+test/               162 tests: auth · security · state · engine · totp · qr · mfa · postgres
 docs/               BUGS.md (26) · SECURITY.md (21 findings + S21 2FA)
 render.yaml         Render blueprint — creates service + DB and links them
 scripts/            fetch-fonts.mjs
 ```
+
+## 3b. Goals — the axis everything turns on
+
+`program.js` is two layers: an `EXERCISES` catalogue (33 movements: names, cue,
+step, starting load, and default sets/reps/rest) and five `GOALS` that pick from
+it. A goal defines its own lifting days (optionally overriding sets/reps/rest),
+its own 7-day cardio week, its nutrition direction, and the thresholds for
+reading the weekly weigh-in.
+
+**The catalogue defaults ARE the fat-loss numbers**, so `cut` needs no overrides
+and the original programme is reproduced exactly.
+
+Goal flows into four places, each taking it as a last argument defaulting to
+`'cut'` (which is why the pre-existing tests pass untouched):
+`verdict(cur, prev, goal)` · `safeTarget(tdee, goal)` · `proteinTarget(kg, goal)` ·
+`baseWeights(goal, level)`.
+
+**`verdict` is the one that matters.** The same 0.4 kg gain is a warning while
+cutting and the target while building; a healthy cut is a red flag for a bulk.
+Get this wrong and the app fights half its users every week.
+
+Stored as `doc.profile = { goal, level, ts }`, merged by timestamp like
+`nutrition`. Rules that must not be broken:
+- **No profile + existing history ⇒ stay on `cut`/`int` silently.** Never send
+  someone mid-programme through onboarding. Only `!hasProfile && !hasHistory`
+  triggers it, and only after `store.init()` has loaded (see `loaded` in main.js).
+- **Sets are bounded by `MAX_SETS`, not the exercise's own count** — that count
+  now varies by goal, and binding to it would make a strength user's saved
+  document invalid the moment they switch, killing their sync.
+- Switching goal deletes nothing: weights are keyed by exercise id, so the old
+  goal's numbers are still there if they switch back.
 
 `program.js` and `engine.js` are pure (no DOM) so the server imports them directly —
 no second drifting copy of the exercise list.
