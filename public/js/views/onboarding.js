@@ -10,7 +10,6 @@
 import { el } from '../dom.js';
 import { toast } from '../ui.js';
 import { GOALS, GOAL_KEYS, LEVELS, LEVEL_KEYS } from '../program.js';
-import { tdeeFormula, safeTarget, proteinTarget } from '../engine.js';
 
 const ACTIVITY = [
   { a: 1.375, label: 'مكتبي — أجلس أغلب اليوم' },
@@ -157,14 +156,12 @@ export function renderOnboarding(ctx) {
       p.level = level;
     });
 
-    const tdee = tdeeFormula(rounded, age, activity, height);
+    // Only the inputs are stored. Calories and protein are derived from these
+    // plus the latest weight every time they are shown, so they never go stale.
     store.updateNutrition((n) => {
       n.age = age;
       n.height = height;
       n.act = activity;
-      n.tdee = tdee;
-      n.target = safeTarget(tdee, goal);
-      n.protein = proteinTarget(rounded, goal);
     });
 
     toast(editing ? 'انحدّث برنامجك' : `جاهز — برنامج ${GOALS[goal].n}`);

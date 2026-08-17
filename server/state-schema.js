@@ -184,11 +184,31 @@ function nutritionOf(raw, path) {
   if (raw.age === undefined || raw.age === null) return null;
   const age = num(raw.age, `${path}.age`, { min: 14, max: 90, integer: true });
   const act = num(raw.act, `${path}.act`, { min: 1.2, max: 2.5 });
-  const tdee = num(raw.tdee, `${path}.tdee`, { min: 800, max: 8000, integer: true });
-  const target = num(raw.target, `${path}.target`, { min: 800, max: 8000, integer: true });
+  // tdee/target are derived from today's weight now, so they are no longer
+  // required — but older documents still carry them and must keep validating.
+  const tdee = num(raw.tdee ?? null, `${path}.tdee`, {
+    min: 800,
+    max: 8000,
+    integer: true,
+    allowNull: true,
+  });
+  const target = num(raw.target ?? null, `${path}.target`, {
+    min: 800,
+    max: 8000,
+    integer: true,
+    allowNull: true,
+  });
   return {
     age,
     act,
+    // A maintenance figure backed out of real intake vs. weight change. When
+    // present it overrides the formula, so it is stored rather than recomputed.
+    measuredTdee: num(raw.measuredTdee ?? null, `${path}.measuredTdee`, {
+      min: 800,
+      max: 8000,
+      integer: true,
+      allowNull: true,
+    }),
     // Optional so records saved before the height field still validate.
     height: num(raw.height ?? null, `${path}.height`, {
       min: 120,
@@ -213,6 +233,13 @@ function profileOf(raw, path) {
   return {
     goal: raw.goal,
     level,
+    // Body weight when this goal was chosen — the baseline the review prompt
+    // measures progress against.
+    startWeight: num(raw.startWeight ?? null, `${path}.startWeight`, {
+      min: 20,
+      max: 400,
+      allowNull: true,
+    }),
     ts: num(raw.ts ?? 0, `${path}.ts`, { min: 0, max: 4102444800000, integer: true }),
   };
 }

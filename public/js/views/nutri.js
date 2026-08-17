@@ -1,7 +1,15 @@
 import { el, richText } from '../dom.js';
 import { fmt, bulletList, toast } from '../ui.js';
 import { DAY_NAMES, goalOf } from '../program.js';
-import { safeTarget, avgCal, avgPro, measuredTDEE, proteinTarget } from '../engine.js';
+import {
+  safeTarget,
+  avgCal,
+  avgPro,
+  measuredTDEE,
+  proteinTarget,
+  effectiveTdee,
+  dailyTarget,
+} from '../engine.js';
 
 export function renderNutri(ctx) {
   const { store } = ctx;
@@ -36,7 +44,10 @@ export function renderNutri(ctx) {
   }
 
   const nut = store.doc.nutrition;
-  const target = nut.target;
+  // Recomputed from today's weight every time this page opens, so the target
+  // follows the body instead of the number it had on day one.
+  const tdee = effectiveTdee(nut, bodyWeight);
+  const target = dailyTarget(nut, bodyWeight, goalKey);
   const protein = proteinTarget(bodyWeight, goalKey);
 
   /* ── day rows ── */
@@ -103,12 +114,12 @@ export function renderNutri(ctx) {
         // The gap is a deficit when cutting and a surplus when building, so it
         // is named for whichever it actually is.
         text:
-          `بروتين ${protein} جرام · احتياجك للثبات ${fmt(nut.tdee)}` +
-          (target === nut.tdee
+          `بروتين ${protein} جرام · احتياجك للثبات ${fmt(tdee)}` +
+          (target === tdee
             ? ' · بدون عجز ولا زيادة'
-            : target < nut.tdee
-              ? ` · العجز ${fmt(nut.tdee - target)} سعرة`
-              : ` · الزيادة ${fmt(target - nut.tdee)} سعرة`),
+            : target < tdee
+              ? ` · العجز ${fmt(tdee - target)} سعرة`
+              : ` · الزيادة ${fmt(target - tdee)} سعرة`),
       })
     ),
     el('h3', { text: `سجّل يومك — أسبوع ${wk}` }),
@@ -154,7 +165,8 @@ export function renderNutri(ctx) {
  */
 function summaryCard(store, wk, bodyWeight, ctx, goalKey) {
   const nut = store.doc.nutrition;
-  const target = nut.target;
+  const tdee = effectiveTdee(nut, bodyWeight);
+  const target = dailyTarget(nut, bodyWeight, goalKey);
   const protein = proteinTarget(bodyWeight, goalKey);
   const cal = store.week(wk).cal || { d: [], p: [] };
   const avg = avgCal(cal);
@@ -205,7 +217,7 @@ function summaryCard(store, wk, bodyWeight, ctx, goalKey) {
 
   /* warnings */
   if (avg && avg.days >= 3) {
-    if (avg.avg < Math.max(1700, nut.tdee * 0.7)) {
+    if (avg.avg < Math.max(1700, tdee * 0.7)) {
       parts.push(
         el(
           'div',
@@ -243,7 +255,7 @@ function summaryCard(store, wk, bodyWeight, ctx, goalKey) {
   /* measured maintenance */
   const measured = measuredTDEE(store.calHist(), store.bodyHist());
   if (measured) {
-    const diff = measured.val - nut.tdee;
+    const diff = measured.val - tdee;
     const close = Math.abs(diff) < 150;
     const explanation = close
       ? 'قريب من التقدير، يعني المعادلة كانت مضبوطة عليك.'
@@ -273,9 +285,10 @@ function summaryCard(store, wk, bodyWeight, ctx, goalKey) {
           text: `حدّث هدفي إلى ${fmt(safeTarget(measured.val, goalKey))}`,
           on: {
             click: () => {
+              // Stored as an override: it came from real data, so it beats the
+              // formula from here on — but the target still tracks the goal.
               store.updateNutrition((n) => {
-                n.tdee = measured.val;
-                n.target = safeTarget(measured.val, goalKey);
+                n.measuredTdee = measured.val;
               });
               toast('انحدّث هدفك');
               ctx.refresh();

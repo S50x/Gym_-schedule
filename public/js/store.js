@@ -242,12 +242,38 @@ class Store extends EventTarget {
    * comes back to it.
    */
   updateProfile(mutator) {
-    const profile = { goal: this.goal, level: this.level, ...(this.doc.profile || {}) };
+    const previous = this.doc.profile || {};
+    const profile = { goal: this.goal, level: this.level, ...previous };
     mutator(profile);
     profile.ts = Date.now();
+    // The review prompt measures progress from the weight you were when the
+    // goal was chosen, so a new goal re-anchors it.
+    if (profile.goal !== previous.goal || !Number.isFinite(profile.startWeight)) {
+      profile.startWeight = this.latestWeight();
+    }
     this.doc.profile = profile;
     this._weightCache.clear();
     this.persist();
+  }
+
+  /** "Yes, I looked, and I am staying on this goal" — resets the review clock. */
+  reaffirmGoal() {
+    this.updateProfile((p) => {
+      p.startWeight = this.latestWeight();
+    });
+  }
+
+  /** Most recent recorded body weight, or null. */
+  latestWeight() {
+    const weeks = Object.keys(this.doc.weeks)
+      .map(Number)
+      .filter(Number.isInteger)
+      .sort((a, b) => b - a);
+    for (const n of weeks) {
+      const weight = this.doc.weeks[String(n)]?.body?.weight;
+      if (Number.isFinite(weight)) return weight;
+    }
+    return null;
   }
 
   updateNutrition(mutator) {

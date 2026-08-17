@@ -11,7 +11,7 @@ import {
   machName,
   machinesOfDay,
 } from '../program.js';
-import { MAX_WEEK } from '../engine.js';
+import { MAX_WEEK, goalReview } from '../engine.js';
 import { SYNC } from '../store.js';
 
 /** How many lifts the progress cards show, most-used first. */
@@ -150,6 +150,42 @@ export function renderHome(ctx) {
     );
   }
 
+  /* ── goal review ── */
+  // A goal is a phase. Once the body has moved far enough, or enough time has
+  // passed, the app says so instead of leaving someone on a cut forever.
+  const review = goalReview({
+    profile: store.doc.profile,
+    weight: store.latestWeight(),
+    goalKey,
+  });
+  const reviewCard = review
+    ? el(
+        'div',
+        { class: 'review' },
+        el('h4', { text: review.t }),
+        el('p', { text: review.p }),
+        el(
+          'div',
+          { class: 'rbtns' },
+          el('button', {
+            class: 'cta',
+            text: 'راجع هدفي',
+            on: { click: () => ctx.editProfile() },
+          }),
+          el('button', {
+            class: 'cta ghost',
+            text: 'كمّل على هدفي',
+            on: {
+              click: () => {
+                store.reaffirmGoal();
+                ctx.refresh();
+              },
+            },
+          })
+        )
+      )
+    : null;
+
   /* ── progression cards ── */
   // The lifts shown come from the goal's own programme, in the order it runs
   // them, skipping bodyweight and timed holds — a "+0 كجم" card says nothing.
@@ -273,6 +309,7 @@ export function renderHome(ctx) {
     { class: 'wrap' },
     header,
     hero,
+    reviewCard,
     el('h3', { text: 'أوزانك وهي تطلع' }),
     rail,
     el('h3', { text: 'الأسبوع كامل' }),

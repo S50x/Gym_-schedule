@@ -7,6 +7,9 @@ import {
   tdeeFormula,
   safeTarget,
   proteinTarget,
+  effectiveTdee,
+  dailyTarget,
+  goalReview,
   measuredTDEE,
   avgCal,
   todayKey,
@@ -121,6 +124,69 @@ test('goal-aware nutrition', async (t) => {
 
   await t.test('protein scales with the goal', () => {
     assert.ok(proteinTarget(100, 'cut') > proteinTarget(100, 'fitness'));
+  });
+});
+
+test('the calorie target follows the body', async (t) => {
+  const nut = { age: 30, height: 180, act: 1.55 };
+
+  await t.test('losing weight lowers maintenance and the target', () => {
+    const heavy = dailyTarget(nut, 100, 'cut');
+    const lighter = dailyTarget(nut, 85, 'cut');
+    assert.ok(lighter < heavy, `${lighter} should be under ${heavy}`);
+    // 15 kg is worth well over a hundred calories a day; a frozen target would
+    // have had them eating for the body they used to have.
+    assert.ok(heavy - lighter > 150, `difference was only ${heavy - lighter}`);
+  });
+
+  await t.test('a measured maintenance overrides the formula', () => {
+    const measured = { ...nut, measuredTdee: 2400 };
+    assert.equal(effectiveTdee(measured, 100), 2400);
+    assert.equal(dailyTarget(measured, 100, 'cut'), safeTarget(2400, 'cut'));
+  });
+
+  await t.test('the same weight gives different targets per goal', () => {
+    const targets = GOAL_KEYS.map((k) => dailyTarget(nut, 90, k));
+    assert.equal(new Set(targets).size, GOAL_KEYS.length);
+  });
+
+  await t.test('falls back to the stored figure when there is nothing to compute from', () => {
+    assert.equal(effectiveTdee({ tdee: 2500 }, null), 2500);
+    assert.equal(effectiveTdee(null, 90), null);
+  });
+});
+
+test('the goal is reviewed, not set and forgotten', async (t) => {
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+
+  await t.test('stays quiet on a fresh goal with little change', () => {
+    const profile = { goal: 'cut', level: 'int', startWeight: 100, ts: now - WEEK_MS };
+    assert.equal(goalReview({ profile, weight: 99, goalKey: 'cut', now }), null);
+  });
+
+  await t.test('speaks up once the body has moved far enough', () => {
+    const profile = { goal: 'cut', level: 'int', startWeight: 100, ts: now - WEEK_MS };
+    const review = goalReview({ profile, weight: 92, goalKey: 'cut', now });
+    assert.ok(review, 'an 8% drop should prompt a review');
+    assert.match(review.t, /نزلت/);
+  });
+
+  await t.test('reads the direction, so a bulk is told it gained', () => {
+    const profile = { goal: 'muscle', level: 'int', startWeight: 80, ts: now - WEEK_MS };
+    const review = goalReview({ profile, weight: 87, goalKey: 'muscle', now });
+    assert.ok(review);
+    assert.match(review.t, /زدت/);
+  });
+
+  await t.test('speaks up on time alone, even if the scale barely moved', () => {
+    const profile = { goal: 'cut', level: 'int', startWeight: 100, ts: now - 9 * WEEK_MS };
+    assert.ok(goalReview({ profile, weight: 99.5, goalKey: 'cut', now }));
+  });
+
+  await t.test('says nothing without a profile', () => {
+    assert.equal(goalReview({ profile: null, weight: 90, now }), null);
+    assert.equal(goalReview({ profile: { goal: 'cut' }, weight: 90, now }), null);
   });
 });
 
