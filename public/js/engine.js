@@ -311,6 +311,74 @@ export function proteinTarget(kg, goalKey = DEFAULT_GOAL) {
   return Math.round(kg * goalOf(goalKey).nutrition.proteinPerKg);
 }
 
+/**
+ * Maintenance calories as of today.
+ *
+ * Deliberately derived rather than stored. A number worked out once at sign-up
+ * is wrong the moment the body it describes changes — lose fifteen kilos on a
+ * frozen target and you are eating for a person who no longer exists. A measured
+ * value beats the formula, because it comes from what actually happened to this
+ * person's weight at a known intake.
+ */
+export function effectiveTdee(nutrition, weight) {
+  if (!nutrition) return null;
+  if (Number.isFinite(nutrition.measuredTdee)) return nutrition.measuredTdee;
+  if (Number.isFinite(weight) && Number.isFinite(nutrition.age)) {
+    return tdeeFormula(weight, nutrition.age, nutrition.act ?? 1.55, nutrition.height);
+  }
+  // Nothing to recompute from: fall back to whatever was last stored.
+  return Number.isFinite(nutrition.tdee) ? nutrition.tdee : null;
+}
+
+/** The daily calorie target for today's weight and the current goal. */
+export function dailyTarget(nutrition, weight, goalKey = DEFAULT_GOAL) {
+  const tdee = effectiveTdee(nutrition, weight);
+  return tdee === null ? null : safeTarget(tdee, goalKey);
+}
+
+/* ────────────────────────── goal review ────────────────────────── */
+
+export const GOAL_REVIEW_WEEKS = 8;
+export const GOAL_REVIEW_PCT = 7;
+
+/**
+ * Is it time to ask whether the goal still fits?
+ *
+ * A goal is a phase, not a setting. Someone who set out to cut and has since
+ * dropped 8% of their body weight is probably done cutting, and nothing in the
+ * app would ever have said so.
+ *
+ * @returns {{t:string, p:string}|null}
+ */
+export function goalReview({ profile, weight, goalKey = DEFAULT_GOAL, now = Date.now() }) {
+  if (!profile?.ts) return null;
+  const goal = goalOf(goalKey);
+
+  const start = Number(profile.startWeight);
+  if (Number.isFinite(start) && start > 0 && Number.isFinite(weight)) {
+    const pct = ((weight - start) / start) * 100;
+    if (Math.abs(pct) >= GOAL_REVIEW_PCT) {
+      const moved = round1(Math.abs(weight - start));
+      const down = pct < 0;
+      return {
+        t: down ? `نزلت ${moved} كجم على هدف ${goal.n}` : `زدت ${moved} كجم على هدف ${goal.n}`,
+        p: down
+          ? 'تغيّر واضح. لو وصلت للي تبيه، فكّر تنتقل لبناء عضل أو شد الجسم — الاستمرار بعجز طويل يوقف تقدمك.'
+          : 'تغيّر واضح. لو وصلت للي تبيه، فكّر تنتقل للتنشيف أو شد الجسم.',
+      };
+    }
+  }
+
+  const weeks = Math.floor((now - profile.ts) / (7 * 24 * 60 * 60 * 1000));
+  if (weeks >= GOAL_REVIEW_WEEKS) {
+    return {
+      t: `صار لك ${weeks} أسبوع على هدف ${goal.n}`,
+      p: 'راجع هدفك لو تغيّر وضعك. ولو لسا نفس الهدف، كمّل — بس خلّ الاختيار قرارك مو نسيان.',
+    };
+  }
+  return null;
+}
+
 /* ────────────────────────── misc ────────────────────────── */
 
 export function round1(n) {

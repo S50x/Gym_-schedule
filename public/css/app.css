@@ -1417,6 +1417,39 @@ ol.steps b {
   margin-bottom: 6px;
 }
 
+/* ══════ goal review prompt ══════ */
+.review {
+  background: linear-gradient(160deg, rgba(196, 255, 54, 0.12), rgba(196, 255, 54, 0.03));
+  border: 1px solid rgba(196, 255, 54, 0.35);
+  border-radius: 20px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+.review h4 {
+  font-family: 'Cairo';
+  font-weight: 900;
+  font-size: 15.5px;
+  margin: 0 0 6px;
+  color: var(--orange);
+}
+.review p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.65;
+  color: #d5dcc8;
+}
+.rbtns {
+  display: flex;
+  gap: 8px;
+  margin-top: 13px;
+}
+.rbtns .cta {
+  margin-top: 0;
+  flex: 1;
+  font-size: 13.5px;
+  padding: 12px 8px;
+}
+
 /* ══════ onboarding ══════ */
 .onb .onbhead {
   padding: 22px 2px 4px;

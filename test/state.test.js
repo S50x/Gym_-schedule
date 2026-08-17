@@ -90,9 +90,16 @@ test('state validation', async (t) => {
   });
 
   await t.test('accepts a valid profile', () => {
-    const res = validateState(docWith({}, { profile: { goal: 'muscle', level: 'adv', ts: 5 } }));
+    const res = validateState(
+      docWith({}, { profile: { goal: 'muscle', level: 'adv', startWeight: 88.5, ts: 5 } })
+    );
     assert.equal(res.ok, true);
-    assert.deepEqual(res.doc.profile, { goal: 'muscle', level: 'adv', ts: 5 });
+    assert.deepEqual(res.doc.profile, {
+      goal: 'muscle',
+      level: 'adv',
+      startWeight: 88.5,
+      ts: 5,
+    });
   });
 
   await t.test('a document with no profile is valid — that is every old one', () => {
@@ -125,7 +132,12 @@ test('state validation', async (t) => {
       docWith({}, { profile: { goal: 'cut', level: 'int', evil: 'x', ts: 1 } })
     );
     assert.equal(res.ok, true);
-    assert.deepEqual(Object.keys(res.doc.profile).sort(), ['goal', 'level', 'ts']);
+    assert.deepEqual(Object.keys(res.doc.profile).sort(), [
+      'goal',
+      'level',
+      'startWeight',
+      'ts',
+    ]);
   });
 
   await t.test('rejects nonsense week keys', () => {
