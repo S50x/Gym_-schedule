@@ -1,10 +1,21 @@
 import { el } from '../dom.js';
 import { fmtN, sparkline } from '../ui.js';
-import { PLAN, WEEK, CARDIO, DAY_NAMES, exById, machName, machinesOfDay } from '../program.js';
-import { todayKey, MAX_WEEK } from '../engine.js';
+import {
+  planOf,
+  weekOf,
+  cardioOf,
+  goalOf,
+  todayLift,
+  DAY_NAMES,
+  exById,
+  machName,
+  machinesOfDay,
+} from '../program.js';
+import { MAX_WEEK } from '../engine.js';
 import { SYNC } from '../store.js';
 
-const RAIL_IDS = ['chest_db', 'sh_press', 'lat_pull', 'cable_row', 'leg_press', 'row_1arm'];
+/** How many lifts the progress cards show, most-used first. */
+const RAIL_LIMIT = 6;
 
 const SYNC_LABEL = {
   [SYNC.OFF]: 'محلي فقط',
@@ -19,11 +30,15 @@ export function renderHome(ctx) {
   const { store, navigate, openGym } = ctx;
   const wk = store.viewWeek;
   const week = store.week(wk);
+  const goalKey = store.goal;
+  const PLAN = planOf(goalKey);
+  const WEEK = weekOf(goalKey);
+  const CARDIO = cardioOf(goalKey);
 
   const doneCount = (dayKey) =>
     PLAN[dayKey].ex.filter((e) => {
       const sets = week.sets[e.id] || [];
-      return sets.length === e.sets && sets.every(Boolean);
+      return sets.length >= e.sets && sets.slice(0, e.sets).every(Boolean);
     }).length;
 
   /* ── header ── */
@@ -61,7 +76,8 @@ export function renderHome(ctx) {
       'div',
       { class: 'logo' },
       'حديد',
-      el('small', { text: store.user ? store.user.email : 'سجل تمرين محلي' })
+      // The goal is what shapes everything below, so it is named up front.
+      el('small', { text: `${goalOf(goalKey).n} · ${store.user ? store.user.email : 'محلي'}` })
     ),
     el(
       'div',
@@ -78,8 +94,9 @@ export function renderHome(ctx) {
   );
 
   /* ── today ── */
-  const tk = todayKey();
-  const todayName = DAY_NAMES[[1, 2, 3, 4, 5, 6, 0][new Date().getDay()]];
+  const tk = todayLift(goalKey);
+  const todayIndex = [1, 2, 3, 4, 5, 6, 0][new Date().getDay()];
+  const todayName = DAY_NAMES[todayIndex];
   let hero;
   if (wk !== store.currentWeek) {
     hero = el(
@@ -109,7 +126,7 @@ export function renderHome(ctx) {
       { class: 'today rest' },
       el('div', { class: 'lbl', text: `TODAY · ${todayName}` }),
       el('h2', { text: 'يوم كارديو' }),
-      el('p', { text: '40 دقيقة مشي مائل أو دراجة. تلهث بس تقدر تتكلم.' }),
+      el('p', { text: CARDIO[todayIndex]?.detail || 'كارديو خفيف اليوم.' }),
       el('button', {
         class: 'go',
         text: 'شوف تفاصيل الكارديو',
@@ -134,9 +151,21 @@ export function renderHome(ctx) {
   }
 
   /* ── progression cards ── */
+  // The lifts shown come from the goal's own programme, in the order it runs
+  // them, skipping bodyweight and timed holds — a "+0 كجم" card says nothing.
+  const railIds = [];
+  for (const dayKey of Object.keys(PLAN)) {
+    for (const e of PLAN[dayKey].ex) {
+      if (e.body || e.time || railIds.includes(e.id)) continue;
+      railIds.push(e.id);
+      if (railIds.length >= RAIL_LIMIT) break;
+    }
+    if (railIds.length >= RAIL_LIMIT) break;
+  }
+
   const history = store.weightHistory(wk);
   const cards = [];
-  for (const id of RAIL_IDS) {
+  for (const id of railIds) {
     const e = exById(id);
     const values = history[id];
     if (!e || !values?.length) continue;
@@ -209,14 +238,17 @@ export function renderHome(ctx) {
       });
     } else {
       // A day split across machines reads "…· سيكل 20د + غزالة 20د".
-      const picked = machinesOfDay(week.cmach[String(day.c)], CARDIO[day.c][3]);
+      const slot = CARDIO[day.c] || { detail: '', min: 0 };
+      const picked = machinesOfDay(week.cmach[String(day.c)], slot.min);
       const label = picked
         .map((p) => (picked.length > 1 ? `${machName(p.k)} ${p.m}د` : machName(p.k)))
         .join(' + ');
-      sub = CARDIO[day.c][1] + (label ? ' · ' + label : '');
+      sub = slot.detail + (label ? ' · ' + label : '');
     }
 
-    const checkbox = day.rest
+    // A goal may have days with neither lifting nor cardio; those get no tick.
+    const noCardio = day.rest || !!CARDIO[day.c]?.rest;
+    const checkbox = noCardio
       ? null
       : el('button', {
           class: ['ck', cardioDone ? 'on' : ''],

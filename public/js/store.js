@@ -11,7 +11,15 @@
  */
 
 import { api, ApiError, NetworkError } from './api.js';
-import { baseWeights, exById, EXERCISE_IDS } from './program.js';
+import {
+  baseWeights,
+  exById,
+  EXERCISE_IDS,
+  DEFAULT_GOAL,
+  DEFAULT_LEVEL,
+  GOALS,
+  LEVELS,
+} from './program.js';
 import { progress, verdict, MAX_WEEK } from './engine.js';
 
 const KEY = 'hadeed:doc';
@@ -28,7 +36,7 @@ export const SYNC = {
 };
 
 export function emptyDoc() {
-  return { schema: 1, meta: { week: 1 }, weeks: {}, nutrition: null };
+  return { schema: 1, meta: { week: 1 }, weeks: {}, nutrition: null, profile: null };
 }
 
 export function emptyWeek() {
@@ -103,6 +111,43 @@ class Store extends EventTarget {
   }
 
   /**
+   * The trainee's goal. A document saved before goals existed has no profile,
+   * and fat loss is what that programme actually was — so it stays on it and
+   * nothing about their history changes.
+   */
+  get goal() {
+    const key = this.doc.profile?.goal;
+    return key && GOALS[key] ? key : DEFAULT_GOAL;
+  }
+
+  get level() {
+    const key = this.doc.profile?.level;
+    return key && LEVELS[key] ? key : DEFAULT_LEVEL;
+  }
+
+  /** Has the trainee been through onboarding? */
+  get hasProfile() {
+    return !!(this.doc.profile?.goal && GOALS[this.doc.profile.goal]);
+  }
+
+  /**
+   * Is there anything in here already?
+   *
+   * A document from before goals existed has no profile, and so does a brand new
+   * one — the difference is history. Someone mid-programme must not be dragged
+   * through onboarding; they keep the fat-loss programme they were already on and
+   * can set a goal from the account page whenever they feel like it.
+   */
+  get hasHistory() {
+    return Object.keys(this.doc.weeks || {}).length > 0 || !!this.doc.nutrition?.age;
+  }
+
+  /** Onboarding is for genuinely new documents only. */
+  get needsOnboarding() {
+    return !this.hasProfile && !this.hasHistory;
+  }
+
+  /**
    * Week 0 (and anything below 1) is "before the program started" and must come
    * back empty. Clamping it up to week 1 would make `week(wk - 1)` return the
    * *current* week, so the very first check-in compared a measurement against
@@ -128,12 +173,16 @@ class Store extends EventTarget {
     const target = clampWeek(n);
     if (this._weightCache.has(target)) return this._weightCache.get(target);
 
-    let weights = { ...baseWeights(), ...(this.doc.weeks['1']?.weights || {}) };
+    let weights = {
+      ...baseWeights(this.goal, this.level),
+      ...(this.doc.weeks['1']?.weights || {}),
+    };
     for (let i = 2; i <= target; i++) {
       const prevWeek = this.doc.weeks[String(i - 1)] || emptyWeek();
       const gate = verdict(
         this.doc.weeks[String(i - 1)]?.body || null,
-        this.doc.weeks[String(i - 2)]?.body || null
+        this.doc.weeks[String(i - 2)]?.body || null,
+        this.goal
       );
       weights = progress(weights, prevWeek, gate);
       const overrides = this.doc.weeks[String(i)]?.weights || {};
@@ -182,6 +231,21 @@ class Store extends EventTarget {
     mutator(week);
     week.ts = Date.now();
     this.doc.weeks[key] = week;
+    this._weightCache.clear();
+    this.persist();
+  }
+
+  /**
+   * Set the goal and level. Changing goal swaps the programme, so the derived
+   * weight cache has to go — but nothing stored is deleted: weights and sets are
+   * keyed by exercise id, so the old goal's numbers are still there if the user
+   * comes back to it.
+   */
+  updateProfile(mutator) {
+    const profile = { goal: this.goal, level: this.level, ...(this.doc.profile || {}) };
+    mutator(profile);
+    profile.ts = Date.now();
+    this.doc.profile = profile;
     this._weightCache.clear();
     this.persist();
   }
@@ -362,6 +426,7 @@ function normalize(doc) {
   if (!doc || typeof doc !== 'object') return out;
   out.meta.week = clampWeek(doc.meta?.week || 1);
   out.nutrition = doc.nutrition || null;
+  out.profile = doc.profile || null;
   for (const [key, week] of Object.entries(doc.weeks || {})) {
     out.weeks[String(clampWeek(key))] = { ...emptyWeek(), ...week };
   }
