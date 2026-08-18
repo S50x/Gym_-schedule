@@ -29,12 +29,17 @@ let painting = false;
 // document looks empty. Deciding "this user is new" then would send someone with
 // years of history to onboarding, so the gate waits until the data is actually in.
 let loaded = false;
+// Set when someone with an existing account chooses to sign in instead of
+// setting up a new programme. Cleared the moment they are actually signed in.
+let skipOnboarding = false;
 
 function paintTabs() {
   if (!tabbar) return;
   // Onboarding owns the whole screen: there is nothing to navigate to until a
   // goal is chosen, and the tab bar would just be a way to escape half-set-up.
-  tabbar.hidden = view === 'onboarding';
+  // Hidden until there is a programme to navigate: during onboarding, and while
+  // an existing account is signing in from the escape hatch.
+  tabbar.hidden = view === 'onboarding' || (store.needsOnboarding && !store.user);
   for (const tab of tabbar.querySelectorAll('.tab')) {
     const on = tab.dataset.view === view;
     tab.classList.toggle('on', on);
@@ -53,7 +58,14 @@ const ctx = {
 
   /** Reopen onboarding to change goal or level. */
   editProfile() {
+    skipOnboarding = false;
     ctx.navigate('onboarding');
+  },
+
+  /** Let an existing account reach the login form without inventing a goal. */
+  goToLogin() {
+    skipOnboarding = true;
+    ctx.navigate('account');
   },
 
   setWeek(n) {
@@ -136,7 +148,10 @@ function render() {
   try {
     // Only a genuinely empty document is sent to onboarding. Anyone already
     // mid-programme keeps going on the goal they were implicitly on.
-    if (loaded && store.needsOnboarding && view !== 'onboarding') view = 'onboarding';
+    if (loaded && store.user) skipOnboarding = false;
+    if (loaded && store.needsOnboarding && !skipOnboarding && view !== 'onboarding') {
+      view = 'onboarding';
+    }
     const node = VIEWS[view](ctx);
     clear(app);
     app.appendChild(node);

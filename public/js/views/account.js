@@ -53,6 +53,25 @@ export function renderAccount(ctx) {
   const { store } = ctx;
 
   if (!store.user) {
+    // Reached from onboarding's "I already have an account": there is no
+    // programme to show yet, and the goal will arrive with their synced data.
+    if (store.needsOnboarding) {
+      return el(
+        'div',
+        { class: 'wrap' },
+        el('h3', { class: 'first', text: 'سجّل دخولك' }),
+        el('div', {
+          class: 'hint-lg',
+          text: 'ادخل بحسابك وبيجيك برنامجك وكل بياناتك من أجهزتك الثانية.',
+        }),
+        authForms(ctx),
+        el('button', {
+          class: 'cta ghost',
+          text: 'ما عندي حساب — أبي أسوي برنامج جديد',
+          on: { click: () => ctx.editProfile() },
+        })
+      );
+    }
     return el(
       'div',
       { class: 'wrap' },

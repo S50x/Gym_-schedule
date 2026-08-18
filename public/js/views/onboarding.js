@@ -223,6 +223,13 @@ export function renderOnboarding(ctx) {
           text: 'رجوع بدون تعديل',
           on: { click: () => ctx.navigate('account') },
         })
-      : null
+      : // Someone who already has an account on another phone must not be made
+        // to invent a goal before they can even reach the login form — their
+        // real goal is about to arrive with their data.
+        el('button', {
+          class: 'cta ghost',
+          text: 'عندي حساب — سجّل دخول',
+          on: { click: () => ctx.goToLogin() },
+        })
   );
 }
