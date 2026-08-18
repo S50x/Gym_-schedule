@@ -12,7 +12,8 @@
     "start": "node server/index.js",
     "dev": "NODE_ENV=development node --watch server/index.js",
     "test": "node --test 'test/**/*.test.js'",
-    "fonts": "node scripts/fetch-fonts.mjs"
+    "fonts": "node scripts/fetch-fonts.mjs",
+    "browser": "node test/browser/run.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.5",
@@ -23,6 +24,7 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "playwright-core": "^1.62.1"
   }
 }
