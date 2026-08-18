@@ -16,7 +16,7 @@
 | **البنية** | ملف واحد، CSS و JS داخله | خادم Node + واجهة مقسّمة لوحدات |
 | **الأمان** | بدون ترويسات، البناء بـ `innerHTML` | CSP صارمة، صفر `innerHTML`، جلسات مؤمّنة |
 | **الدخول** | لا يوجد | كلمة سر + تحقق بخطوتين (اختياري) |
-| **الاختبارات** | لا شيء | 130 اختبار + فحص فعلي بالمتصفح |
+| **الاختبارات** | لا شيء | 173 اختبار + ٧ رحلات فحص بالمتصفح |
 | **الأخطاء** | 25 مشكلة موثّقة | كلها معالجة |
 
 📄 **[تقرير الأخطاء البرمجية (`docs/BUGS.md`)](docs/BUGS.md)** — 25 مشكلة، كل وحدة: وش صار، ليش صارت، وش تسوّى.
@@ -40,7 +40,8 @@ npm start
 ما تحتاج تركّب قاعدة بيانات. لو `DATABASE_URL` فاضي، التطبيق يشغّل **Postgres مدمج داخل العملية نفسها** (PGlite) ويحفظ في مجلد `data/`. نفس لهجة SQL اللي تشتغل بالإنتاج بالضبط.
 
 للتطوير مع إعادة تشغيل تلقائية: `npm run dev`
-لتشغيل الاختبارات: `npm test` (130 اختبار)
+لتشغيل الاختبارات: `npm test` (173 اختبار)
+لفحص التطبيق بمتصفح حقيقي: `npm run browser` (٧ رحلات — يشغّل السيرفر بنفسه)
 
 ---
 
@@ -158,11 +159,12 @@ public/
   js/dom.js         باني عناصر آمن — بديل innerHTML
   js/store.js       التخزين المحلي والمزامنة
   js/gym.js         وضع النادي ومؤقّت الراحة
-  js/views/         home · cardio · week · nutri · account
+  js/views/         onboarding · home · cardio · week · nutri · account
   sw.js             العمل بدون نت
   fonts/            خطوط محليّة (بدون طرف ثالث)
 
-test/               130 اختبار: auth · security · state · engine · totp · qr · mfa · postgres
+test/               173 اختبار: auth · security · state · engine · totp · qr · mfa · postgres
+test/browser/       ٧ رحلات فحص بمتصفح حقيقي (npm run browser)
 docs/               BUGS.md · SECURITY.md
 render.yaml         مخطط Render — ينشئ الخدمة وقاعدة البيانات ويربطهم
 scripts/            fetch-fonts.mjs
