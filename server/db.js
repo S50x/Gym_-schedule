@@ -98,6 +98,25 @@ const SCHEMA = [
   );
   CREATE INDEX mfa_challenges_expiry_idx ON mfa_challenges(expires_at);
   `,
+
+  // 3 — password reset tokens
+  //
+  // Only the HMAC of the token is stored, exactly like a session: a stolen
+  // database still yields no usable reset link. A row is short lived (one hour),
+  // single use (deleted the moment it is spent), and every other outstanding
+  // token for the same user is dropped when one is issued or spent, so a reset
+  // mail can never be replayed and only the newest link ever works.
+  `
+  CREATE TABLE password_resets (
+    id         INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash TEXT    NOT NULL UNIQUE,
+    created_at BIGINT  NOT NULL,
+    expires_at BIGINT  NOT NULL
+  );
+  CREATE INDEX password_resets_user_idx ON password_resets(user_id);
+  CREATE INDEX password_resets_expiry_idx ON password_resets(expires_at);
+  `,
 ];
 
 /* ────────────────────────── drivers ────────────────────────── */
@@ -334,4 +353,5 @@ export async function sweep(db, now = Date.now()) {
   await db.run('DELETE FROM sessions WHERE expires_at <= $1', [now]);
   await db.run('DELETE FROM login_attempts WHERE created_at <= $1', [now - 24 * 60 * 60 * 1000]);
   await db.run('DELETE FROM mfa_challenges WHERE expires_at <= $1', [now]);
+  await db.run('DELETE FROM password_resets WHERE expires_at <= $1', [now]);
 }

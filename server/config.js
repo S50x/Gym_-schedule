@@ -65,6 +65,18 @@ export const config = {
   secureCookies: isProd && origin.startsWith('https://'),
   trustProxy: process.env.TRUST_PROXY === '1',
   allowRegistration: process.env.ALLOW_REGISTRATION !== '0',
+  // Transactional email for password resets, sent through Resend's HTTP API.
+  // Leave RESEND_API_KEY unset and the reset flow degrades gracefully: the
+  // endpoints still answer (and never reveal whether an account exists), but no
+  // mail goes out and the boot log says so. One integration point, like the
+  // database — set the key and a from-address and it works.
+  mail: {
+    resendApiKey: process.env.RESEND_API_KEY || '',
+    resendApiUrl: process.env.RESEND_API_URL || 'https://api.resend.com/emails',
+    from: process.env.MAIL_FROM || 'حديد <onboarding@resend.dev>',
+    // How long a reset link stays valid.
+    resetTtlMs: 60 * 60 * 1000, // 1 hour
+  },
   sessionTtlMs: 30 * 24 * 60 * 60 * 1000, // 30 days
   sessionIdleMs: 30 * 24 * 60 * 60 * 1000,
   scrypt: {

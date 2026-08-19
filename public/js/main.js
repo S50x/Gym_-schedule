@@ -8,6 +8,7 @@ import { renderWeek } from './views/week.js';
 import { renderNutri } from './views/nutri.js';
 import { renderAccount } from './views/account.js';
 import { renderOnboarding } from './views/onboarding.js';
+import { renderReset } from './views/reset.js';
 import { MAX_WEEK } from './engine.js';
 import { cardioOf, MAX_MACHINES_PER_DAY, machinesOfDay, splitMinutes } from './program.js';
 
@@ -32,6 +33,15 @@ let loaded = false;
 // Set when someone with an existing account chooses to sign in instead of
 // setting up a new programme. Cleared the moment they are actually signed in.
 let skipOnboarding = false;
+// The token from a /reset?token=… link. While set, the reset screen owns the
+// whole view — signed in or not, onboarding or not.
+let resetToken = readResetToken();
+
+function readResetToken() {
+  if (location.pathname !== '/reset') return null;
+  const token = new URLSearchParams(location.search).get('token');
+  return token && token.length <= 512 ? token : null;
+}
 
 function paintTabs() {
   if (!tabbar) return;
@@ -66,6 +76,22 @@ const ctx = {
   goToLogin() {
     skipOnboarding = true;
     ctx.navigate('account');
+  },
+
+  /** The reset token from the URL, read by the reset view. */
+  get resetToken() {
+    return resetToken;
+  },
+
+  /** Leave the reset screen for the login form and clean the token off the URL. */
+  finishReset() {
+    resetToken = null;
+    try {
+      history.replaceState({}, '', '/');
+    } catch {
+      /* history may be unavailable in some embedded contexts */
+    }
+    ctx.goToLogin();
   },
 
   setWeek(n) {
@@ -146,6 +172,14 @@ function render() {
   if (painting) return;
   painting = true;
   try {
+    // A reset link takes over the whole screen, ahead of onboarding and tabs.
+    if (resetToken) {
+      const node = renderReset(ctx);
+      clear(app);
+      app.appendChild(node);
+      if (tabbar) tabbar.hidden = true;
+      return;
+    }
     // Only a genuinely empty document is sent to onboarding. Anyone already
     // mid-programme keeps going on the goal they were implicitly on.
     if (loaded && store.user) skipOnboarding = false;
