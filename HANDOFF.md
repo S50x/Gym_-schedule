@@ -23,11 +23,11 @@ the Render and Neon dashboards.** Do not rewrite what already works.
 ## 1. Current state (verified)
 
 ```
-main:    c4b9253   (PR #4 merged)
+main:    4afc0b4   (PR #5 merged)
 tests:   npm test     → 173 pass / 0 fail   (~15s, PGlite in-process)
 browser: npm run browser → 7 journeys clean (~2m20s, boots its own server)
-commits: 21
-PRs:     #1 #2 #3 #4 — all merged, none open
+commits: 23
+PRs:     #1 #2 #3 #4 #5 — all merged, none open
 ```
 
 No CI is configured on the repo, and there is no scheduled watcher running.
@@ -35,7 +35,8 @@ No CI is configured on the repo, and there is no scheduled watcher running.
 Shipped in order: cross-device sync + 25 bug fixes → 2FA → Postgres → TLS and
 scale-to-zero hardening → honest network errors → safe-area fix → Volt redesign +
 height → bilingual names, cardio splitting, plank timer → progress cards →
-five goals + onboarding → live calorie target + goal review.
+five goals + onboarding → live calorie target + goal review → browser journeys
+moved into the repo (`npm run browser`).
 
 ## 2. What the app is
 
@@ -247,8 +248,37 @@ been caught by one of them.
 - **Fat-loss protein moved from 1.6 to 2.0 g/kg** with the goals work, so an
   existing user's displayed protein target rose. Intentional, and flagged to the
   user, but worth knowing if they ask.
-- **No password reset.** It needs an email service. If someone loses their phone
-  *and* their recovery codes, the account is unreachable. Documented, not a bug.
+- **No password reset flow.** There is no "forgot password" — it needs an email
+  service that was never wired up. When the user forgets their password (this has
+  already happened once), reset it by hand, without ever touching their database
+  yourself:
+    1. Generate a temporary password and its hash **locally**, with the app's own
+       `hashPassword` (server/auth.js) so the scrypt params match exactly:
+       ```
+       SESSION_SECRET=$(node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))") \
+         node -e "import('./server/auth.js').then(m=>console.log(m.hashPassword('TEMP')))"
+       ```
+       (The `SESSION_SECRET` only peppers session tokens, not the password hash, so
+       a throwaway one is fine — but config.js rejects one shorter than 32 chars, so
+       generate a real one as shown rather than passing a dummy like `x`.)
+    2. Hand the user a ready-to-paste SQL statement to run in **their** Neon SQL
+       editor — you never see the connection string or run it yourself:
+       ```sql
+       UPDATE users SET password_hash = 'scrypt$...',
+         updated_at = (extract(epoch from now())*1000)::bigint
+       WHERE email_norm = lower('their@email');
+       ```
+       `email_norm` is the lowercased email; expect `UPDATE 1`.
+    3. Tell them to sign in with the temporary password and **immediately** change
+       it in Account → change password, since the temporary one appeared in chat.
+  If 2FA is enabled and they also lost their authenticator and recovery codes, the
+  same hand-run-SQL approach clears it: `UPDATE users SET totp_enabled = false,
+  totp_secret = NULL, totp_pending = NULL WHERE email_norm = lower('their@email');`
+  (check the real column names in server/db.js migrations first).
+- **Never ask for or accept the connection string** to do any of this. The user
+  runs every statement themselves; you only ever hand them SQL and a local hash.
+- **Recovery codes and phone lost together** still means an unreachable account if
+  you have no database access — the SQL reset above is the only way back in.
 
 ## 10. Next step for you
 
