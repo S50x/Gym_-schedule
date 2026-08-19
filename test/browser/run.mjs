@@ -17,6 +17,7 @@ const JOURNEYS = [
   ['review', 'review.mjs', 'live calorie target + goal review'],
   ['smoke', 'smoke.mjs', 'full app, sync between browsers, XSS probes'],
   ['mfa', 'mfa.mjs', 'two-factor end to end'],
+  ['reset', 'reset.mjs', 'forgot-password form + the reset screen'],
 ];
 
 const filter = process.argv.slice(2).filter((a) => !a.startsWith('-'));

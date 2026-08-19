@@ -172,7 +172,7 @@ test('postgres behaviour', async (t) => {
     const { rows } = await app.db.query('SELECT version FROM schema_migrations ORDER BY version');
     assert.deepEqual(
       rows.map((r) => Number(r.version)),
-      [1, 2]
+      [1, 2, 3]
     );
   });
 });

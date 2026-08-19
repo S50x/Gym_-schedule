@@ -83,7 +83,9 @@ export function createApp(db) {
 
   /* ── app shell ─────────────────────────────────────────────── */
 
-  app.get(/^\/(?:index\.html)?$/, (req, res) => {
+  // `/` and `/reset` both serve the single-page shell; the reset link lands on
+  // /reset?token=… and the client reads the token from the URL.
+  app.get(/^\/(?:index\.html|reset)?$/, (req, res) => {
     res.setHeader('Cache-Control', 'no-cache');
     res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
   });
