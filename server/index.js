@@ -14,6 +14,11 @@ const server = app.listen(config.port, () => {
       ? 'Database: Postgres (DATABASE_URL)'
       : `Database: embedded Postgres at ${config.dbDir} — data is NOT durable on a host without a disk`
   );
+  console.log(
+    config.mail.resendApiKey
+      ? `Email: Resend (from ${config.mail.from}) — password reset is live`
+      : 'Email: not configured (RESEND_API_KEY unset) — password reset links will NOT be sent'
+  );
 });
 
 let shuttingDown = false;

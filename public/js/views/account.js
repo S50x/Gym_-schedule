@@ -459,6 +459,13 @@ function authForms(ctx) {
   const submitBtn = el('button', { class: 'cta', text: 'دخول' });
   const formCard = el('div', { class: 'card' });
 
+  // Only meaningful when signing in; hidden while registering.
+  const forgotLink = el('button', {
+    class: 'linkbtn',
+    text: 'نسيت كلمة السر؟',
+    on: { click: () => showForgotForm(ctx, formCard, emailInput.value.trim()) },
+  });
+
   const tabs = ['login', 'register'].map((value) =>
     el('button', {
       text: value === 'login' ? 'تسجيل دخول' : 'حساب جديد',
@@ -474,6 +481,7 @@ function authForms(ctx) {
             'autocomplete',
             mode === 'login' ? 'current-password' : 'new-password'
           );
+          forgotLink.hidden = mode !== 'login';
           message.replaceChildren();
         },
       },
@@ -529,6 +537,7 @@ function authForms(ctx) {
     el('label', { class: 'inp ltr' }, el('span', { text: 'البريد الإلكتروني' }), emailInput),
     el('label', { class: 'inp ltr' }, el('span', { text: 'كلمة السر (10 خانات فأكثر)' }), passwordInput),
     submitBtn,
+    forgotLink,
     message
   );
 
@@ -560,6 +569,72 @@ function authForms(ctx) {
       ])
     )
   );
+}
+
+/** Forgot-password: ask for the email, get a generic "sent if it exists" reply. */
+function showForgotForm(ctx, card, prefill) {
+  const emailInput = el('input', {
+    type: 'email',
+    autocomplete: 'username',
+    inputmode: 'email',
+    placeholder: 'you@example.com',
+    attrs: { autocapitalize: 'none', spellcheck: 'false' },
+  });
+  if (prefill) emailInput.value = prefill;
+
+  const message = el('div', {});
+  const button = el('button', { class: 'cta', text: 'أرسل رابط إعادة التعيين' });
+
+  const submit = async () => {
+    message.replaceChildren();
+    const email = emailInput.value.trim();
+    if (!email) {
+      return message.replaceChildren(el('div', { class: 'formerr', text: 'اكتب بريدك.' }));
+    }
+    button.disabled = true;
+    button.textContent = 'لحظة…';
+    try {
+      const res = await api.forgotPassword(email);
+      // The server answers the same whether or not the email is registered, so
+      // just show its message and stop — no retry loop that could leak anything.
+      card.replaceChildren(
+        el('div', { class: 'formok', text: 'تم ✓' }),
+        el('div', {
+          class: 'mut',
+          text:
+            res.data?.message ||
+            'لو البريد مسجّل عندنا، بيوصلك رابط لإعادة تعيين كلمة السر خلال دقائق. تأكد من صندوق الوارد ومجلد المهملات (Spam).',
+        }),
+        el('button', {
+          class: 'cta ghost',
+          text: 'رجوع لتسجيل الدخول',
+          on: { click: () => ctx.refresh() },
+        })
+      );
+    } catch (err) {
+      message.replaceChildren(el('div', { class: 'formerr', text: errorText(err) }));
+      button.disabled = false;
+      button.textContent = 'أرسل رابط إعادة التعيين';
+    }
+  };
+
+  button.addEventListener('click', submit);
+  emailInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submit();
+  });
+
+  card.replaceChildren(
+    el('div', { class: 'mfahead' }, el('b', { text: 'نسيت كلمة السر؟' })),
+    el('div', {
+      class: 'mut',
+      text: 'اكتب بريدك المسجّل ونرسل لك رابط تختار منه كلمة سر جديدة. الرابط صالح لمدة ساعة.',
+    }),
+    el('label', { class: 'inp ltr' }, el('span', { text: 'البريد الإلكتروني' }), emailInput),
+    button,
+    message,
+    el('button', { class: 'cta ghost', text: 'إلغاء', on: { click: () => ctx.refresh() } })
+  );
+  setTimeout(() => emailInput.focus(), 0);
 }
 
 /** Second login step: the code from the authenticator, or a recovery code. */

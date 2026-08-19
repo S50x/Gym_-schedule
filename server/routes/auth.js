@@ -10,7 +10,10 @@ import {
   setSessionCookie,
   clearSessionCookie,
   sessionCookieName,
+  newToken,
+  hashToken,
 } from '../auth.js';
+import { sendPasswordReset } from '../mailer.js';
 import { authRateLimit, clearAuthAttempts, memoryRateLimit } from '../security.js';
 import { emptyState } from '../state-schema.js';
 import { UNIQUE_VIOLATION } from '../db.js';
@@ -93,6 +96,30 @@ export function authRouter(db) {
 
   const loginLimiter = authRateLimit(db, { windowMs: 15 * 60 * 1000, max: 8 });
   const registerLimiter = authRateLimit(db, { windowMs: 60 * 60 * 1000, max: 5 });
+
+  // Two independent ceilings on "forgot my password": one bounds a single IP
+  // flooding the endpoint, the other bounds how many mails a *single address*
+  // can be made to receive, so it cannot be used to bomb someone's inbox.
+  const forgotLimiters = [
+    memoryRateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 10,
+      message: 'طلبات كثيرة. انتظر شوي وحاول مرة ثانية.',
+    }),
+    memoryRateLimit({
+      windowMs: 60 * 60 * 1000,
+      max: 5,
+      keyFn: (req) => 'reset:' + String(req.body?.email || '').trim().toLowerCase().slice(0, 320),
+      message: 'طلبنا لك رابط إعادة تعيين كذا مرة. تأكد من بريدك أو انتظر شوي.',
+    }),
+  ];
+  // Reset tokens are 256-bit and cannot be guessed, but a limiter still keeps
+  // anyone from hammering the endpoint.
+  const resetLimiter = memoryRateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    message: 'محاولات كثيرة. انتظر شوي وحاول مرة ثانية.',
+  });
 
   router.get('/me', async (req, res) => {
     if (!req.user) return res.status(401).json({ error: 'unauthenticated' });
@@ -251,6 +278,100 @@ export function authRouter(db) {
       });
     }
   );
+
+  /* ────────────────────────── password reset ────────────────────────── */
+
+  // The generic answer is identical whether or not the address is registered —
+  // and returned even for a malformed email — so this endpoint can never be
+  // used to tell which emails have accounts.
+  const RESET_GENERIC = {
+    ok: true,
+    message:
+      'لو البريد مسجّل عندنا، بيوصلك رابط لإعادة تعيين كلمة السر خلال دقائق. تأكد من صندوق الوارد ومجلد المهملات (Spam).',
+  };
+
+  /** Step 1 — ask for a reset link by email. */
+  router.post('/forgot', ...forgotLimiters, async (req, res) => {
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+    if (!email || email.length > MAX_EMAIL || !EMAIL_RE.test(email)) {
+      return res.json(RESET_GENERIC);
+    }
+
+    const row = await db.one('SELECT id, email FROM users WHERE email_norm = $1', [
+      normalizeEmail(email),
+    ]);
+
+    if (row) {
+      const now = Date.now();
+      const token = newToken();
+      // Issuing a new link retires any earlier one for this account, so only the
+      // most recent mail ever works.
+      await db.run('DELETE FROM password_resets WHERE user_id = $1', [row.id]);
+      await db.run(
+        `INSERT INTO password_resets (user_id, token_hash, created_at, expires_at)
+         VALUES ($1, $2, $3, $4)`,
+        [row.id, hashToken(token), now, now + config.mail.resetTtlMs]
+      );
+
+      const link = `${config.origin}/reset?token=${token}`;
+      // Do NOT await the provider. Blocking the response on the mail send would
+      // make a registered address answer measurably slower than an unknown one,
+      // reopening the enumeration hole this endpoint is written to close.
+      sendPasswordReset(row.email, link).catch((err) =>
+        console.error('[mail] password reset send failed:', err?.message)
+      );
+    }
+
+    return res.json(RESET_GENERIC);
+  });
+
+  /** Step 2 — hand back the token from the link with a new password. */
+  router.post('/reset', resetLimiter, async (req, res) => {
+    const token = typeof req.body?.token === 'string' ? req.body.token : '';
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+
+    if (!token || token.length > 512) {
+      return res
+        .status(400)
+        .json({ error: 'invalid_token', message: 'الرابط غير صالح. اطلب رابط جديد.' });
+    }
+
+    const now = Date.now();
+    const row = await db.one(
+      `SELECT u.id AS user_id, u.email
+         FROM password_resets pr JOIN users u ON u.id = pr.user_id
+        WHERE pr.token_hash = $1 AND pr.expires_at > $2`,
+      [hashToken(token), now]
+    );
+
+    if (!row) {
+      return res.status(400).json({
+        error: 'invalid_token',
+        message: 'الرابط منتهي أو مستخدم من قبل. اطلب رابط جديد.',
+      });
+    }
+
+    // Same password rules as register/change: length, weak-list, no email inside.
+    const checked = checkCredentials({ email: row.email, password });
+    if (checked.error) return res.status(400).json({ error: 'invalid', message: checked.error });
+
+    await db.tx(async (t) => {
+      await t.run('UPDATE users SET password_hash = $1, updated_at = $2 WHERE id = $3', [
+        hashPassword(checked.password),
+        now,
+        row.user_id,
+      ]);
+      // The link is single use, and any sibling link dies with it.
+      await t.run('DELETE FROM password_resets WHERE user_id = $1', [row.user_id]);
+      // A reset means the old password may be in the wrong hands, so every
+      // existing session is dropped — the same posture as change-password.
+      await t.run('DELETE FROM sessions WHERE user_id = $1', [row.user_id]);
+    });
+
+    // Deliberately not signed in here. Minting a session now would walk straight
+    // past a second factor; making them log in keeps 2FA in force after a reset.
+    res.json({ ok: true, message: 'انتغيّرت كلمة السر. سجّل دخولك بالكلمة الجديدة.' });
+  });
 
   router.post('/logout', async (req, res) => {
     await destroySession(db, req.cookies?.[sessionCookieName()]);
