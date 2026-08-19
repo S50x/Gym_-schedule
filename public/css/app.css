@@ -1309,6 +1309,28 @@ ul.t b {
   font-size: 13px;
   color: #bff3de;
 }
+/* A quiet text link — used for "forgot password?" under the login button. */
+.linkbtn {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  background: none;
+  border: 0;
+  padding: 4px;
+  color: var(--mut);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.linkbtn:hover {
+  color: var(--txt);
+}
+.linkbtn[hidden] {
+  display: none;
+}
+
 .acctrow {
   display: flex;
   justify-content: space-between;

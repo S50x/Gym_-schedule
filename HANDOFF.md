@@ -23,12 +23,13 @@ the Render and Neon dashboards.** Do not rewrite what already works.
 ## 1. Current state (verified)
 
 ```
-main:    4afc0b4   (PR #5 merged)
-tests:   npm test     → 173 pass / 0 fail   (~15s, PGlite in-process)
+main:    68d415a   (PR #6 merged)
+tests:   npm test     → 185 pass / 0 fail   (~15s, PGlite in-process)
 browser: npm run browser → 7 journeys clean (~2m20s, boots its own server)
-commits: 23
-PRs:     #1 #2 #3 #4 #5 — all merged, none open
+branch:  claude/password-reset-email-6j5cae — email-based password reset
 ```
+
+The 12 new tests are the password-reset flow (`test/reset.test.js`).
 
 No CI is configured on the repo, and there is no scheduled watcher running.
 
@@ -66,12 +67,13 @@ server/
   config.js         env config + dependency-free .env reader
   db.js             Postgres layer (pg prod / PGlite dev) + migrations
   auth.js           scrypt password hashing + session management
+  mailer.js         password-reset email via Resend HTTP API — no libraries
   totp.js           TOTP RFC 6238 — no libraries
   mfa.js            login challenges + recovery codes
   qr.js             QR encoder — no libraries, verified against a reference in tests
   security.js       CSP, headers, CSRF, rate limiting
   state-schema.js   strict allow-list validation of the synced doc + merge
-  routes/           auth.js · state.js
+  routes/           auth.js (login · 2FA · forgot/reset) · state.js
 public/
   index.html        structure only — zero inline script or style (strict CSP)
   css/app.css       styling  ·  css/fonts.css (generated)
@@ -80,11 +82,11 @@ public/
   js/dom.js         safe element builder; safeUrl() blocks non-http(s)
   js/store.js       local-first storage + sync; owns goal, level, onboarding gate
   js/gym.js         gym mode, rest timer, timed-hold countdown
-  js/views/         onboarding · home · cardio · week · nutri · account
+  js/views/         onboarding · home · cardio · week · nutri · account · reset
   sw.js             offline caching (network-first; never caches /api)
   fonts/            self-hosted (no third-party request, no missing SRI)
-test/               173 unit tests: auth · security · state · engine · totp · qr · mfa · postgres
-test/browser/       7 Playwright journeys — see §8
+test/               185 unit tests: auth · reset · security · state · engine · totp · qr · mfa · postgres
+test/browser/       8 Playwright journeys — see §8
 docs/               BUGS.md (26) · SECURITY.md (21 findings + S21 2FA)
 render.yaml         Render blueprint — provisions service + database together
 ```
@@ -154,6 +156,14 @@ like `nutrition`. **Rules that must not be broken:**
 - **2FA:** enable-only-after-proof; a correct password yields a short-lived
   single-use challenge, not a session; codes cannot be replayed inside their 30s
   window; disabling needs password AND code; 10 recovery codes stored hashed.
+- **Password reset:** the emailed token is 256-bit and stored only as its HMAC
+  (like a session — a stolen database yields no usable link); one hour to live,
+  single use, and issuing or spending one retires every other link for that
+  account. `/forgot` answers identically for a registered, unregistered, or even
+  malformed email — and fires the mail *without awaiting it* — so neither body
+  nor timing reveals who has an account. A reset drops every existing session,
+  and deliberately does **not** sign the user in: if 2FA is on, they still clear
+  the second factor at the next login, so a reset can never bypass it.
 
 ## 5. What the USER still has to do
 
@@ -168,7 +178,18 @@ Render env vars: `DATABASE_URL` (Neon), `SESSION_SECRET` (Render's Generate
 button), `ORIGIN` (exact domain, **no trailing slash** — a trailing `/` makes CSRF
 reject every login), `TRUST_PROXY=1`, `NODE_ENV=production`.
 
-`DATABASE_URL` is the only integration point; any Postgres provider works.
+`DATABASE_URL` is the only integration point for storage; any Postgres works.
+
+For **password reset**, the same one-integration-point shape applies to email:
+- `RESEND_API_KEY` — a key from resend.com (free tier ~3000 mails/month).
+- `MAIL_FROM` — the from-address, e.g. `حديد <no-reply@yourdomain.com>`. For a
+  quick test Resend's `onboarding@resend.dev` works; real use needs a domain
+  verified in Resend.
+
+Leave `RESEND_API_KEY` unset and the app still boots and the reset endpoints
+still answer (and still never reveal who has an account) — no mail just goes out,
+and the boot log says `Email: not configured`. So email is optional to run, and
+the hand-run-SQL reset in §9 is still the fallback when it isn't wired up.
 
 ## 6. Hard rules that stay in force
 
@@ -231,6 +252,7 @@ Chromium binary: it looks under `PLAYWRIGHT_BROWSERS_PATH` (default
 | `review` | the calorie target follows the body; the goal review appears and dismisses |
 | `smoke` | full app, sync between two browsers, stored-XSS probes |
 | `mfa` | two-factor end to end, including recovery codes |
+| `reset` | the forgot-password form + the reset screen (generic reply, client validation, a dead link fails gracefully) |
 
 **Run these after any server-side or view change.** Every defect in §7 would have
 been caught by one of them.
@@ -248,10 +270,11 @@ been caught by one of them.
 - **Fat-loss protein moved from 1.6 to 2.0 g/kg** with the goals work, so an
   existing user's displayed protein target rose. Intentional, and flagged to the
   user, but worth knowing if they ask.
-- **No password reset flow.** There is no "forgot password" — it needs an email
-  service that was never wired up. When the user forgets their password (this has
-  already happened once), reset it by hand, without ever touching their database
-  yourself:
+- **Password reset is wired up now** (`/forgot` → emailed link → `/reset`), via
+  Resend — see §4 for the security model and §5 for the two env vars. It only
+  actually sends mail once `RESEND_API_KEY` is set in Render. **Until the user
+  sets that up**, or if 2FA is also lost, the hand-run-SQL reset below is still
+  the fallback — reset by hand, without ever touching their database yourself:
     1. Generate a temporary password and its hash **locally**, with the app's own
        `hashPassword` (server/auth.js) so the scrypt params match exactly:
        ```
