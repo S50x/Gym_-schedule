@@ -18,6 +18,7 @@ const JOURNEYS = [
   ['smoke', 'smoke.mjs', 'full app, sync between browsers, XSS probes'],
   ['mfa', 'mfa.mjs', 'two-factor end to end'],
   ['reset', 'reset.mjs', 'forgot-password form + the reset screen'],
+  ['groups', 'groups.mjs', 'per-muscle-group strength levels'],
 ];
 
 const filter = process.argv.slice(2).filter((a) => !a.startsWith('-'));

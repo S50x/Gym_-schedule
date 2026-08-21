@@ -16,6 +16,7 @@ import {
   MAX_MACHINES_PER_DAY,
   GOAL_KEYS,
   LEVEL_KEYS,
+  GROUP_KEYS,
 } from '../public/js/program.js';
 import { MAX_WEEK } from '../public/js/engine.js';
 
@@ -223,6 +224,25 @@ function nutritionOf(raw, path) {
   };
 }
 
+/**
+ * `{ push: 'beg', legs: 'adv' }` — a level for some muscle groups. Absent or
+ * empty means every group follows the overall level, which is what every
+ * document written before this existed says, so they keep working untouched.
+ */
+function groupLevelsOf(raw, path) {
+  if (raw === undefined || raw === null) return null;
+  if (!isPlainObject(raw)) throw new Invalid(path, 'صيغة غير صالحة');
+  const out = {};
+  for (const key of GROUP_KEYS) {
+    const value = raw[key];
+    if (value === undefined || value === null) continue;
+    if (!LEVELS.has(value)) throw new Invalid(`${path}.${key}`, 'مستوى غير معروف');
+    out[key] = value;
+  }
+  // Nothing set is the same as never having set anything.
+  return Object.keys(out).length ? out : null;
+}
+
 /** The trainee's goal and experience level — what the whole programme hangs on. */
 function profileOf(raw, path) {
   if (!isPlainObject(raw)) return null;
@@ -233,6 +253,10 @@ function profileOf(raw, path) {
   return {
     goal: raw.goal,
     level,
+    // Optional per-muscle-group overrides. Rebuilt key by key like everything
+    // else here: an unknown group or an unknown level is dropped rather than
+    // stored, so nothing a client invents reaches the document.
+    levels: groupLevelsOf(raw.levels, `${path}.levels`),
     // Body weight when this goal was chosen — the baseline the review prompt
     // measures progress against.
     startWeight: num(raw.startWeight ?? null, `${path}.startWeight`, {
