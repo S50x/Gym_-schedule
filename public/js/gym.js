@@ -1,6 +1,6 @@
 /** وضع النادي: شاشة تمرين واحدة في كل مرة + مؤقّت الراحة. */
 
-import { el, clear, richText, safeUrl } from './dom.js';
+import { el, clear, append, richText, safeUrl } from './dom.js';
 import { fmt, fmtN, toast, buzz, beep, primeAudio } from './ui.js';
 import { planOf } from './program.js';
 import { dayVolume, formatRest } from './engine.js';
@@ -210,7 +210,10 @@ export class GymMode {
     );
 
     clear(this.nodes.body);
-    this.nodes.body.append(
+    // Through the dom.js helper, not the native append: a conditional child that
+    // evaluates to null must vanish, and Element.append() would stringify it into
+    // a literal "null" on screen.
+    append(this.nodes.body, [
       el(
         'div',
         { class: 'gname' },
@@ -226,8 +229,8 @@ export class GymMode {
       // A timed hold counts itself down here, so nobody has to leave the app,
       // open a stopwatch and come back mid-plank.
       exercise.time ? this.holdControl(exercise, weight) : null,
-      el('div', { class: 'sets' }, setButtons)
-    );
+      el('div', { class: 'sets' }, setButtons),
+    ]);
 
     /* foot */
     const allDone = isDone(exercise, week);
