@@ -97,6 +97,7 @@ test('state validation', async (t) => {
     assert.deepEqual(res.doc.profile, {
       goal: 'muscle',
       level: 'adv',
+      levels: null,
       startWeight: 88.5,
       ts: 5,
     });
@@ -135,6 +136,7 @@ test('state validation', async (t) => {
     assert.deepEqual(Object.keys(res.doc.profile).sort(), [
       'goal',
       'level',
+      'levels',
       'startWeight',
       'ts',
     ]);

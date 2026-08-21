@@ -34,6 +34,7 @@ export const EXERCISES = {
   chest_db: {
     n: 'ضغط صدر دمبل مستوي',
     en: 'Flat Dumbbell Bench Press',
+    g: 'push',
     sets: 3,
     reps: '8–12',
     repsN: 10,
@@ -52,6 +53,7 @@ export const EXERCISES = {
   incline_db: {
     n: 'ضغط صدر مائل دمبل',
     en: 'Incline Dumbbell Press',
+    g: 'push',
     sets: 3,
     reps: '8–12',
     repsN: 10,
@@ -66,6 +68,7 @@ export const EXERCISES = {
   bench_bb: {
     n: 'بنش بريس بار',
     en: 'Barbell Bench Press',
+    g: 'push',
     sets: 4,
     reps: '6–8',
     repsN: 7,
@@ -81,6 +84,7 @@ export const EXERCISES = {
   sh_press: {
     n: 'ضغط كتف دمبل جالس',
     en: 'Seated Dumbbell Shoulder Press',
+    g: 'push',
     sets: 3,
     reps: '8–12',
     repsN: 10,
@@ -99,6 +103,7 @@ export const EXERCISES = {
   ohp_bb: {
     n: 'ضغط كتف بار واقف',
     en: 'Standing Barbell Overhead Press',
+    g: 'push',
     sets: 4,
     reps: '5–8',
     repsN: 6,
@@ -114,6 +119,7 @@ export const EXERCISES = {
   lat_raise: {
     n: 'رفرفة جانبي دمبل',
     en: 'Dumbbell Lateral Raise',
+    g: 'push',
     sets: 3,
     reps: '12–15',
     repsN: 13,
@@ -132,6 +138,7 @@ export const EXERCISES = {
   fly_cable: {
     n: 'تفتيح كيبل',
     en: 'Cable Chest Fly',
+    g: 'push',
     sets: 3,
     reps: '12–15',
     repsN: 13,
@@ -147,6 +154,7 @@ export const EXERCISES = {
   pushup: {
     n: 'ضغط أرضي',
     en: 'Push-Up',
+    g: 'push',
     sets: 3,
     reps: '10–20',
     repsN: 14,
@@ -163,6 +171,7 @@ export const EXERCISES = {
   tri_push: {
     n: 'ترايسبس بوش داون حبل',
     en: 'Rope Triceps Pushdown',
+    g: 'push',
     sets: 3,
     reps: '12–15',
     repsN: 13,
@@ -176,6 +185,7 @@ export const EXERCISES = {
   tri_oh: {
     n: 'ترايسبس خلف الرأس بالدمبل',
     en: 'Overhead Dumbbell Triceps Extension',
+    g: 'push',
     sets: 3,
     reps: '12',
     repsN: 12,
@@ -195,6 +205,7 @@ export const EXERCISES = {
   lat_pull: {
     n: 'سحب أمامي (لات بولداون)',
     en: 'Lat Pulldown',
+    g: 'pull',
     sets: 3,
     reps: '10–12',
     repsN: 11,
@@ -212,6 +223,7 @@ export const EXERCISES = {
   cable_row: {
     n: 'تجديف كيبل جالس',
     en: 'Seated Cable Row',
+    g: 'pull',
     sets: 3,
     reps: '10–12',
     repsN: 11,
@@ -229,6 +241,7 @@ export const EXERCISES = {
   row_bb: {
     n: 'تجديف بار',
     en: 'Barbell Bent-Over Row',
+    g: 'pull',
     sets: 4,
     reps: '6–10',
     repsN: 8,
@@ -244,6 +257,7 @@ export const EXERCISES = {
   row_1arm: {
     n: 'تجديف دمبل بيد وحدة',
     en: 'One-Arm Dumbbell Row',
+    g: 'pull',
     sets: 3,
     reps: '10 لكل يد',
     repsN: 10,
@@ -262,6 +276,7 @@ export const EXERCISES = {
   pullup: {
     n: 'عقلة بمساعدة الجهاز',
     en: 'Assisted Pull-Up',
+    g: 'pull',
     sets: 3,
     reps: '6–10',
     repsN: 8,
@@ -280,6 +295,7 @@ export const EXERCISES = {
   face_pull: {
     n: 'فيس بول كيبل',
     en: 'Cable Face Pull',
+    g: 'pull',
     sets: 3,
     reps: '15',
     repsN: 15,
@@ -295,6 +311,7 @@ export const EXERCISES = {
   curl: {
     n: 'بايسبس مطرقة بالدمبل',
     en: 'Dumbbell Hammer Curl',
+    g: 'pull',
     sets: 3,
     reps: '12',
     repsN: 12,
@@ -315,6 +332,7 @@ export const EXERCISES = {
   leg_press: {
     n: 'لبج بريس',
     en: 'Leg Press',
+    g: 'legs',
     sets: 3,
     reps: '10–12',
     repsN: 11,
@@ -332,6 +350,7 @@ export const EXERCISES = {
   squat_bb: {
     n: 'سكوات بار خلفي',
     en: 'Barbell Back Squat',
+    g: 'legs',
     sets: 4,
     reps: '5–8',
     repsN: 6,
@@ -347,6 +366,7 @@ export const EXERCISES = {
   goblet: {
     n: 'جوبلت سكوات',
     en: 'Goblet Squat',
+    g: 'legs',
     sets: 3,
     reps: '12–15',
     repsN: 13,
@@ -362,6 +382,7 @@ export const EXERCISES = {
   dead_bb: {
     n: 'ديدليفت بار',
     en: 'Barbell Deadlift',
+    g: 'legs',
     sets: 4,
     reps: '3–5',
     repsN: 4,
@@ -377,6 +398,7 @@ export const EXERCISES = {
   rdl: {
     n: 'رومانيان ديدليفت دمبل',
     en: 'Dumbbell Romanian Deadlift',
+    g: 'legs',
     sets: 3,
     reps: '10',
     repsN: 10,
@@ -395,6 +417,7 @@ export const EXERCISES = {
   hip_thrust: {
     n: 'هيب ثرست بار',
     en: 'Barbell Hip Thrust',
+    g: 'legs',
     sets: 3,
     reps: '10–12',
     repsN: 11,
@@ -410,6 +433,7 @@ export const EXERCISES = {
   lunge_db: {
     n: 'لانجز دمبل',
     en: 'Dumbbell Lunge',
+    g: 'legs',
     sets: 3,
     reps: '10 لكل رجل',
     repsN: 10,
@@ -426,6 +450,7 @@ export const EXERCISES = {
   stepup: {
     n: 'ستيب أب دمبل',
     en: 'Dumbbell Step-Up',
+    g: 'legs',
     sets: 3,
     reps: '10 لكل رجل',
     repsN: 10,
@@ -442,6 +467,7 @@ export const EXERCISES = {
   leg_ext: {
     n: 'تمديد الأرجل',
     en: 'Leg Extension',
+    g: 'legs',
     sets: 3,
     reps: '12',
     repsN: 12,
@@ -455,6 +481,7 @@ export const EXERCISES = {
   leg_curl: {
     n: 'ثني الأرجل',
     en: 'Leg Curl',
+    g: 'legs',
     sets: 3,
     reps: '12',
     repsN: 12,
@@ -468,6 +495,7 @@ export const EXERCISES = {
   calf: {
     n: 'رفع السمانة واقف',
     en: 'Standing Calf Raise',
+    g: 'legs',
     sets: 3,
     reps: '15',
     repsN: 15,
@@ -481,6 +509,7 @@ export const EXERCISES = {
   kb_swing: {
     n: 'سوينج كيتل بل',
     en: 'Kettlebell Swing',
+    g: 'legs',
     sets: 4,
     reps: '15',
     repsN: 15,
@@ -498,6 +527,7 @@ export const EXERCISES = {
   plank: {
     n: 'بلانك',
     en: 'Plank',
+    g: 'core',
     sets: 3,
     reps: 'ثواني',
     base: 30,
@@ -517,6 +547,7 @@ export const EXERCISES = {
   side_plank: {
     n: 'بلانك جانبي',
     en: 'Side Plank',
+    g: 'core',
     sets: 3,
     reps: 'ثواني لكل جهة',
     base: 20,
@@ -532,6 +563,7 @@ export const EXERCISES = {
   deadbug: {
     n: 'ديد بق',
     en: 'Dead Bug',
+    g: 'core',
     sets: 3,
     reps: '10 لكل جهة',
     repsN: 10,
@@ -552,6 +584,7 @@ export const EXERCISES = {
   birddog: {
     n: 'بيرد دوق',
     en: 'Bird Dog',
+    g: 'core',
     sets: 3,
     reps: '10 لكل جهة',
     repsN: 10,
@@ -1062,6 +1095,41 @@ export function todayLift(goalKey, date = new Date()) {
   return entry.rest || cardioOf(goalKey)[entry.c]?.rest ? 'rest' : 'cardio';
 }
 
+/* ── muscle groups ────────────────────────────────────────────── */
+
+/**
+ * Every exercise carries `g`, and a trainee may set a level per group instead
+ * of one level for the whole body — someone whose legs lag their bench should
+ * not be handed both at the same fraction of their strength.
+ *
+ * Only the groups listed here are offered in the UI. `core` is deliberately
+ * absent: two of its four movements are bodyweight or fixed-load, which
+ * `baseWeights` never scales, so a control for it would move almost nothing.
+ * It still carries the tag, and follows the overall level like everything
+ * unset, so exposing it later is a one-line change.
+ */
+export const GROUPS = [
+  { k: 'push', n: 'دفع', sub: 'صدر · كتف · ترايسبس' },
+  { k: 'pull', n: 'سحب', sub: 'ظهر · بايسبس' },
+  { k: 'legs', n: 'أرجل', sub: 'أرجل · مؤخرة' },
+];
+
+export const GROUP_KEYS = GROUPS.map((g) => g.k);
+
+/** How many catalogue movements each group holds — shown next to its name. */
+export const groupCount = (key) => ALL_EXERCISES.filter((e) => e.g === key).length;
+
+/**
+ * The level that governs one group: its own override when set, otherwise the
+ * trainee's overall level. Unknown keys and unknown groups fall back rather
+ * than throwing, so a document written by a newer version stays readable.
+ */
+export function levelForGroup(group, levelKey = DEFAULT_LEVEL, levels = null) {
+  const override = levels && typeof levels === 'object' ? levels[group] : null;
+  if (override && LEVELS[override]) return override;
+  return LEVELS[levelKey] ? levelKey : DEFAULT_LEVEL;
+}
+
 /* ── starting weights ─────────────────────────────────────────── */
 
 /** Round to the nearest multiple of `step`, never below one step. */
@@ -1072,12 +1140,11 @@ function toStep(value, step) {
 }
 
 /**
- * Starting weights for week 1 of a goal, scaled to the trainee's level.
+ * Starting weights for week 1 of a goal, scaled per muscle group.
  * Only the goal's own exercises are seeded; a movement from another goal keeps
  * whatever the user had stored, so switching goal and back loses nothing.
  */
-export function baseWeights(goalKey = DEFAULT_GOAL, levelKey = DEFAULT_LEVEL) {
-  const mult = levelOf(levelKey).mult;
+export function baseWeights(goalKey = DEFAULT_GOAL, levelKey = DEFAULT_LEVEL, levels = null) {
   const out = {};
   for (const day of goalOf(goalKey).days) {
     for (const item of day.ex) {
@@ -1087,6 +1154,9 @@ export function baseWeights(goalKey = DEFAULT_GOAL, levelKey = DEFAULT_LEVEL) {
         out[e.id] = e.base || 0;
         continue;
       }
+      // Each movement is scaled by the level of its own group, which is the
+      // overall level unless that group was given one of its own.
+      const mult = levelOf(levelForGroup(e.g, levelKey, levels)).mult;
       out[e.id] = mult === 1 ? e.base : toStep(e.base * mult, e.step);
     }
   }

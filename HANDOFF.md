@@ -17,19 +17,20 @@ CSP, and five training goals that reshape the whole programme.
 the Render and Neon dashboards.** Do not rewrite what already works.
 
 - **Repo:** `S50x/Gym_-schedule`. This session's GitHub scope is that repo only.
-- **Branch:** `claude/github-database-security-audit-8je5ft` — push here, never to `main` without asking.
+- **Branch:** work on a fresh `claude/*` branch, open a PR, merge to `main`. **Render deploys `main`** — check Settings → Build & Deploy if a change does not appear.
 - **User:** Arabic-speaking, non-technical (shhv17@gmail.com). Reply in Arabic, one concrete step at a time.
 
 ## 1. Current state (verified)
 
 ```
-main:    68d415a   (PR #6 merged)
-tests:   npm test     → 185 pass / 0 fail   (~15s, PGlite in-process)
-browser: npm run browser → 7 journeys clean (~2m20s, boots its own server)
-branch:  claude/password-reset-email-6j5cae — email-based password reset
+main:    f7d5df6   (PR #8 merged)
+tests:   npm test     → 204 pass / 0 fail   (~15s, PGlite in-process)
+browser: npm run browser → 9 journeys clean (~3m, boots its own server)
+branch:  claude/body-strength-levels — per-muscle-group strength
 ```
 
-The 12 new tests are the password-reset flow (`test/reset.test.js`).
+New since the goals work: the password-reset flow (`test/reset.test.js`, 12) and
+per-muscle-group strength levels (`test/groups.test.js`, 19).
 
 No CI is configured on the repo, and there is no scheduled watcher running.
 
@@ -85,8 +86,8 @@ public/
   js/views/         onboarding · home · cardio · week · nutri · account · reset
   sw.js             offline caching (network-first; never caches /api)
   fonts/            self-hosted (no third-party request, no missing SRI)
-test/               185 unit tests: auth · reset · security · state · engine · totp · qr · mfa · postgres
-test/browser/       8 Playwright journeys — see §8
+test/               204 unit tests: auth · reset · groups · security · state · engine · totp · qr · mfa · postgres
+test/browser/       9 Playwright journeys — see §8
 docs/               BUGS.md (26) · SECURITY.md (21 findings + S21 2FA)
 render.yaml         Render blueprint — provisions service + database together
 ```
@@ -110,13 +111,25 @@ is why the pre-existing tests still pass untouched:
 
 ```
 verdict(cur, prev, goal)      safeTarget(tdee, goal)     proteinTarget(kg, goal)
-baseWeights(goal, level)      dailyTarget(nut, kg, goal) effectiveTdee(nut, kg)
+baseWeights(goal, level, levels)  dailyTarget(nut, kg, goal)  effectiveTdee(nut, kg)
 goalReview({ profile, weight, goalKey })
 ```
 
 **`verdict` is the one that matters.** The same 0.4 kg gain is a warning while
 cutting and the target while building; a textbook cut is a red flag for a bulk.
 Get it wrong and the app fights half its users every week.
+
+**Strength is per group, not per body.** Every exercise carries `g`
+(`push` · `pull` · `legs` · `core`), and `profile.levels` may hold a level for
+some of them. `baseWeights(goal, level, levels)` scales each movement by
+`levelForGroup(e.g, level, levels)` — the group's own level when set, the
+overall level otherwise. **Rules:** only groups that genuinely differ from the
+overall level are stored, so a group left alone keeps following that level when
+it changes; `GROUPS` lists only what the UI offers, and `core` is deliberately
+absent because two of its four movements are bodyweight or fixed-load and never
+scale, so a control for it would move almost nothing. No `levels` ⇒ byte-identical
+weights to before the feature, which `test/groups.test.js` asserts across every
+goal × level.
 
 **Nutrition is derived, never frozen.** `effectiveTdee` recomputes maintenance
 from the latest recorded weight every time it is shown; only a *measured* figure
@@ -128,7 +141,7 @@ longer written.
 goal was set (`profile.startWeight`) or after 8 weeks (`profile.ts`). "Keep my
 goal" re-anchors both, so staying is a decision rather than an oversight.
 
-Stored as `doc.profile = { goal, level, startWeight, ts }`, merged by timestamp
+Stored as `doc.profile = { goal, level, levels, startWeight, ts }`, merged by timestamp
 like `nutrition`. **Rules that must not be broken:**
 
 - **No profile + existing history ⇒ stay on `cut`/`int` silently.** Never drag
@@ -222,8 +235,17 @@ is why §8 exists.
    legacy plan, so a strength trainee opened their squat day and got dumbbells.
 8. **The tab bar would not hide** — `#tabbar` outranks the browser's own
    `[hidden] { display: none }`.
+9. **A null child printed the word "null"** — `Element.prototype.append()`
+   stringifies whatever it is given, so `cond ? node : null` put a literal
+   "null" under the weight in gym mode on every exercise that is not a timed
+   hold, and in the 2FA card. `dom.js`'s own `append` helper drops null
+   children; those two call sites used the native method. Every unit test
+   passed: the values were right, only the render was wrong. `noStrayNulls()`
+   in `test/browser/helpers.mjs` now scans the visible text and is called from
+   the gym and groups journeys.
 
-Recurring theme: **verify what a system decides, not what it was told.**
+Recurring theme: **verify what a system decides, not what it was told** — and
+what it actually renders, not what it computed.
 
 ## 8. How to run
 
@@ -253,6 +275,7 @@ Chromium binary: it looks under `PLAYWRIGHT_BROWSERS_PATH` (default
 | `smoke` | full app, sync between two browsers, stored-XSS probes |
 | `mfa` | two-factor end to end, including recovery codes |
 | `reset` | the forgot-password form + the reset screen (generic reply, client validation, a dead link fails gracefully) |
+| `groups` | per-muscle-group levels: collapsed by default, the tag follows the overall level, one group moves only its own weights on screen |
 
 **Run these after any server-side or view change.** Every defect in §7 would have
 been caught by one of them.

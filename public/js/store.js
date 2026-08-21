@@ -125,6 +125,21 @@ class Store extends EventTarget {
     return key && LEVELS[key] ? key : DEFAULT_LEVEL;
   }
 
+  /**
+   * Per-muscle-group level overrides, or null when every group follows the
+   * overall level — which is what a document written before this feature says,
+   * so those keep producing exactly the weights they always did.
+   */
+  get levels() {
+    const raw = this.doc.profile?.levels;
+    if (!raw || typeof raw !== 'object') return null;
+    const out = {};
+    for (const [group, key] of Object.entries(raw)) {
+      if (key && LEVELS[key]) out[group] = key;
+    }
+    return Object.keys(out).length ? out : null;
+  }
+
   /** Has the trainee been through onboarding? */
   get hasProfile() {
     return !!(this.doc.profile?.goal && GOALS[this.doc.profile.goal]);
@@ -174,7 +189,7 @@ class Store extends EventTarget {
     if (this._weightCache.has(target)) return this._weightCache.get(target);
 
     let weights = {
-      ...baseWeights(this.goal, this.level),
+      ...baseWeights(this.goal, this.level, this.levels),
       ...(this.doc.weeks['1']?.weights || {}),
     };
     for (let i = 2; i <= target; i++) {
