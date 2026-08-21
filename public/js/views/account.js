@@ -1,4 +1,4 @@
-import { el } from '../dom.js';
+import { el, append } from '../dom.js';
 import { toast, bulletList, qrSvg } from '../ui.js';
 import { api, ApiError, NetworkError } from '../api.js';
 import { SYNC } from '../store.js';
@@ -195,7 +195,9 @@ function twoFactorCard(ctx) {
   }
 
   const left = store.user.recoveryCodesLeft ?? 0;
-  body.append(
+  // The helper, not the native append: the warning below is conditional, and
+  // Element.append() renders a null child as the literal text "null".
+  append(body, [
     el('div', {
       class: 'mut',
       text: `عند الدخول من جهاز جديد بيطلب منك رمز من تطبيق المصادقة. باقي عندك ${left} رمز استرجاع.`,
@@ -215,8 +217,8 @@ function twoFactorCard(ctx) {
       class: 'cta danger',
       text: 'أوقف التحقق بخطوتين',
       on: { click: () => startDisable(ctx, body) },
-    })
-  );
+    }),
+  ]);
   return box;
 }
 

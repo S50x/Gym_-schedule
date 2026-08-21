@@ -179,6 +179,27 @@ export async function onboard(
   await page.waitForSelector('.today', { timeout: 10_000 });
 }
 
+/**
+ * Fail if a stringified null/undefined leaked into the visible text.
+ *
+ * This is not hypothetical: `Element.append()` stringifies whatever it is given,
+ * so one conditional child that evaluated to null printed a literal "null" under
+ * the weight in gym mode. Every unit test passed — the value was correct, only
+ * the render was wrong — which is exactly the class of defect these journeys
+ * exist to catch. The dom.js `append` helper drops null children; this guard is
+ * what notices when a call site forgets to use it.
+ */
+export async function noStrayNulls(page, where) {
+  const text = await page.evaluate(() => document.body.innerText || '');
+  const hit = /(^|[\s>(])(null|undefined|NaN)([\s<),.]|$)/.exec(text);
+  if (hit) {
+    const at = Math.max(0, hit.index - 40);
+    throw new Error(
+      `"${hit[2]}" is visible on screen in ${where} → …${text.slice(at, hit.index + 40).replace(/\n/g, ' ⏎ ')}…`
+    );
+  }
+}
+
 /** Go to a tab by its view name. */
 export async function tab(page, view) {
   await page.click(`#tabbar .tab[data-view="${view}"]`);

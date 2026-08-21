@@ -6,7 +6,7 @@
  * unit test passed.
  */
 
-import { newPage, onboard, runStandalone } from './helpers.mjs';
+import { newPage, onboard, noStrayNulls, runStandalone } from './helpers.mjs';
 
 const CASES = [
   { goal: 0, label: 'تنشيف', expect: 'ضغط صدر دمبل مستوي', sets: 3 },
@@ -34,6 +34,11 @@ export default async function run({ base, browser, problems, step }) {
       if (dots !== sets) throw new Error(`expected ${sets} set buttons, got ${dots}`);
 
       const sub = (await page.textContent('.gsub')).trim();
+
+      // A conditional child that evaluated to null once printed the word "null"
+      // right under the weight here, on every exercise that is not a timed hold.
+      await noStrayNulls(page, `gym mode · ${label}`);
+
       console.log(`      ${label}: ${name} · ${sub}`);
       await page.context().close();
     });
