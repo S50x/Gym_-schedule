@@ -9,7 +9,14 @@
 
 import { el } from '../dom.js';
 import { toast } from '../ui.js';
-import { GOALS, GOAL_KEYS, LEVELS, LEVEL_KEYS } from '../program.js';
+import {
+  GOALS,
+  GOAL_KEYS,
+  LEVELS,
+  LEVEL_KEYS,
+  GROUPS,
+  groupCount,
+} from '../program.js';
 
 const ACTIVITY = [
   { a: 1.375, label: 'مكتبي — أجلس أغلب اليوم' },
@@ -26,6 +33,8 @@ export function renderOnboarding(ctx) {
   let goal = editing ? store.goal : null;
   let level = editing ? store.level : null;
   let activity = nut.act || 1.55;
+  // Per-group overrides, keyed by group. A group left out follows `level`.
+  const groupLevels = { ...(editing ? store.levels || {} : {}) };
 
   /* ── step 1: goal ── */
   const goalCards = GOAL_KEYS.map((key) => {
@@ -74,6 +83,9 @@ export function renderOnboarding(ctx) {
               card.classList.toggle('on', on);
               card.setAttribute('aria-pressed', String(on));
             }
+            // A group that was matching the old level was following it, not
+            // pinned to it, so the "· مستواي" tag and the pressed chip both move.
+            paintGroups();
           },
         },
       },
@@ -81,6 +93,95 @@ export function renderOnboarding(ctx) {
       el('div', { class: 'gdesc', text: l.d })
     );
   });
+
+  /* ── step 2b: per-group detail (optional) ── */
+
+  /**
+   * One row per muscle group. The chip matching the overall level is the one
+   * selected by default and carries a "· مستواي" tag, so the default reads as a
+   * real value the trainee recognises rather than an abstraction — and choosing
+   * it stores nothing, which is what keeps the group following the overall
+   * level if that level later changes.
+   */
+  const groupRows = GROUPS.map((group) => {
+    const chips = LEVEL_KEYS.map((key) =>
+      el('button', {
+        class: 'mchip',
+        data: { level: key, group: group.k },
+        attrs: { 'aria-pressed': 'false' },
+        on: {
+          click: (event) => {
+            if (key === level) delete groupLevels[group.k];
+            else groupLevels[group.k] = key;
+            paintGroupRow(event.currentTarget.parentElement, group.k);
+          },
+        },
+      })
+    );
+    const row = el(
+      'div',
+      { class: 'grow' },
+      el(
+        'div',
+        { class: 'glabel' },
+        el('span', { class: 'gn', text: group.n }),
+        el('span', { class: 'gsub', text: group.sub }),
+        el('span', { class: 'cnt n', text: String(groupCount(group.k)) })
+      ),
+      el('div', { class: 'mchips', data: { group: group.k } }, chips)
+    );
+    return row;
+  });
+
+  /**
+   * Repaint one row: label every chip, mark the inherited one, and press
+   * whichever level actually governs the group right now.
+   */
+  function paintGroupRow(container, groupKey) {
+    const active = groupLevels[groupKey] || level;
+    for (const chip of container.children) {
+      const key = chip.dataset.level;
+      const on = key === active;
+      chip.classList.toggle('on', on);
+      chip.setAttribute('aria-pressed', String(on));
+      chip.replaceChildren(document.createTextNode(LEVELS[key].n));
+      if (key === level) {
+        chip.appendChild(el('span', { class: 'tag', text: '· مستواي' }));
+      }
+    }
+  }
+
+  /** Every row, e.g. after the overall level changed underneath them. */
+  function paintGroups() {
+    for (const row of groupRows) {
+      paintGroupRow(row.querySelector('.mchips'), row.querySelector('.mchips').dataset.group);
+    }
+  }
+
+  const groupBox = el(
+    'div',
+    { class: 'gdetail' },
+    el('div', {
+      class: 'why',
+      text: 'بعض الناس فوقهم أقوى من تحتهم أو العكس. الزر المعلّم «· مستواي» هو اللي اخترته فوق ومختار لك جاهز — غيّر بس المجموعة اللي تختلف عندك.',
+    }),
+    groupRows
+  );
+
+  // A <details> element: the browser owns the open/closed state, so there is no
+  // toggle handler to keep in sync, and it collapses by default without any CSS
+  // that could hide it for good if the script fails.
+  const groupDetails = el(
+    'details',
+    { class: 'gdet' },
+    el(
+      'summary',
+      {},
+      el('span', { text: 'فصّل حسب جسمك' }),
+      el('span', { class: 'opt', text: 'اختياري' })
+    ),
+    groupBox
+  );
 
   /* ── step 3: body ── */
   const weightInput = el('input', {
@@ -127,6 +228,10 @@ export function renderOnboarding(ctx) {
     })
   );
 
+  // First paint: labels and the inherited tag depend on `level`, which may
+  // already be set when an existing trainee reopens this to edit.
+  paintGroups();
+
   const save = () => {
     if (!goal) return toast('اختر هدفك أول');
     if (!level) return toast('اختر مستواك');
@@ -154,6 +259,14 @@ export function renderOnboarding(ctx) {
     store.updateProfile((p) => {
       p.goal = goal;
       p.level = level;
+      // Only groups that genuinely differ are stored; the rest keep following
+      // the overall level, so nothing is written for someone who never opened
+      // the section.
+      const overrides = {};
+      for (const [group, key] of Object.entries(groupLevels)) {
+        if (key && key !== level) overrides[group] = key;
+      }
+      p.levels = Object.keys(overrides).length ? overrides : null;
     });
 
     // Only the inputs are stored. Calories and protein are derived from these
@@ -191,6 +304,7 @@ export function renderOnboarding(ctx) {
       class: 'hint-lg',
       text: 'هذا يضبط أوزان البداية بس — تقدر تعدّل أي وزن بنفسك داخل النادي.',
     }),
+    groupDetails,
 
     el('h3', { text: '٣ · بياناتك' }),
     el(
