@@ -2,7 +2,7 @@
 
 import { el, clear, append, richText, safeUrl } from './dom.js';
 import { fmt, fmtN, toast, buzz, beep, primeAudio } from './ui.js';
-import { planOf, MAX_LOAD } from './program.js';
+import { planOf, fineStep, MAX_LOAD } from './program.js';
 import { dayVolume, formatRest } from './engine.js';
 
 const FEEDBACK = [
@@ -204,11 +204,17 @@ export class GymMode {
         el('span', { class: 'chip', text: 'وزن المساعدة — كل ما قلّ صرت أقوى' })
       );
     }
-    if (!exercise.body && !exercise.inverse) {
+    if (!exercise.body) {
+      // Two numbers, and they are not the same question: what one tap does, and
+      // what the programme adds on its own each week.
+      const fine = fineStep(exercise);
+      const weekly = !exercise.inverse && fine !== exercise.step;
       chips.appendChild(
         el('span', {
           class: 'chip g',
-          text: `خطوة التعديل ${exercise.step} ${unit}`,
+          text: weekly
+            ? `الزر ± ${fine} · الأسبوع + ${exercise.step} ${unit}`
+            : `الزر ± ${fine} ${unit}`,
         })
       );
     }
@@ -468,7 +474,7 @@ export class GymMode {
       class: 'wnum n wedit',
       type: 'number',
       inputmode: 'decimal',
-      step: seconds ? '1' : '0.5',
+      step: String(fineStep(exercise) || (seconds ? 1 : 0.5)),
       min: '0',
       max: String(MAX_LOAD),
       value: String(weight ?? 0),
@@ -521,9 +527,14 @@ export class GymMode {
     this.draw();
   }
 
+  /**
+   * The buttons move by what the equipment can actually do, not by the weekly
+   * jump. Those used to be the same number, which is why no amount of tapping
+   * ever reached the 7.5 kg dumbbell on the rack.
+   */
   adjust(direction) {
     const { exercise } = this.current();
-    const step = exercise.step || 1;
+    const step = fineStep(exercise) || 1;
     const weights = this.store.weightsFor();
     const value = Math.max(0, Math.round(((weights[exercise.id] || 0) + direction * step) * 10) / 10);
     this.setWeight(exercise.id, value);

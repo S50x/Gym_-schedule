@@ -161,11 +161,17 @@ like `nutrition`. **Rules that must not be broken:**
   the moment they switch to a three-set goal, and their sync would 400 forever.
 - **Switching goal deletes nothing.** Weights are keyed by exercise id, so the old
   goal's numbers are still there if they switch back.
-- **`step` is the weekly jump, not the rack.** It says how much a lift climbs in
-  a week; it must never be the only way to reach a load. Racks hold 7.5 and 9.5 kg
-  dumbbells, and any lattice of `base ± n · step` misses them, so gym mode lets the
-  weight be typed and progression carries the remainder along (7.5 → 9.5 → 11.5).
-  `MAX_LOAD` bounds it in `program.js` and the server re-checks the same number.
+- **`step` is the weekly jump; `fine` is the rack.** They answer different
+  questions and must not be the same number. `step` is how much a lift climbs in
+  a week. `fine` is the smallest change the equipment can make — half a kilo on a
+  dumbbell rack, 2.5 kg on a barbell (a pair of 1.25 plates), the pin's own notch
+  on a stack. The +/− buttons move by `fineStep(e)`, weekly progression by `step`.
+  When both were `step`, every reachable load sat on `base ± n · step` and the
+  7.5 kg dumbbell on the rack could not be reached at all. Only movements where
+  the two differ carry `fine`; the rest fall back. **A `fine` coarser than `step`
+  would let one tap outrun a week of progress** — `test/engine.test.js` forbids it.
+  The reading can also be typed for a jump neither increment is worth; `MAX_LOAD`
+  bounds that in `program.js` and the server re-checks the same number.
 - **`store._weightCache` is derived state and must die with the document.** The
   app paints once before `store.init()` reads localStorage, and that paint caches
   weights computed from an empty document. Anything that replaces `this.doc` —
@@ -290,7 +296,7 @@ Chromium binary: it looks under `PLAYWRIGHT_BROWSERS_PATH` (default
 | `goals` | the pre-goals regression (an old document must render unchanged) + all five goals differing in substance |
 | `features` | bilingual names, tab-bar navigation, cardio split, plank countdown |
 | `gymgoal` | gym mode serves the current goal's programme |
-| `load` | a load typed off the step lattice (7.5 kg) sticks, steps on, and survives a reload |
+| `load` | the buttons move by the rack (0.5 kg dumbbell, 2.5 kg bar), a typed load sticks, and both survive a reload |
 | `switch` | switching goal and back loses nothing |
 | `review` | the calorie target follows the body; the goal review appears and dismisses |
 | `smoke` | full app, sync between two browsers, stored-XSS probes |
