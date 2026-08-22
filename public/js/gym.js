@@ -2,7 +2,7 @@
 
 import { el, clear, append, richText, safeUrl } from './dom.js';
 import { fmt, fmtN, toast, buzz, beep, primeAudio } from './ui.js';
-import { planOf } from './program.js';
+import { planOf, MAX_LOAD } from './program.js';
 import { dayVolume, formatRest } from './engine.js';
 
 const FEEDBACK = [
@@ -82,7 +82,7 @@ export class GymMode {
       0,
       plan[day].ex.findIndex((e) => !isDone(e, week))
     );
-    this.state = { day, index: index === -1 ? 0 : index };
+    this.state = { day, index: index === -1 ? 0 : index, editWeight: false };
     this.cueOpen = false;
     // Reset per session. The original kept the previous session's start time,
     // so the "minutes" stat kept growing across days.
@@ -160,11 +160,24 @@ export class GymMode {
     });
 
     /* body */
+    const unit = exercise.time ? 'ثانية' : 'كجم';
     const bigValue = exercise.body
       ? el('span', { class: 'wnum sm', text: 'وزن الجسم' })
       : [
-          el('span', { class: 'wnum n', text: fmtN(weight) }),
-          el('span', { class: 'wunit', text: exercise.time ? 'ثانية' : 'كجم' }),
+          this.state.editWeight
+            ? this.weightField(exercise, weight)
+            : el('button', {
+                class: 'wnum n',
+                text: fmtN(weight),
+                attrs: { 'aria-label': `الوزن ${fmtN(weight)} ${unit} — اضغط عشان تكتبه بالضبط` },
+                on: {
+                  click: () => {
+                    this.state.editWeight = true;
+                    this.draw();
+                  },
+                },
+              }),
+          el('span', { class: 'wunit', text: unit }),
         ];
 
     const adjust = exercise.body
@@ -195,7 +208,15 @@ export class GymMode {
       chips.appendChild(
         el('span', {
           class: 'chip g',
-          text: `خطوة التعديل ${exercise.step} ${exercise.time ? 'ثانية' : 'كجم'}`,
+          text: `خطوة التعديل ${exercise.step} ${unit}`,
+        })
+      );
+    }
+    if (!exercise.body) {
+      chips.appendChild(
+        el('span', {
+          class: 'chip g',
+          text: exercise.time ? 'اضغط الرقم واكتب ثوانيك' : 'اضغط الرقم واكتب وزنك بالضبط',
         })
       );
     }
@@ -231,6 +252,12 @@ export class GymMode {
       exercise.time ? this.holdControl(exercise, weight) : null,
       el('div', { class: 'sets' }, setButtons),
     ]);
+
+    if (this.state.editWeight) {
+      const field = this.nodes.body.querySelector('.wedit');
+      field?.focus();
+      field?.select();
+    }
 
     /* foot */
     const allDone = isDone(exercise, week);
@@ -419,7 +446,78 @@ export class GymMode {
     if (next < 0 || next >= plan.ex.length) return;
     this.stopHold({ redraw: false });
     this.state.index = next;
+    this.state.editWeight = false;
     this.cueOpen = false;
+    this.draw();
+  }
+
+  /**
+   * Type the load instead of stepping to it.
+   *
+   * `step` is how much the lift climbs in a week, not what the rack is made of.
+   * The +/− buttons move by that same step, so every load the app could reach
+   * sat on one lattice: from 6 kg with a 2 kg step you get 6 · 8 · 10 and never
+   * the 7.5 or 9.5 dumbbell sitting on the rack. Nothing else in the app minded
+   * the halves — `fmtN` prints them and the server stores one decimal — there
+   * was simply no control that could produce one. Progression still runs in
+   * whole steps from wherever this lands: 7.5 → 9.5 → 11.5.
+   */
+  weightField(exercise, weight) {
+    const seconds = !!exercise.time;
+    const field = el('input', {
+      class: 'wnum n wedit',
+      type: 'number',
+      inputmode: 'decimal',
+      step: seconds ? '1' : '0.5',
+      min: '0',
+      max: String(MAX_LOAD),
+      value: String(weight ?? 0),
+      attrs: { 'aria-label': seconds ? 'الوقت بالثواني' : 'الوزن بالكيلو' },
+    });
+
+    // `close()` on this class means leaving gym mode, so this one is `cancel`.
+    const cancel = () => {
+      // Tearing the field out fires its own blur, which lands back here. The
+      // flag is already down by then, so the second pass is a no-op.
+      if (!this.state) return;
+      this.state.editWeight = false;
+      this.draw();
+    };
+
+    const commit = () => {
+      if (!this.state?.editWeight) return;
+      const value = Number.parseFloat(field.value);
+      if (!Number.isFinite(value) || value < 0 || value > MAX_LOAD) {
+        toast(seconds ? `اكتب ثواني بين 0 و ${MAX_LOAD}` : `اكتب وزن بين 0 و ${MAX_LOAD} كجم`);
+        cancel();
+        return;
+      }
+      this.state.editWeight = false;
+      // One decimal is what the server keeps, so what shows is what syncs.
+      this.setWeight(exercise.id, seconds ? Math.round(value) : Math.round(value * 10) / 10);
+    };
+
+    field.addEventListener('blur', commit);
+    field.addEventListener('keydown', (event) => {
+      // Gym mode listens on the document for Escape and the arrows. While this
+      // field has the focus those keys are its own.
+      event.stopPropagation();
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        commit();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        cancel();
+      }
+    });
+    return field;
+  }
+
+  /** Stored as a manual override for this week; later weeks progress from it. */
+  setWeight(id, value) {
+    this.store.update(this.store.viewWeek, (w) => {
+      w.weights = { ...w.weights, [id]: value };
+    });
     this.draw();
   }
 
@@ -428,11 +526,7 @@ export class GymMode {
     const step = exercise.step || 1;
     const weights = this.store.weightsFor();
     const value = Math.max(0, Math.round(((weights[exercise.id] || 0) + direction * step) * 10) / 10);
-    // Stored as a manual override for this week; later weeks progress from it.
-    this.store.update(this.store.viewWeek, (w) => {
-      w.weights = { ...w.weights, [exercise.id]: value };
-    });
-    this.draw();
+    this.setWeight(exercise.id, value);
   }
 
   toggleSet(index) {
@@ -575,6 +669,9 @@ export class GymMode {
   bindKeys() {
     document.addEventListener('keydown', (event) => {
       if (!this.state) return;
+      // A field being typed into keeps its own keys: the arrows nudge its
+      // number and Escape cancels the edit, neither flips the exercise.
+      if (event.target instanceof HTMLInputElement) return;
       if (event.key === 'Escape') {
         if (!this.nodes.rest.hidden) this.stopRest();
         else this.close();
