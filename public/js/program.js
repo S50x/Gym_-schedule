@@ -630,7 +630,11 @@ const NO_CARDIO = (d) => ({ d, detail: 'ما فيه كارديو — يوم حد
  * `{ id, sets, reps, repsN, rest }` to override for this goal.
  *
  * `verdict` thresholds are percent of body weight per week, except
- * `muscleDropKg` which is kilograms of lean mass.
+ * `muscleDropKg` and `muscleGainKg`, which are kilograms of lean mass.
+ *
+ * `muscleGainKg` is the lean-mass gain that clears a fast-loss warning: a scale
+ * dropping while measured muscle climbs is fat coming off, not muscle. It sits
+ * above week-to-week noise so a hydration wobble does not silence the warning.
  */
 export const GOALS = {
   cut: {
@@ -643,6 +647,7 @@ export const GOALS = {
       ideal: [-1.0, -0.3],
       holdLossBelow: -1.2,
       muscleDropKg: -0.5,
+      muscleGainKg: 0.3,
       warnGainAbove: 0.6,
       stallBelow: null,
     },
@@ -700,6 +705,7 @@ export const GOALS = {
       ideal: [0.15, 0.5],
       holdLossBelow: -0.5,
       muscleDropKg: null,
+      muscleGainKg: 0.3,
       warnGainAbove: 0.75,
       stallBelow: 0.1,
     },
@@ -787,6 +793,7 @@ export const GOALS = {
       ideal: [-0.25, 0.25],
       holdLossBelow: -1.0,
       muscleDropKg: -0.5,
+      muscleGainKg: 0.3,
       warnGainAbove: 0.5,
       stallBelow: null,
     },
@@ -854,6 +861,7 @@ export const GOALS = {
       ideal: [-0.5, 0.5],
       holdLossBelow: -1.2,
       muscleDropKg: -0.5,
+      muscleGainKg: 0.3,
       warnGainAbove: null,
       stallBelow: null,
     },
@@ -913,6 +921,7 @@ export const GOALS = {
       ideal: [0, 0.4],
       holdLossBelow: -0.5,
       muscleDropKg: null,
+      muscleGainKg: 0.3,
       warnGainAbove: 0.8,
       stallBelow: null,
     },
