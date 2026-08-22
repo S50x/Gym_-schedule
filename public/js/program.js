@@ -9,6 +9,13 @@
  *               with the trainee's goal: names, coaching cue, video, weight
  *               step, starting load, and the sets/reps/rest that serve as
  *               defaults.
+ *
+ * A movement carries TWO increments, because they answer different questions.
+ * `step` is how much the lift climbs in a week. `fine` is the smallest change
+ * the equipment can actually make: half a kilo on a dumbbell rack, 2.5 kg on a
+ * barbell (a pair of 1.25 plates), the pin's own jump on a stack. The +/− in
+ * gym mode moves by `fine`; weekly progression moves by `step`. Only movements
+ * where the two differ carry `fine` at all — `fineStep()` falls back to `step`.
  *   GOALS     — five programmes. Each one picks exercises from the catalogue,
  *               may override sets/reps/rest, and carries its own cardio week,
  *               nutrition direction and rules for reading the weekly weigh-in.
@@ -40,6 +47,7 @@ export const EXERCISES = {
     repsN: 10,
     base: 10,
     step: 2,
+    fine: 0.5,
     hand: 1,
     rest: 90,
     cue: [
@@ -59,6 +67,7 @@ export const EXERCISES = {
     repsN: 10,
     base: 8,
     step: 2,
+    fine: 0.5,
     hand: 1,
     rest: 90,
     cue: ['ميلان البنش 30 درجة بس. ', { b: 'أكثر من كذا يتحول التمرين لكتف مو صدر' }, '.'],
@@ -90,6 +99,7 @@ export const EXERCISES = {
     repsN: 10,
     base: 8,
     step: 2,
+    fine: 0.5,
     hand: 1,
     rest: 90,
     cue: [
@@ -125,6 +135,7 @@ export const EXERCISES = {
     repsN: 13,
     base: 5,
     step: 2,
+    fine: 0.5,
     hand: 1,
     rest: 60,
     cue: [
@@ -191,6 +202,7 @@ export const EXERCISES = {
     repsN: 12,
     base: 10,
     step: 2,
+    fine: 0.5,
     rest: 60,
     cue: [
       'دمبل واحد بيدينك الثنتين فوق راسك. ',
@@ -263,6 +275,7 @@ export const EXERCISES = {
     repsN: 10,
     base: 14,
     step: 2,
+    fine: 0.5,
     hand: 1,
     rest: 75,
     cue: [
@@ -317,6 +330,7 @@ export const EXERCISES = {
     repsN: 12,
     base: 8,
     step: 2,
+    fine: 0.5,
     hand: 1,
     rest: 60,
     cue: [
@@ -356,6 +370,7 @@ export const EXERCISES = {
     repsN: 6,
     base: 40,
     step: 5,
+    fine: 2.5,
     rest: 180,
     cue: [
       'البار على أعلى ظهرك مو على رقبتك. انزل لين فخذك يوازي الأرض أو أقرب، ',
@@ -372,6 +387,7 @@ export const EXERCISES = {
     repsN: 13,
     base: 12,
     step: 2,
+    fine: 0.5,
     rest: 75,
     cue: [
       'دمبل واحد أو كيتل بل قريب من صدرك. انزل بين رجلك وكوعك يمر داخل ركبتك، ',
@@ -388,6 +404,7 @@ export const EXERCISES = {
     repsN: 4,
     base: 50,
     step: 5,
+    fine: 2.5,
     rest: 180,
     cue: [
       'البار ملزوق بساقك من البداية. ارفع بدفع الأرض برجلك مو بسحب ظهرك، و',
@@ -404,6 +421,7 @@ export const EXERCISES = {
     repsN: 10,
     base: 12,
     step: 2,
+    fine: 0.5,
     hand: 1,
     rest: 120,
     cue: [
@@ -423,6 +441,7 @@ export const EXERCISES = {
     repsN: 11,
     base: 40,
     step: 5,
+    fine: 2.5,
     rest: 90,
     cue: [
       'ظهرك العلوي على البنش والبار على حوضك (حط فوطة تحته). ادفع بكعبك وارفع حوضك لين جسمك يصير خط مستقيم، ',
@@ -439,6 +458,7 @@ export const EXERCISES = {
     repsN: 10,
     base: 8,
     step: 2,
+    fine: 0.5,
     hand: 1,
     rest: 75,
     cue: [
@@ -456,6 +476,7 @@ export const EXERCISES = {
     repsN: 10,
     base: 8,
     step: 2,
+    fine: 0.5,
     hand: 1,
     rest: 60,
     cue: [
@@ -1018,6 +1039,13 @@ export const FEEDBACK_VALUES = ['light', 'ok', 'heavy'];
 
 const BY_ID = new Map(ALL_EXERCISES.map((e) => [e.id, e]));
 export const exById = (id) => BY_ID.get(id);
+
+/**
+ * The smallest change the equipment can make, which is what the +/− buttons
+ * move by. Falls back to the weekly step for anything whose rack, stack or
+ * clock has no finer notch than that.
+ */
+export const fineStep = (e) => (Number.isFinite(e?.fine) ? e.fine : e?.step || 0);
 
 /**
  * Ceiling on any stored load, in kilograms or in seconds for a timed hold.

@@ -17,9 +17,11 @@ import {
 } from '../public/js/engine.js';
 import {
   PLAN,
+  ALL_EXERCISES,
   baseWeights,
   exById,
   EXERCISE_IDS,
+  fineStep,
   GOAL_KEYS,
   MAX_SETS,
   planOf,
@@ -107,6 +109,47 @@ test('the goal decides what the scale means', async (t) => {
 
   await t.test('an unknown goal falls back instead of throwing', () => {
     assert.deepEqual(verdict(...gained, 'nonsense'), verdict(...gained, 'cut'));
+  });
+});
+
+test('the button notch and the weekly jump are different numbers', async (t) => {
+  await t.test('a movement without its own notch falls back to the weekly step', () => {
+    const machine = exById('leg_press');
+    assert.equal(machine.fine, undefined, 'a stack has no finer notch than its pin');
+    assert.equal(fineStep(machine), machine.step);
+  });
+
+  await t.test('the dumbbells reach the halves on the rack', () => {
+    for (const id of ['chest_db', 'sh_press', 'curl', 'rdl']) {
+      assert.equal(fineStep(exById(id)), 0.5, `${id} must move in halves`);
+    }
+  });
+
+  await t.test('a barbell moves by the smallest pair of plates', () => {
+    for (const id of ['squat_bb', 'dead_bb', 'hip_thrust']) {
+      assert.equal(fineStep(exById(id)), 2.5, `${id} cannot change by less than a 1.25 pair`);
+    }
+  });
+
+  await t.test('no notch is coarser than the weekly jump, or zero', () => {
+    for (const e of ALL_EXERCISES) {
+      if (e.body) {
+        assert.equal(e.fine, undefined, `${e.id} carries no load to notch`);
+        continue;
+      }
+      const fine = fineStep(e);
+      assert.ok(fine > 0, `${e.id} must be adjustable`);
+      assert.ok(fine <= e.step, `${e.id}: a button must never outrun the weekly jump`);
+    }
+  });
+
+  await t.test('a load reachable by the buttons is one the store can hold', () => {
+    // The document keeps one decimal, so a notch finer than 0.1 would round
+    // away and the button would appear to do nothing.
+    for (const e of ALL_EXERCISES) {
+      const fine = fineStep(e);
+      assert.equal(Math.round(fine * 10) / 10, fine, `${e.id} notch survives rounding`);
+    }
   });
 });
 
