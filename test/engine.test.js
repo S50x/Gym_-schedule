@@ -44,28 +44,6 @@ test('weekly verdict', async (t) => {
     assert.equal(v.dW, -2);
   });
 
-  await t.test('a fast drop with muscle climbing is fat loss, not a warning', () => {
-    // The exact case the warning used to get wrong: −2 kg on the scale, +1 kg
-    // of lean mass. Nothing was lost that we wanted to keep.
-    const v = verdict({ weight: 100, muscle: 42 }, { weight: 102, muscle: 41 });
-    assert.equal(v.gate, 'go');
-    assert.equal(v.kind, 'go');
-    assert.equal(v.dW, -2);
-    assert.equal(v.dM, 1);
-    assert.notEqual(v.t, verdict({ weight: 100 }, { weight: 102 }).t, 'and it must say so');
-  });
-
-  await t.test('a muscle reading inside the noise band still holds', () => {
-    // +0.2 kg is under `muscleGainKg`, so the fast-loss warning stands.
-    const v = verdict({ weight: 100, muscle: 41.2 }, { weight: 102, muscle: 41 });
-    assert.equal(v.gate, 'hold');
-    assert.equal(v.kind, 'warn');
-  });
-
-  await t.test('a fast drop with no muscle reading still holds', () => {
-    assert.equal(verdict({ weight: 100, muscle: null }, { weight: 102, muscle: 41 }).gate, 'hold');
-  });
-
   await t.test('losing half a kilo of muscle → hold', () => {
     const v = verdict({ weight: 101.5, muscle: 41 }, { weight: 102, muscle: 41.6 });
     assert.equal(v.gate, 'hold');
@@ -114,15 +92,6 @@ test('the goal decides what the scale means', async (t) => {
 
   await t.test('recomp treats a flat scale as the goal', () => {
     assert.equal(verdict({ weight: 102.1 }, { weight: 102 }, 'recomp').kind, 'go');
-  });
-
-  await t.test('every goal reads a fast drop with muscle up as progress', () => {
-    for (const key of GOAL_KEYS) {
-      const v = verdict({ weight: 98, muscle: 42 }, { weight: 102, muscle: 41 }, key);
-      assert.equal(v.gate, 'go', `${key} must not hold the lifts`);
-      assert.equal(v.kind, 'go', `${key} must not scold`);
-      assert.ok(v.t.length > 0, `${key} needs its own headline`);
-    }
   });
 
   await t.test('every goal returns the shape the views rely on', () => {

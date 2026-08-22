@@ -128,14 +128,6 @@ goalReview({ profile, weight, goalKey })
 cutting and the target while building; a textbook cut is a red flag for a bulk.
 Get it wrong and the app fights half its users every week.
 
-**The scale is not the only witness.** A drop past `holdLossBelow` used to hold
-the lifts on the weight number alone, so a week of −2 kg and +1 kg of lean mass
-was told it was losing muscle — by the same card that printed the muscle gain
-underneath. When `muscle` is measured and rose by at least `muscleGainKg`, the
-fast-loss branch reads the loss as fat and lets the week through with its own
-copy. Every goal carries the threshold; it sits above week-to-week scale noise
-so one hydration wobble cannot silence a real warning.
-
 **Strength is per group, not per body.** Every exercise carries `g`
 (`push` · `pull` · `legs` · `core`), and `profile.levels` may hold a level for
 some of them. `baseWeights(goal, level, levels)` scales each movement by
