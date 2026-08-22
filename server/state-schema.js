@@ -13,6 +13,7 @@ import {
   MACHINE_KEYS,
   FEEDBACK_VALUES,
   MAX_SETS,
+  MAX_LOAD,
   MAX_MACHINES_PER_DAY,
   GOAL_KEYS,
   LEVEL_KEYS,
@@ -58,7 +59,7 @@ function weightsOf(raw, path) {
   const out = {};
   for (const [id, value] of Object.entries(raw)) {
     if (!EX_IDS.has(id)) continue; // unknown exercise → dropped
-    out[id] = num(value, `${path}.${id}`, { min: 0, max: 1000 });
+    out[id] = num(value, `${path}.${id}`, { min: 0, max: MAX_LOAD });
   }
   return out;
 }
