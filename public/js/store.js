@@ -62,6 +62,13 @@ class Store extends EventTarget {
 
   async init() {
     this.doc = readLocal() || migrateLegacy() || emptyDoc();
+    // The app paints once before this runs, against the empty document every
+    // session starts with, and that paint fills the derived weight cache with
+    // nothing but the programme's starting loads. Installing the real document
+    // has to drop it, or every weight the user set by hand reads back as the
+    // base until some other write happens to clear it — a manual adjustment
+    // looked like it saved, then came back undone on the next open.
+    this._weightCache.clear();
     const meta = readJson(META_KEY) || {};
     this.version = Number(meta.version) || 0;
     this._dirty = !!meta.dirty;

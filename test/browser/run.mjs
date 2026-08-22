@@ -13,6 +13,7 @@ const JOURNEYS = [
   ['goals', 'goals.mjs', 'the five goals + the pre-goals regression'],
   ['features', 'features.mjs', 'bilingual names, tab bar, cardio split, plank timer'],
   ['gymgoal', 'gymgoal.mjs', 'gym mode serves the right goal'],
+  ['load', 'load.mjs', 'exact loads off the step lattice'],
   ['switch', 'switch.mjs', 'switching goal loses nothing'],
   ['review', 'review.mjs', 'live calorie target + goal review'],
   ['smoke', 'smoke.mjs', 'full app, sync between browsers, XSS probes'],
