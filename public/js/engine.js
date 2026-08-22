@@ -36,6 +36,14 @@ const VERDICT_TEXT = {
         ' وارفع أكلك شوي — خصوصاً البروتين.',
       ],
     },
+    muscleUp: {
+      t: 'نزولك سريع بس عضلك طالع',
+      p: [
+        'نزلت أكثر من 1.2% من وزنك، بس كتلتك العضلية زادت — يعني اللي راح دهون مو عضل، وهذا بالضبط هدف التنشيف. ',
+        { b: 'كمّل على نفس النظام' },
+        ' وخلّ البروتين عالي. لو الرقم من ميزان بيتي، تأكد منه أسبوع جاي — الماء تلعب فيه.',
+      ],
+    },
     muscle: {
       t: 'الكتلة العضلية نازلة',
       p: [
@@ -62,6 +70,14 @@ const VERDICT_TEXT = {
         'وزنك نزل، وما تكبر عضلة بعجز سعرات. ',
         { b: 'ارفع أكلك ٣٠٠ سعرة' },
         ' وثبّت الأوزان هالأسبوع لين وزنك يبدأ يطلع.',
+      ],
+    },
+    muscleUp: {
+      t: 'وزنك نزل بس عضلك طالع',
+      p: [
+        'كتلتك العضلية زادت مع إن الميزان نزل — تمرينك شغال والأوزان تكمل تزيد. بس عشان تكبّر فعلاً لازم وزنك يطلع: ',
+        { b: 'ارفع أكلك ٣٠٠ سعرة' },
+        '.',
       ],
     },
     muscle: {
@@ -100,6 +116,12 @@ const VERDICT_TEXT = {
         '.',
       ],
     },
+    muscleUp: {
+      t: 'دهون نازلة وعضل طالع',
+      p: [
+        'وزنك نزل وكتلتك العضلية زادت — هذا الشد بعينه. النزول سريع شوي، فارفع أكلك شوي وثبّت البروتين، والأوزان تكمل تزيد.',
+      ],
+    },
     muscle: {
       t: 'الكتلة العضلية نازلة',
       p: [
@@ -126,6 +148,12 @@ const VERDICT_TEXT = {
         '.',
       ],
     },
+    muscleUp: {
+      t: 'نزولك سريع بس عضلك طالع',
+      p: [
+        'اللي نزل دهون مو عضل، وأداؤك ما بيتأثر. كمّل ونكمل نزيد — بس لا تنزل أكلك أكثر من كذا.',
+      ],
+    },
     muscle: {
       t: 'الكتلة العضلية نازلة',
       p: ['ارفع البروتين وثبّت الأوزان هالأسبوع.'],
@@ -141,6 +169,14 @@ const VERDICT_TEXT = {
     fast: {
       t: 'تنزل وأنت تبي تقوى',
       p: ['ما تقوى وأنت تنزل وزن. ', { b: 'ارفع أكلك' }, ' وثبّت الأوزان هالأسبوع.'],
+    },
+    muscleUp: {
+      t: 'وزنك نزل بس عضلك طالع',
+      p: [
+        'كتلتك العضلية زادت، فالأوزان تكمل تزيد. بس القوة تحب وزن ثابت أو طالع — ',
+        { b: 'ارفع أكلك' },
+        ' لين الميزان يوقف نزول.',
+      ],
     },
     muscle: {
       t: 'الكتلة العضلية نازلة',
@@ -178,8 +214,14 @@ export function verdict(cur, prev, goalKey = DEFAULT_GOAL) {
 
   const out = (gate, kind, key) => ({ gate, kind, dW, dM, ...(text[key] || text.ok) });
 
-  // Losing faster than the goal tolerates: no goal adds load on top of that.
-  if (rules.holdLossBelow !== null && pct <= rules.holdLossBelow) return out('hold', 'warn', 'fast');
+  // Losing faster than the goal tolerates: no goal adds load on top of that —
+  // unless the scale says the lean mass went UP. A fast drop is only worth
+  // holding for when it is coming out of muscle; when muscle is climbing, what
+  // left was fat, and the warning would be arguing with the measurement.
+  const muscleUp = rules.muscleGainKg !== null && dM !== null && dM >= rules.muscleGainKg;
+  if (rules.holdLossBelow !== null && pct <= rules.holdLossBelow) {
+    return muscleUp ? out('go', 'go', 'muscleUp') : out('hold', 'warn', 'fast');
+  }
   if (rules.muscleDropKg !== null && dM !== null && dM <= rules.muscleDropKg) {
     return out('hold', 'warn', 'muscle');
   }
