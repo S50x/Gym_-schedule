@@ -713,6 +713,41 @@ ul.t b {
   font-size: 52px;
   font-family: 'Cairo';
 }
+/* The reading is also the control: tap it to type an exact load. */
+button.wnum {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  text-align: inherit;
+  border-bottom: 2px dashed var(--line-2);
+}
+button.wnum:active {
+  color: var(--orange);
+}
+input.wedit {
+  width: 100%;
+  min-width: 0;
+  /* Digits stay where the reading was: the RTL row starts on the right. */
+  text-align: right;
+  background: none;
+  color: var(--orange);
+  border: 0;
+  border-bottom: 2px solid var(--orange);
+  padding: 0;
+  border-radius: 0;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+input.wedit:focus {
+  outline: none;
+}
+/* The spinners are unusable at this size and the +/− buttons already do it. */
+input.wedit::-webkit-outer-spin-button,
+input.wedit::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
 .wunit {
   font-size: 14px;
   color: var(--mut);

@@ -1020,6 +1020,13 @@ const BY_ID = new Map(ALL_EXERCISES.map((e) => [e.id, e]));
 export const exById = (id) => BY_ID.get(id);
 
 /**
+ * Ceiling on any stored load, in kilograms or in seconds for a timed hold.
+ * The client validates a typed value against it and the server re-checks the
+ * same number, so the two can never drift apart.
+ */
+export const MAX_LOAD = 1000;
+
+/**
  * Highest `sets` anywhere in the program — catalogue defaults and every goal's
  * overrides. Used to bound what a client may store; it must cover all goals,
  * because switching goal must never make an already-saved document invalid.
