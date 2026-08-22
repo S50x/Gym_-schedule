@@ -1,10 +1,11 @@
 /**
- * A load off the step lattice.
+ * A load off the weekly-jump lattice.
  *
- * `step` is the weekly jump, and the +/− buttons moved by that same number, so
- * every weight the app could reach was `base ± n · step`: from 6 kg with a 2 kg
- * step you got 6 · 8 · 10 and never the 7.5 dumbbell on the rack. Typing one in
- * must stick, survive a reload, and carry the ordinary step from there.
+ * `step` is how much a lift climbs in a week, and the +/− buttons used to move
+ * by that same number, so every load the app could reach was `base ± n · step`:
+ * from 6 kg with a 2 kg step you got 6 · 8 · 10 and never the 7.5 dumbbell on
+ * the rack. The buttons now move by `fine` — what the equipment can actually
+ * do — and the reading can still be typed for a jump neither one is worth.
  */
 
 import { newPage, onboard, noStrayNulls, runStandalone } from './helpers.mjs';
@@ -30,12 +31,16 @@ export default async function run({ base, browser, problems, step }) {
     await noStrayNulls(page, 'gym mode · exact load');
   });
 
-  await step('the step carries on from there', async () => {
-    // chest_db moves in 2 kg, so the half-kilo rides along: 7.5 → 9.5.
-    await page.locator('.adj button').first().click();
+  await step('the button moves by the rack, not by the weekly jump', async () => {
+    // chest_db climbs 2 kg a week, but a dumbbell rack goes in halves.
+    await page.locator('.adj button').first().click(); // +
     const value = (await shown(page)).trim();
-    if (value !== '9.5') throw new Error(`expected 9.5 after one step, got "${value}"`);
+    if (value !== '8') throw new Error(`expected 8 after one tap on a dumbbell, got "${value}"`);
+    await page.locator('.adj button').nth(1).click(); // − back to where we were
+    if ((await shown(page)).trim() !== '7.5') throw new Error('a tap back must undo a tap');
   });
+
+
 
   await step('and it survives a reload', async () => {
     await page.reload({ waitUntil: 'networkidle' });
@@ -43,7 +48,7 @@ export default async function run({ base, browser, problems, step }) {
     await page.evaluate(() => document.querySelectorAll('.wlift:not(.ghost)')[0]?.click());
     await page.waitForSelector('#gym.on', { timeout: 5000 });
     const value = (await shown(page)).trim();
-    if (value !== '9.5') throw new Error(`expected 9.5 after a reload, got "${value}"`);
+    if (value !== '7.5') throw new Error(`expected the typed 7.5 after a reload, got "${value}"`);
   });
 
   await step('a load set with the buttons survives a reload too', async () => {
@@ -69,6 +74,23 @@ export default async function run({ base, browser, problems, step }) {
     await page.waitForSelector('button.wnum', { timeout: 5000 });
     const value = (await shown(page)).trim();
     if (value !== kept) throw new Error(`expected ${kept} to stand, got "${value}"`);
+  });
+
+  await step('a barbell moves by the smallest pair of plates', async () => {
+    // The squat climbs 5 kg a week, but you cannot load a bar with less than a
+    // 1.25 pair, so the button has to stop at half the weekly jump.
+    const bar = await newPage(browser, problems);
+    await onboard(bar, base, { goal: 4, weight: 90 }); // قوة — opens on the squat
+    await bar.evaluate(() => document.querySelectorAll('.wlift:not(.ghost)')[0]?.click());
+    await bar.waitForSelector('#gym.on', { timeout: 5000 });
+    const name = await bar.locator('.gname').evaluate((n) => n.childNodes[0].textContent.trim());
+    if (name !== 'سكوات بار خلفي') throw new Error(`expected the squat, got "${name}"`);
+
+    const before = Number.parseFloat((await shown(bar)).trim());
+    await bar.locator('.adj button').first().click();
+    const after = Number.parseFloat((await shown(bar)).trim());
+    if (after - before !== 2.5) throw new Error(`the bar moved by ${after - before}, expected 2.5`);
+    await bar.context().close();
   });
 
   await page.context().close();
