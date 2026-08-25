@@ -1768,6 +1768,24 @@ small.en {
   opacity: 0.32;
   cursor: default;
 }
+/* A flagged pair stays tappable — the warning explains, it does not block. */
+.mchip.warn,
+.mchip.on.warn {
+  border-color: var(--coral);
+  box-shadow: inset 0 0 0 1px var(--coral);
+}
+.mwarn {
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--mut);
+  margin-top: 7px;
+  padding-inline-start: 9px;
+  border-inline-start: 2px solid var(--coral);
+}
+.mwarn b {
+  color: var(--coral);
+  font-weight: 600;
+}
 .split {
   margin-top: 11px;
   background: var(--ink-2);

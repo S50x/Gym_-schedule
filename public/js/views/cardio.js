@@ -1,6 +1,6 @@
 import { el } from '../dom.js';
 import { bulletList } from '../ui.js';
-import { cardioOf, goalOf, MACH, MAX_MACHINES_PER_DAY, machinesOfDay } from '../program.js';
+import { cardioOf, clashesOf, goalOf, MACH, machName, MAX_MACHINES_PER_DAY, machinesOfDay } from '../program.js';
 
 export function renderCardio(ctx) {
   const { store } = ctx;
@@ -26,22 +26,38 @@ export function renderCardio(ctx) {
     const pickedKeys = new Set(picked.map((p) => p.k));
     const spent = picked.reduce((sum, p) => sum + p.m, 0);
 
+    /* A day may pair two machines that fight each other. That is worth saying
+       out loud, but it is the trainee's knee and the trainee's call, so the
+       chip stays live — it just says why it is flagged. */
+    const clashes = clashesOf([...pickedKeys]);
+    const flagged = new Set(clashes.flatMap((c) => [c.a, c.b]));
+
     /* One chip per machine. Tapping toggles it in or out of the day. */
     const chips = MACH.map((m) => {
       const on = pickedKeys.has(m.k);
       const full = !on && picked.length >= MAX_MACHINES_PER_DAY;
+      const warn = flagged.has(m.k);
       return el('button', {
-        class: ['mchip', on ? 'on' : '', full ? 'full' : ''],
+        class: ['mchip', on ? 'on' : '', full ? 'full' : '', warn ? 'warn' : ''],
         text: m.n,
         disabled: full,
         attrs: {
           'aria-pressed': String(on),
-          'aria-label': `${m.n} — ${m.en}`,
+          'aria-label': `${m.n} — ${m.en}${warn ? ' — فيه تعارض' : ''}`,
           title: full ? `أقصى ${MAX_MACHINES_PER_DAY} أجهزة باليوم` : m.en,
         },
         on: { click: () => ctx.toggleMachine(i, m.k) },
       });
     });
+
+    const warnings = clashes.map((c) =>
+      el(
+        'div',
+        { class: 'mwarn' },
+        el('b', { text: `${machName(c.a)} + ${machName(c.b)}` }),
+        ` — ${c.why}`
+      )
+    );
 
     /* Minute steppers appear only once the day is actually shared. */
     let split = null;
@@ -103,6 +119,7 @@ export function renderCardio(ctx) {
         })
       ),
       el('div', { class: 'mchips' }, chips),
+      warnings,
       split
     );
   });
@@ -113,7 +130,7 @@ export function renderCardio(ctx) {
     el('h3', { class: 'first', text: `الكارديو — ${cardioDays} أيام · ${goal.n}` }),
     el('div', {
       class: 'hint-lg',
-      text: `اختر جهازك لكل يوم — وتقدر تختار لين ${MAX_MACHINES_PER_DAY} أجهزة وتقسّم الدقائق بينهم. كلها تسوي نفس الشي للحرق، الفرق في مفاصلك وفي تعارضها مع الحديد.`,
+      text: `اختر جهازك لكل يوم — وتقدر تختار لين ${MAX_MACHINES_PER_DAY} أجهزة وتقسّم الدقائق بينهم. كلها تسوي نفس الشي للحرق، الفرق في مفاصلك. لو جمعت جهازين متعارضين بتشوف تنبيه — تنبيه مو منع، القرار قرارك.`,
     }),
     el('div', { class: 'card tight-sm' }, rows),
     el('h3', { text: 'وش الفرق بين الأجهزة' }),

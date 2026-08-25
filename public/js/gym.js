@@ -602,12 +602,17 @@ export class GymMode {
     clear(this.nodes.finStats);
     const stat = (value, label) =>
       el('div', { class: 'stat' }, el('b', { class: 'n', text: value }), el('span', { text: label }));
-    this.nodes.finStats.append(
+    // A day of planks and stretches carries no load, so the volume stat would
+    // read a flat 0 every single time. Drop it rather than print a zero.
+    // Through the dom.js helper, not the native append: the volume stat is now
+    // conditional, and Element.append() would stringify a null into the word
+    // "null" on screen — the exact bug the rest of this file already avoids.
+    append(this.nodes.finStats, [
       stat(String(plan.ex.length), 'تمارين'),
       stat(String(setCount), 'مجموعات'),
-      stat(fmt(volume), 'كجم حمل'),
-      stat(String(minutes), 'دقيقة')
-    );
+      volume > 0 ? stat(fmt(volume), 'كجم حمل') : null,
+      stat(String(minutes), 'دقيقة'),
+    ]);
 
     this.stopRest();
     this.show(this.nodes.fin);
