@@ -4,6 +4,8 @@ import {
   planOf,
   weekOf,
   cardioOf,
+  dayHasLoads,
+  goalHasLoads,
   goalOf,
   todayLift,
   DAY_NAMES,
@@ -34,6 +36,10 @@ export function renderHome(ctx) {
   const PLAN = planOf(goalKey);
   const WEEK = weekOf(goalKey);
   const CARDIO = cardioOf(goalKey);
+  const hasLoads = goalHasLoads(goalKey);
+  // Naming the iron on a goal that has none reads like the app lost track of
+  // which programme the trainee is on.
+  const restLine = hasLoads ? 'لا حديد ولا كارديو' : 'لا كارديو ولا تمارين';
 
   const doneCount = (dayKey) =>
     PLAN[dayKey].ex.filter((e) => {
@@ -117,7 +123,9 @@ export function renderHome(ctx) {
       { class: 'today rest' },
       el('div', { class: 'lbl', text: `TODAY · ${todayName}` }),
       el('h2', { text: 'راحة كاملة' }),
-      el('p', { text: 'لا حديد ولا كارديو. الراحة جزء من البرنامج، وجسمك يبني فيها مو بالنادي.' }),
+      el('p', {
+        text: `${restLine}. الراحة جزء من البرنامج، وجسمك يبني فيها مو بالنادي.`,
+      }),
       el('button', { class: 'go', text: 'سجّل قياس الأسبوع', on: { click: () => navigate('week') } })
     );
   } else if (tk === 'cardio') {
@@ -244,7 +252,11 @@ export function renderHome(ctx) {
     ? el('div', { class: 'pgrid' }, cards)
     : el('div', { class: 'card' }, el('div', {
         class: 'mut',
-        text: 'أول أسبوع — بعد ما تخلّصه بيبان لك تقدّمك هنا.',
+        // A goal with nothing to load has no weights to plot — ever. Saying
+        // "wait for next week" there would be a promise the app cannot keep.
+        text: hasLoads
+          ? 'أول أسبوع — بعد ما تخلّصه بيبان لك تقدّمك هنا.'
+          : 'ما فيه أوزان بهالبرنامج — تقدّمك يبان بدقائق الكارديو وبقياس وزنك آخر الأسبوع.',
       }));
 
   /* ── week strip ── */
@@ -258,7 +270,12 @@ export function renderHome(ctx) {
     if (day.lift) {
       const done = doneCount(day.lift);
       const total = PLAN[day.lift].ex.length;
-      sub = `حديد — ${PLAN[day.lift].title}`;
+      // A day of planks and stretches is not "حديد". And on a goal built around
+      // cardio the minutes are the day, so they belong on the line too.
+      const kind = dayHasLoads(PLAN[day.lift].ex) ? 'حديد' : 'تمارين جسم';
+      const slot = CARDIO[day.c];
+      const alsoCardio = !hasLoads && slot && !slot.rest ? ` · ${slot.detail}` : '';
+      sub = `${kind} — ${PLAN[day.lift].title}${alsoCardio}`;
       right = el('button', {
         class: ['wlift', done === total ? 'full' : ''],
         on: { click: () => openGym(day.lift) },
@@ -266,7 +283,7 @@ export function renderHome(ctx) {
       });
       right.appendChild(el('span', { class: 'n', text: `${done}/${total}` }));
     } else if (day.rest) {
-      sub = 'راحة كاملة — لا حديد ولا كارديو';
+      sub = `راحة كاملة — ${restLine}`;
       right = el('button', {
         class: 'wlift ghost',
         text: 'قياس',
@@ -310,7 +327,7 @@ export function renderHome(ctx) {
     header,
     hero,
     reviewCard,
-    el('h3', { text: 'أوزانك وهي تطلع' }),
+    el('h3', { text: hasLoads ? 'أوزانك وهي تطلع' : 'تقدّمك' }),
     rail,
     el('h3', { text: 'الأسبوع كامل' }),
     el('div', { class: 'card tight' }, strip),
