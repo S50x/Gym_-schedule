@@ -1,11 +1,11 @@
 /**
- * The five goals, and the regression that matters most:
+ * The six goals, and the regression that matters most:
  * a document saved before goals existed must look exactly as it did.
  */
 
 import { newPage, onboard, tab, runStandalone } from './helpers.mjs';
 
-const GOAL_NAMES = ['تنشيف', 'بناء عضل', 'شد الجسم', 'لياقة وصحة', 'قوة'];
+const GOAL_NAMES = ['تنشيف', 'بناء عضل', 'شد الجسم', 'لياقة وصحة', 'قوة', 'كارديو فقط'];
 
 export default async function run({ base, browser, problems, step }) {
   console.log('\n== a document from before goals existed ==');

@@ -161,6 +161,16 @@ like `nutrition`. **Rules that must not be broken:**
   the moment they switch to a three-set goal, and their sync would 400 forever.
 - **Switching goal deletes nothing.** Weights are keyed by exercise id, so the old
   goal's numbers are still there if they switch back.
+- **Not every goal has iron in it.** `cardio` programmes six days of machines,
+  bodyweight blocks and stretches, and not one loaded movement. Any copy that
+  names "حديد" or promises weights that will rise must ask `goalHasLoads(goalKey)`
+  (or `dayHasLoads(ex)` for one day) rather than assume — the week strip, the
+  progress rail, the rest-day line and the finish screen all do. Both are derived
+  from the programme itself, so a future goal gets it right without anyone
+  remembering to update a list.
+- **A stretch is `step: 0` with a `fine`.** It is adjustable by hand but never
+  progresses: a 30-second hold must still be 30 seconds a year later. That is why
+  the `fine <= step` guard only applies to movements that actually progress.
 - **`step` is the weekly jump; `fine` is the rack.** They answer different
   questions and must not be the same number. `step` is how much a lift climbs in
   a week. `fine` is the smallest change the equipment can make — half a kilo on a
@@ -296,6 +306,7 @@ Chromium binary: it looks under `PLAYWRIGHT_BROWSERS_PATH` (default
 | `goals` | the pre-goals regression (an old document must render unchanged) + all five goals differing in substance |
 | `features` | bilingual names, tab-bar navigation, cardio split, plank countdown |
 | `gymgoal` | gym mode serves the current goal's programme |
+| `cardioonly` | the goal with no iron: the week never says «حديد», rounds and reps and clips are on every movement, a clashing machine pair warns without blocking |
 | `load` | the buttons move by the rack (0.5 kg dumbbell, 2.5 kg bar), a typed load sticks, and both survive a reload |
 | `switch` | switching goal and back loses nothing |
 | `review` | the calorie target follows the body; the goal review appears and dismisses |
