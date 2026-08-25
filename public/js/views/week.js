@@ -1,6 +1,6 @@
 import { el, richText } from '../dom.js';
 import { bulletList, toast } from '../ui.js';
-import { planOf, goalOf, exById } from '../program.js';
+import { planOf, goalHasLoads, goalOf, exById } from '../program.js';
 import { verdict, progress, proteinTarget, MAX_WEEK } from '../engine.js';
 
 export function renderWeek(ctx) {
@@ -127,7 +127,11 @@ export function renderWeek(ctx) {
       el('b', { class: 'nexth', text: `اللي بيصير بأسبوع ${wk + 1}` }),
       el('div', {
         class: 'mut',
-        text: ups.length ? `${ups.length} تمرين بيزيد وزنه` : 'ما فيه زيادة — كل الأوزان تثبت',
+        text: !goalHasLoads(goalKey)
+          ? 'ما فيه أوزان تزيد — تقدّمك بالدقائق والتكرارات والالتزام'
+          : ups.length
+            ? `${ups.length} تمرين بيزيد وزنه`
+            : 'ما فيه زيادة — كل الأوزان تثبت',
       }),
       ups.length ? el('ul', { class: 't' }, ups.map((name) => el('li', { text: name }))) : null,
       el('button', {

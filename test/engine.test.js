@@ -19,9 +19,12 @@ import {
   PLAN,
   ALL_EXERCISES,
   baseWeights,
+  clashesOf,
+  clashesWith,
   exById,
   EXERCISE_IDS,
   fineStep,
+  goalHasLoads,
   GOAL_KEYS,
   MAX_SETS,
   planOf,
@@ -139,7 +142,23 @@ test('the button notch and the weekly jump are different numbers', async (t) => 
       }
       const fine = fineStep(e);
       assert.ok(fine > 0, `${e.id} must be adjustable`);
-      assert.ok(fine <= e.step, `${e.id}: a button must never outrun the weekly jump`);
+      // A movement with no weekly jump at all — a stretch held for 30 seconds
+      // that must stay 30 seconds — is still adjustable by hand. Only a
+      // movement that DOES progress can have its week outrun by one tap.
+      if (e.step > 0) {
+        assert.ok(fine <= e.step, `${e.id}: a button must never outrun the weekly jump`);
+      }
+    }
+  });
+
+  await t.test('a movement that never progresses stays put', () => {
+    // The stretches are `step: 0` on purpose: 30 seconds must still be 30
+    // seconds a year from now, not five minutes.
+    const v = { gate: 'go' };
+    for (const id of ['str_ham', 'str_back']) {
+      const e = exById(id);
+      const log = { sets: { [id]: Array.from({ length: e.sets }, () => true) }, fb: {} };
+      assert.equal(progress({ [id]: 30 }, log, v)[id], 30, `${id} crept`);
     }
   });
 
@@ -150,6 +169,116 @@ test('the button notch and the weekly jump are different numbers', async (t) => 
       const fine = fineStep(e);
       assert.equal(Math.round(fine * 10) / 10, fine, `${e.id} notch survives rounding`);
     }
+  });
+});
+
+test('a goal with no iron in it', async (t) => {
+  await t.test('every movement it programmes is bodyweight or timed', () => {
+    for (const day of Object.values(planOf('cardio'))) {
+      for (const e of day.ex) {
+        assert.ok(e.body || e.time, `cardio programmes ${e.id}, which carries a load`);
+      }
+    }
+    assert.equal(goalHasLoads('cardio'), false);
+  });
+
+  await t.test('and it is the only one — the other five all lift', () => {
+    for (const key of GOAL_KEYS) {
+      if (key !== 'cardio') assert.equal(goalHasLoads(key), true, `${key} lost its lifts`);
+    }
+  });
+
+  await t.test('six training days and six days of cardio', () => {
+    assert.equal(Object.keys(planOf('cardio')).length, 6);
+    assert.equal(cardioOf('cardio').filter((c) => !c.rest).length, 6);
+    assert.equal(cardioOf('cardio').length, 7, 'a full week');
+  });
+
+  await t.test('every exercise states its own sets and reps', () => {
+    // The trainee asked to see the rounds and the reps, so nothing here may
+    // fall back to a catalogue default that was tuned for a different goal.
+    for (const day of Object.values(planOf('cardio'))) {
+      for (const e of day.ex) {
+        assert.ok(e.sets >= 1, `${e.id} has no sets`);
+        assert.ok(String(e.reps).length > 0, `${e.id} has no reps`);
+      }
+    }
+  });
+
+  await t.test('it speaks its own language, never the barbell\'s', () => {
+    const said = [];
+    for (const cur of [{ weight: 97 }, { weight: 99.4 }, { weight: 101 }]) {
+      const v = verdict(cur, { weight: 100 }, 'cardio');
+      said.push(v.t);
+      const prose = [v.t, ...v.p.map((x) => (typeof x === 'string' ? x : x.b))].join(' ');
+      assert.ok(!prose.includes('الأوزان'), `cardio verdict talks about weights: ${v.t}`);
+    }
+    // and not a silent fallback onto the fat-loss copy
+    const cut = [{ weight: 97 }, { weight: 99.4 }, { weight: 101 }].map(
+      (cur) => verdict(cur, { weight: 100 }, 'cut').t
+    );
+    assert.notDeepEqual(said, cut);
+  });
+});
+
+test('every video link is a real link', async (t) => {
+  await t.test('parses as https, and nothing points at a placeholder', () => {
+    for (const e of ALL_EXERCISES) {
+      if (!e.v) continue;
+      const url = new URL(e.v);
+      assert.equal(url.protocol, 'https:', `${e.id} is not https`);
+      assert.ok(e.vlbl, `${e.id} has a link with no label`);
+      assert.ok(!/example\.com|TODO|watch\?v=$/i.test(e.v), `${e.id} points at a placeholder`);
+    }
+  });
+
+  await t.test('no two movements share one clip by accident', () => {
+    // lat_pull and pullup deliberately share one; nothing else may.
+    const byUrl = new Map();
+    for (const e of ALL_EXERCISES) {
+      if (!e.v) continue;
+      byUrl.set(e.v, [...(byUrl.get(e.v) || []), e.id]);
+    }
+    const shared = [...byUrl.values()].filter((ids) => ids.length > 1);
+    assert.deepEqual(shared, [['lat_pull', 'pullup']], 'unexpected duplicate clips');
+  });
+
+  await t.test('the movements this programme leans on all have one', () => {
+    // Bodyweight form is the whole safety margin here — nobody should have to
+    // guess what a bird dog looks like.
+    for (const id of ['pushup', 'pushup_inc', 'crunch', 'plank', 'side_plank', 'birddog',
+                      'glute_bridge', 'superman', 'str_ham', 'str_hipflex', 'str_calf',
+                      'str_chest', 'str_back']) {
+      assert.ok(exById(id).v, `${id} needs an explainer clip`);
+    }
+  });
+});
+
+test('machines that fight each other', async (t) => {
+  await t.test('names the pair and says why', () => {
+    const [clash] = clashesOf(['ellip', 'stair']);
+    assert.ok(clash, 'the knee pair must be flagged');
+    assert.deepEqual([clash.a, clash.b], ['ellip', 'stair']);
+    assert.ok(clash.why.length > 10, 'a flag with no reason is noise');
+    assert.equal(clashesOf(['bike', 'row']).length, 1);
+  });
+
+  await t.test('order never matters', () => {
+    assert.deepEqual(clashesOf(['stair', 'ellip']), clashesOf(['ellip', 'stair']));
+    assert.deepEqual(clashesWith('ellip'), ['stair']);
+    assert.deepEqual(clashesWith('stair'), ['ellip']);
+  });
+
+  await t.test('a sane day is left alone', () => {
+    for (const day of [['walk'], ['walk', 'bike'], ['ellip', 'row'], [], ['stair']]) {
+      assert.deepEqual(clashesOf(day), [], `${day.join('+')} must not be flagged`);
+    }
+  });
+
+  await t.test('nothing conflicts with itself, and unknown keys are ignored', () => {
+    assert.deepEqual(clashesOf(['bike', 'bike']), []);
+    assert.deepEqual(clashesOf(['nonsense']), []);
+    assert.deepEqual(clashesWith('nonsense'), []);
   });
 });
 

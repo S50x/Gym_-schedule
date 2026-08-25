@@ -178,6 +178,27 @@ export const EXERCISES = {
       { b: 'شد بطنك ومؤخرتك' },
       ' وانزل لين صدرك يقارب الأرض. لو صعب عليك، سوّه على ركبتك أو على سطح مرتفع.',
     ],
+    v: 'https://www.youtube.com/watch?v=la1o8milb8c',
+    vlbl: 'مقطع يوتيوب (عربي)',
+  },
+  pushup_inc: {
+    n: 'ضغط مائل على مصطبة',
+    en: 'Incline Push-Up',
+    g: 'push',
+    sets: 3,
+    reps: '8–12',
+    repsN: 10,
+    base: 0,
+    step: 0,
+    body: 1,
+    rest: 60,
+    cue: [
+      'يدك على مصطبة أو حافة ثابتة بعرض كتفك، ورجلك ورا على الأرض. ',
+      { b: 'كل ما علا السطح صار التمرين أسهل' },
+      ' — ابدأ عالي وانزل مستواه كل أسبوعين. جسمك خط مستقيم، وصدرك يلمس الحافة.',
+    ],
+    v: 'https://www.youtube.com/watch?v=WnfBiOZQT1Q',
+    vlbl: 'مقطع يوتيوب — تدرّج الضغط للمبتدئ',
   },
   tri_push: {
     n: 'ترايسبس بوش داون حبل',
@@ -562,8 +583,8 @@ export const EXERCISES = {
       { b: 'أول ما ينزل خصرك أو يطلع مؤخرتك، وقف' },
       ' — الوقت الصحيح أهم من الوقت الطويل.',
     ],
-    v: 'https://www.muscleandstrength.com/exercises/hover.html',
-    vlbl: 'صفحة فيها مقطع',
+    v: 'https://www.youtube.com/watch?v=0CwaHTr-ilY',
+    vlbl: 'مقطع يوتيوب — الأداء الصحيح والأخطاء',
   },
   side_plank: {
     n: 'بلانك جانبي',
@@ -580,6 +601,8 @@ export const EXERCISES = {
       { b: 'ارفع حوضك ولا تخليه ينزل' },
       '، وراسك امتداد لظهرك. أول ما ينزل حوضك، وقف.',
     ],
+    v: 'https://www.youtube.com/watch?v=6w4cP4HKzA8',
+    vlbl: 'مقطع يوتيوب',
   },
   deadbug: {
     n: 'ديد بق',
@@ -618,6 +641,168 @@ export const EXERCISES = {
       { b: 'ظهرك ثابت تمامًا ولا يلتف' },
       ' — تخيّل كوب ماء على ظهرك ما ينكب. رجّعهم وبدّل الجهة.',
     ],
+    v: 'https://www.youtube.com/watch?v=954Pa0Q7yak',
+    vlbl: 'مقطع يوتيوب',
+  },
+  crunch: {
+    n: 'تمرين البطن (كرنش)',
+    en: 'Crunch',
+    g: 'core',
+    sets: 3,
+    reps: '15–20',
+    repsN: 17,
+    base: 0,
+    step: 0,
+    body: 1,
+    rest: 45,
+    cue: [
+      'نم على ظهرك وارفع ركبتك مثنية والقدم ثابتة على الأرض. يدك على صدرك أو خفيفة جنب رأسك — ',
+      { b: 'لا تشد رقبتك بيدينك' },
+      '. ارفع كتفك عن الأرض ناحية ركبتك بشد بطنك، وأسفل ظهرك يبقى ملتصق بالأرض. ',
+      { b: 'اللي يرتفع الكتف مو الظهر كله' },
+      ' — نص الحركة بشكل صح أفضل من حركة كاملة برقبتك.',
+    ],
+    v: 'https://www.youtube.com/watch?v=dWz8v9Vza_A',
+    vlbl: 'مقطع يوتيوب',
+  },
+  glute_bridge: {
+    n: 'جسر المؤخرة',
+    en: 'Glute Bridge',
+    g: 'legs',
+    sets: 3,
+    reps: '12–15',
+    repsN: 13,
+    base: 0,
+    step: 0,
+    body: 1,
+    rest: 45,
+    cue: [
+      'نم على ظهرك، ركبتك مثنية وكعبك قريب من مؤخرتك. ادفع من كعبك وارفع حوضك لين جسمك يصير خط مستقيم من ركبتك لكتفك. ',
+      { b: 'اعصر مؤخرتك فوق ثانية كاملة' },
+      ' ولا تقوّس ظهرك عشان ترتفع أكثر. أرحم تمرين على ركبتك بالكامل.',
+    ],
+    v: 'https://www.youtube.com/watch?v=IW-T7sfdiFQ',
+    vlbl: 'مقطع يوتيوب',
+  },
+  superman: {
+    n: 'سوبرمان',
+    en: 'Superman',
+    g: 'pull',
+    sets: 3,
+    reps: '12',
+    repsN: 12,
+    base: 0,
+    step: 0,
+    body: 1,
+    rest: 45,
+    cue: [
+      'نم على بطنك ويدك ممدودة قدام. ارفع يدك وصدرك ورجلك عن الأرض شوي مع بعض، ',
+      { b: 'وعينك على الأرض مو للأمام' },
+      ' عشان رقبتك تبقى امتداد لظهرك. ارتفاع بسيط يكفي — هذا تمرين تحمّل مو قوة.',
+    ],
+    v: 'https://www.youtube.com/watch?v=aVzSwIgOhtI',
+    vlbl: 'مقطع يوتيوب',
+  },
+
+  /* ── إطالة ──
+   * `time: 1` عشان تاخذ العدّاد التنازلي وأزرار الثواني زي البلانك.
+   * `step: 0` مقصود: الإطالة ما تتدرّج أسبوعياً — 30 ثانية تبقى 30 ثانية،
+   * و `fine: 5` يخلي الأزرار تعدّلها بخمس ثواني لو حبّيت تطوّلها بنفسك.
+   */
+  str_ham: {
+    n: 'إطالة أوتار الركبة',
+    en: 'Hamstring Stretch',
+    g: 'legs',
+    sets: 2,
+    reps: 'ثواني لكل رجل',
+    base: 30,
+    step: 0,
+    fine: 5,
+    time: 1,
+    rest: 15,
+    cue: [
+      'حط كعبك على كرسي أو مصطبة واقفة، ورجلك مستقيمة وأصابعك لفوق. ميل من ',
+      { b: 'حوضك مو من ظهرك' },
+      ' لين تحس بشد خلف فخذك. شد مريح مو مؤلم، وتنفّس عادي ولا تنطّ.',
+    ],
+    v: 'https://www.youtube.com/watch?v=KzVtfjwjRG4',
+    vlbl: 'مقطع يوتيوب',
+  },
+  str_hipflex: {
+    n: 'إطالة مثنية الورك',
+    en: 'Hip Flexor Stretch',
+    g: 'legs',
+    sets: 2,
+    reps: 'ثواني لكل جهة',
+    base: 30,
+    step: 0,
+    fine: 5,
+    time: 1,
+    rest: 15,
+    cue: [
+      'انزل على ركبة وحدة والثانية قدامك بزاوية 90. ',
+      { b: 'ادحر حوضك لتحت وقدّم جسمك كله' },
+      ' — لا تقوّس ظهرك. الشد لازم يجيك قدام فخذ الرجل اللي على الأرض. مهمة لك خصوصاً لو تجلس كثير.',
+    ],
+    v: 'https://www.youtube.com/watch?v=-X19PvzVg48',
+    vlbl: 'مقطع يوتيوب',
+  },
+  str_calf: {
+    n: 'إطالة السمانة',
+    en: 'Calf Stretch',
+    g: 'legs',
+    sets: 2,
+    reps: 'ثواني لكل رجل',
+    base: 30,
+    step: 0,
+    fine: 5,
+    time: 1,
+    rest: 15,
+    cue: [
+      'يدك على الجدار، رجل ورا مستقيمة و ',
+      { b: 'كعبها ملتصق بالأرض' },
+      '، والرجل الثانية قدام مثنية. ميل للجدار لين تحس بشد خلف ساقك. أهم إطالة لك مع السير المائل.',
+    ],
+    v: 'https://www.youtube.com/watch?v=DhytPxVq6jg',
+    vlbl: 'مقطع يوتيوب',
+  },
+  str_chest: {
+    n: 'إطالة الصدر والكتف',
+    en: 'Chest & Shoulder Stretch',
+    g: 'push',
+    sets: 2,
+    reps: 'ثواني',
+    base: 30,
+    step: 0,
+    fine: 5,
+    time: 1,
+    rest: 15,
+    cue: [
+      'وقف بمدخل باب وحط ساعدك على الإطار وكوعك بمستوى كتفك، وخطي خطوة قدام. ',
+      { b: 'صدرك للأمام وكتفك للخلف' },
+      ' — الشد قدام صدرك وكتفك. تصلّح انحناء الكتف اللي يجي من الجلوس.',
+    ],
+    v: 'https://www.youtube.com/watch?v=8vH_3-nFHIk',
+    vlbl: 'مقطع يوتيوب',
+  },
+  str_back: {
+    n: 'إطالة أسفل الظهر',
+    en: "Child's Pose",
+    g: 'core',
+    sets: 2,
+    reps: 'ثواني',
+    base: 30,
+    step: 0,
+    fine: 5,
+    time: 1,
+    rest: 15,
+    cue: [
+      'اجلس على كعبك ومدّ يدك قدام على الأرض ونزّل صدرك بينهم — نفس وضعية السجود. ',
+      { b: 'تنفّس عميق وخلّ ظهرك يسترخي' },
+      ' مع كل زفير. أفضل شي تختم فيه يومك.',
+    ],
+    v: 'https://www.youtube.com/watch?v=joVTUsxizzk',
+    vlbl: 'مقطع يوتيوب',
   },
 };
 
@@ -1004,6 +1189,137 @@ export const GOALS = {
       [{ b: 'وزنك ثابت أو طالع شوي = ممتاز.' }, ' ما تقوى وأنت تنزل وزن بسرعة.'],
     ],
   },
+
+  /**
+   * صفر حديد. الأهداف الخمسة فوق كلها تفترض مقاومة؛ هذا لواحد يبي ينزل وزن
+   * بالكارديو وحده. كل تمرين فيه `body` أو `time` — ما فيه ولا حمل واحد،
+   * وهذا اللي يخلي `goalHasLoads()` ترجع false ويخلي الواجهة تبطل تقول «حديد».
+   */
+  cardio: {
+    n: 'كارديو فقط',
+    en: 'Cardio Only',
+    desc: 'تنزل وزن بدون أي حديد',
+    summary: ['−٨٥٠ سعرة', '٠ حديد', '٦ أيام كارديو', 'وزن الجسم فقط'],
+    // البروتين أعلى من التنشيف عمداً: بدون مقاومة، البروتين هو الشي الوحيد
+    // الباقي اللي يحمي العضل من عجز بهالحجم.
+    nutrition: { delta: -850, floorPct: 0.7, floorKcal: 1800, proteinPerKg: 2.2 },
+    verdict: {
+      ideal: [-1.2, -0.4],
+      holdLossBelow: -1.5,
+      muscleDropKg: -0.5,
+      warnGainAbove: 0.3,
+      stallBelow: null,
+    },
+    days: [
+      {
+        key: 'sat',
+        day: 'السبت',
+        title: 'بلوك جسم أ',
+        focus: 'بعد الكارديو. هذا اللي يخلي النازل دهون مو عضل.',
+        ex: [
+          { id: 'pushup_inc', sets: 3, reps: '8–12', repsN: 10, rest: 60 },
+          { id: 'crunch', sets: 3, reps: '15–20', repsN: 17, rest: 45 },
+          { id: 'plank', sets: 3, reps: 'ثواني', rest: 45 },
+          { id: 'glute_bridge', sets: 3, reps: '12–15', repsN: 13, rest: 45 },
+          { id: 'deadbug', sets: 3, reps: '10 لكل جهة', repsN: 10, rest: 45 },
+          { id: 'str_ham', sets: 2, reps: 'ثواني لكل رجل', rest: 15 },
+          { id: 'str_chest', sets: 2, reps: 'ثواني', rest: 15 },
+        ],
+      },
+      {
+        key: 'sun',
+        day: 'الأحد',
+        title: 'إطالة ومرونة',
+        focus: 'يوم كارديو طويل، وبعده إطالة تفك اللي شدّه المشي والسيكل.',
+        ex: [
+          { id: 'str_ham', sets: 2, reps: 'ثواني لكل رجل', rest: 15 },
+          { id: 'str_hipflex', sets: 2, reps: 'ثواني لكل جهة', rest: 15 },
+          { id: 'str_calf', sets: 2, reps: 'ثواني لكل رجل', rest: 15 },
+          { id: 'str_back', sets: 2, reps: 'ثواني', rest: 15 },
+          { id: 'str_chest', sets: 2, reps: 'ثواني', rest: 15 },
+        ],
+      },
+      {
+        key: 'mon',
+        day: 'الاثنين',
+        title: 'بلوك جسم ب',
+        focus: 'زوايا ثانية للبطن والظهر — ما تكرر نفس بلوك السبت.',
+        ex: [
+          { id: 'pushup', sets: 3, reps: '8–15', repsN: 11, rest: 60 },
+          { id: 'crunch', sets: 3, reps: '15–20', repsN: 17, rest: 45 },
+          { id: 'side_plank', sets: 3, reps: 'ثواني لكل جهة', rest: 45 },
+          { id: 'superman', sets: 3, reps: '12', repsN: 12, rest: 45 },
+          { id: 'birddog', sets: 3, reps: '10 لكل جهة', repsN: 10, rest: 45 },
+          { id: 'str_hipflex', sets: 2, reps: 'ثواني لكل جهة', rest: 15 },
+          { id: 'str_back', sets: 2, reps: 'ثواني', rest: 15 },
+        ],
+      },
+      {
+        key: 'tue',
+        day: 'الثلاثاء',
+        title: 'إطالة ومرونة',
+        focus: 'راحة من البلوكات، وشغل على المرونة بس.',
+        ex: [
+          { id: 'str_ham', sets: 2, reps: 'ثواني لكل رجل', rest: 15 },
+          { id: 'str_hipflex', sets: 2, reps: 'ثواني لكل جهة', rest: 15 },
+          { id: 'str_calf', sets: 2, reps: 'ثواني لكل رجل', rest: 15 },
+          { id: 'str_back', sets: 2, reps: 'ثواني', rest: 15 },
+          { id: 'str_chest', sets: 2, reps: 'ثواني', rest: 15 },
+        ],
+      },
+      {
+        key: 'wed',
+        day: 'الأربعاء',
+        title: 'بلوك جسم أ',
+        focus: 'نفس بلوك السبت. التكرار هو اللي يبني — مو التنويع.',
+        ex: [
+          { id: 'pushup_inc', sets: 3, reps: '8–12', repsN: 10, rest: 60 },
+          { id: 'crunch', sets: 3, reps: '15–20', repsN: 17, rest: 45 },
+          { id: 'plank', sets: 3, reps: 'ثواني', rest: 45 },
+          { id: 'glute_bridge', sets: 3, reps: '12–15', repsN: 13, rest: 45 },
+          { id: 'deadbug', sets: 3, reps: '10 لكل جهة', repsN: 10, rest: 45 },
+          { id: 'str_ham', sets: 2, reps: 'ثواني لكل رجل', rest: 15 },
+          { id: 'str_chest', sets: 2, reps: 'ثواني', rest: 15 },
+        ],
+      },
+      {
+        key: 'thu',
+        day: 'الخميس',
+        title: 'إطالة ومرونة',
+        focus: 'أطول يوم كارديو، فالإطالة بعده مو رفاهية.',
+        ex: [
+          { id: 'str_ham', sets: 2, reps: 'ثواني لكل رجل', rest: 15 },
+          { id: 'str_hipflex', sets: 2, reps: 'ثواني لكل جهة', rest: 15 },
+          { id: 'str_calf', sets: 2, reps: 'ثواني لكل رجل', rest: 15 },
+          { id: 'str_back', sets: 2, reps: 'ثواني', rest: 15 },
+          { id: 'str_chest', sets: 2, reps: 'ثواني', rest: 15 },
+        ],
+      },
+    ],
+    cardio: [
+      { d: 'السبت', detail: '55 دقيقة — شدة متوسطة، تلهث بس تقدر تتكلم', min: 55 },
+      { d: 'الأحد', detail: '60 دقيقة — أطول شوي وأهدى', min: 60 },
+      { d: 'الاثنين', detail: '55 دقيقة شدة متوسطة', min: 55 },
+      { d: 'الثلاثاء', detail: '60 دقيقة — نوّع الجهاز عن أمس', min: 60 },
+      { d: 'الأربعاء', detail: '55 دقيقة شدة متوسطة', min: 55 },
+      { d: 'الخميس', detail: '70 دقيقة — أطول يوم بالأسبوع', min: 70 },
+      REST_DAY,
+    ],
+    notes: [
+      [
+        { b: 'بدون حديد، البروتين هو حاميك الوحيد.' },
+        ' العجز هنا كبير، واللي يقرر إن النازل دهون مو عضل هو بروتينك وبلوك الجسم — مو الدقائق.',
+      ],
+      [
+        { b: 'نزول أكثر من 1.5% من وزنك بأسبوع مو إنجاز.' },
+        ' بهالسرعة وأنت ما ترفع شي، جزء كبير من اللي راح عضل، والميزان يكذب عليك.',
+      ],
+      [
+        { b: 'الالتزام ٦ أيام أهم من اختيار الجهاز.' },
+        ' الفرق بالحرق بين السير والسيكل والغزالة أصغر بكثير من الفرق بين إنك تروح وما تروح.',
+      ],
+    ],
+  },
 };
 
 export const GOAL_KEYS = Object.keys(GOALS);
@@ -1022,6 +1338,36 @@ export const MACH = [
   { k: 'stair', n: 'درج', en: 'Stair Climber', d: 'أعلى حرق بالكل، وأقساها على ركبتك وفخذك. لا تسويه قبل أو بعد يوم الرجل' },
   { k: 'row', n: 'تجديف', en: 'Rowing Machine', d: 'جسم كامل، بس يشتغل ظهرك — لا تسويه ثقيل يوم الأربعاء' },
 ];
+
+/**
+ * جهازين ما يتجمّعون في يوم واحد، وليش.
+ *
+ * حقيقة عن الأجهزة نفسها مو عن الهدف، فتنطبق على كل الأهداف. وهي **تحذير**:
+ * الواجهة تلوّن الشريحتين وتقول السبب، وتخليك تختار — القرار قرارك، والركبة
+ * ركبتك. الأزواج متماثلة، فتنكتب مرة وحدة هنا وتنقرأ بالاتجاهين.
+ */
+const CLASH_PAIRS = [
+  { pair: ['ellip', 'stair'], why: 'الاثنين يحمّلون نفس الركبة والفخذ — اجمعهم بيوم واحد وركبتك تدفع الحساب.' },
+  { pair: ['bike', 'row'], why: 'الاثنين جالس وخفيف على المفاصل — اليوم يطلع سهل وحرقه أقل من اللي تظن.' },
+];
+
+/** الأجهزة اللي تتعارض مع جهاز معيّن. */
+export const clashesWith = (key) =>
+  CLASH_PAIRS.filter((c) => c.pair.includes(key)).map((c) => c.pair.find((k) => k !== key));
+
+/**
+ * التعارضات داخل اختيار يوم واحد.
+ * @param {string[]} keys مفاتيح الأجهزة المختارة لهذا اليوم
+ * @returns {{a:string, b:string, why:string}[]}
+ */
+export function clashesOf(keys) {
+  const picked = new Set(Array.isArray(keys) ? keys : []);
+  return CLASH_PAIRS.filter((c) => c.pair.every((k) => picked.has(k))).map((c) => ({
+    a: c.pair[0],
+    b: c.pair[1],
+    why: c.why,
+  }));
+}
 
 export const DAY_NAMES = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
 
@@ -1100,6 +1446,19 @@ export function planOf(goalKey) {
 
 /** Day keys of a goal's lifting days, in week order. */
 export const daysOf = (goalKey) => goalOf(goalKey).days.map((d) => d.key);
+
+/** يوم كل تمارينه بوزن الجسم أو محسوبة بالوقت — ما فيه حديد يتحمّل. */
+export const dayHasLoads = (exercises) => (exercises || []).some((e) => !e.body && !e.time);
+
+/**
+ * هل الهدف يحمّل أي وزن أصلاً؟
+ *
+ * هدف الكارديو ما فيه ولا تمرين محمّل، فكل كلام الواجهة عن «الحديد» وعن
+ * «الأوزان اللي تزيد» ما ينطبق عليه. تنحسب من البرنامج نفسه مو من قائمة
+ * أهداف مكتوبة بالإيد، عشان أي هدف جديد يشتغل صح بدون ما أحد يفتكر يحدّثها.
+ */
+export const goalHasLoads = (goalKey) =>
+  goalOf(goalKey).days.some((d) => dayHasLoads(d.ex.map(resolveExercise).filter(Boolean)));
 
 /** The goal's cardio week — seven entries in DAY_NAMES order. */
 export const cardioOf = (goalKey) => goalOf(goalKey).cardio;
