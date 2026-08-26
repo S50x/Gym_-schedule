@@ -873,7 +873,36 @@ input.wedit::-webkit-inner-spin-button {
   transition: max-height 0.32s ease;
 }
 .cue.open {
-  max-height: 400px;
+  /* Room for the figure as well as the text. */
+  max-height: 640px;
+}
+
+/* ══════ the looping figure ══════ */
+.fig {
+  display: block;
+  width: 100%;
+  max-width: 300px;
+  margin: 10px auto 0;
+  aspect-ratio: 3 / 2;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.fig .fbody,
+.fig .fhead {
+  fill: none;
+  stroke: var(--txt);
+  stroke-width: 3.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* The floor, a bench, a wall, a limb holding still — context, not the subject. */
+.fig .fprop {
+  fill: none;
+  stroke: var(--mut);
+  stroke-opacity: 0.55;
+  stroke-width: 2.4;
+  stroke-linecap: round;
 }
 .cue div {
   margin-top: 10px;

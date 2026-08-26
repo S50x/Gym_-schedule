@@ -15,6 +15,7 @@ import {
   todayKey,
   formatRest,
 } from '../public/js/engine.js';
+import { FIGURE_IDS, figureOf, hasFigure } from '../public/js/figure.js';
 import {
   PLAN,
   ALL_EXERCISES,
@@ -323,6 +324,79 @@ test('a set log belongs to a day, not just to an exercise', async (t) => {
     assert.deepEqual(migrateSetsKeys(null, 'cut'), {});
     assert.deepEqual(migrateSetsKeys({ chest_db: 'nope' }, 'cut'), {});
     assert.deepEqual(setsOfDay({ sets: { 'sat:chest_db': 'nope' } }, 'sat'), {});
+  });
+});
+
+test('the teaching figures', async (t) => {
+  const BOX = { x: 120, y: 80 };
+
+  await t.test('every movement the cardio goal programmes has one', () => {
+    const need = new Set(
+      Object.values(planOf('cardio')).flatMap((d) => d.ex.map((e) => e.id))
+    );
+    for (const id of need) assert.ok(hasFigure(id), `${id} has no figure`);
+  });
+
+  await t.test('and no figure is drawn for a movement that does not exist', () => {
+    for (const id of FIGURE_IDS) assert.ok(exById(id), `figure for unknown ${id}`);
+    assert.equal(figureOf('nonsense'), null);
+  });
+
+  await t.test('both ends of every rep are a full six-joint chain', () => {
+    // wrist · elbow · shoulder · hip · knee · ankle — the polyline is the body,
+    // so a short chain silently drops a limb.
+    for (const id of FIGURE_IDS) {
+      const fig = figureOf(id);
+      for (const end of ['a', 'b']) {
+        assert.equal(fig[end].p.length, 6, `${id}.${end} is not six joints`);
+        assert.equal(fig[end].head.length, 2, `${id}.${end} head`);
+      }
+    }
+  });
+
+  await t.test('nothing is drawn outside the box it is drawn in', () => {
+    for (const id of FIGURE_IDS) {
+      const fig = figureOf(id);
+      for (const end of ['a', 'b']) {
+        for (const [x, y] of [...fig[end].p, fig[end].head]) {
+          assert.ok(x >= 0 && x <= BOX.x, `${id}.${end}: x=${x} off canvas`);
+          assert.ok(y >= 0 && y <= BOX.y, `${id}.${end}: y=${y} off canvas`);
+        }
+      }
+    }
+  });
+
+  await t.test('nobody stands below the floor', () => {
+    // The floor is at y=67.5; a joint under it reads as sinking through it.
+    for (const id of FIGURE_IDS) {
+      const fig = figureOf(id);
+      for (const end of ['a', 'b']) {
+        for (const [, y] of fig[end].p) {
+          assert.ok(y <= 68, `${id}.${end}: a joint at y=${y} is under the floor`);
+        }
+      }
+    }
+  });
+
+  await t.test('the two ends actually differ, or it is not a movement', () => {
+    for (const id of FIGURE_IDS) {
+      const fig = figureOf(id);
+      const moved = fig.a.p.reduce(
+        (most, [x, y], i) => Math.max(most, Math.hypot(x - fig.b.p[i][0], y - fig.b.p[i][1])),
+        0
+      );
+      // Plank and side plank are holds: they breathe rather than travel.
+      const floor = ['plank', 'side_plank'].includes(id) ? 1 : 8;
+      assert.ok(moved >= floor, `${id} barely moves (${moved.toFixed(1)})`);
+      assert.ok(moved <= 60, `${id} teleports (${moved.toFixed(1)})`);
+    }
+  });
+
+  await t.test('every rep has a sane tempo', () => {
+    for (const id of FIGURE_IDS) {
+      const { dur } = figureOf(id);
+      assert.ok(dur >= 2 && dur <= 8, `${id} loops in ${dur}s`);
+    }
   });
 });
 

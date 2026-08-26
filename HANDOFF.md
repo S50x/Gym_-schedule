@@ -189,6 +189,17 @@ like `nutrition`. **Rules that must not be broken:**
   day it appears on is. `normalize()` lifts legacy flat keys on every load and
   **never drops** an id the current goal does not programme — that is history
   belonging to a goal the user may switch back to.
+- **The teaching figures live in `public/js/figure.js`.** A movement is two poses
+  of six joints — `wrist → elbow → shoulder → hip → knee → ankle` — because the
+  skeleton is one open chain, so the whole body is one `<polyline>` the browser
+  tweens; a floor, a bench, a wall or a limb holding still is a static path in
+  `props`. Built with `createElementNS` like `sparkline()`, so nothing is
+  fetched and the CSP is untouched: 14 movements cost less than one photograph
+  and work with no network. Every number was placed by hand, so
+  `test/engine.test.js` asserts the geometry — six joints, inside the box, above
+  the floor, and the two ends far enough apart to read as a movement. That last
+  one has already caught two figures that barely moved. **They are schematics,
+  not form references**; the cue text and the clip stay the authority.
 - **A stretch is `step: 0` with a `fine`.** It is adjustable by hand but never
   progresses: a 30-second hold must still be 30 seconds a year later. That is why
   the `fine <= step` guard only applies to movements that actually progress.
