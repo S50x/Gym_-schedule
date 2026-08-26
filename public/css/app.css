@@ -889,13 +889,31 @@ input.wedit::-webkit-inner-spin-button {
   border-radius: 14px;
 }
 /* Round caps are what turn the seam between two segments into a joint. */
-.fig .flimb,
-.fig .ftorso {
-  stroke: var(--txt);
+.fig .flimb {
   stroke-linecap: round;
 }
+/* The arm and leg on the far side of the body: the depth cue. */
+.fig .ffar {
+  stroke: #808c72;
+  stroke-linecap: round;
+}
+/* Lit from the upper left. Three stops, so a limb has a turn to it. */
+.fig .flit {
+  stop-color: #ffffff;
+}
+.fig .fmid {
+  stop-color: #e4ead9;
+}
+.fig .fdim {
+  stop-color: #aab49b;
+}
+/* The muscle the movement is for, drawn over the limb that carries it. */
+.fig .fmuscle {
+  stroke: var(--coral);
+  stroke-linecap: round;
+  stroke-opacity: 0.92;
+}
 .fig .fhead {
-  fill: var(--txt);
   stroke: none;
 }
 /* The floor, a bench, a wall, a limb holding still — context, not the subject. */

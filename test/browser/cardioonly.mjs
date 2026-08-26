@@ -70,17 +70,27 @@ export default async function run({ base, browser, problems, step }) {
     await page.locator('.glink').last().click();
     await page.waitForSelector('.fig', { timeout: 4000 });
 
-    // Five limbs at their own weights, a neck, a head — and the animations that
-    // move them. No <img>, no fetch: it costs the page nothing to carry.
-    const limbs = await page.locator('.fig .flimb, .fig .ftorso').count();
-    if (limbs !== 6) throw new Error(`expected 5 limbs and a neck, found ${limbs}`);
+    // Five limbs at their own weights plus a neck, the far-side pair behind
+    // them, the worked muscle over them, and a head. No <img>, no fetch: it
+    // costs the page nothing to carry.
+    const near = await page.locator('.fig .flimb').count();
+    if (near !== 6) throw new Error(`expected 5 limbs and a neck, found ${near}`);
+    const far = await page.locator('.fig .ffar').count();
+    if (far !== 4) throw new Error(`expected a far arm and leg, found ${far}`);
+    if (!(await page.locator('.fig .fmuscle').count())) throw new Error('no muscle marked');
     if (!(await page.locator('.fig .fhead').count())) throw new Error('no head');
+
     const widths = await page.locator('.fig .flimb').evaluateAll((ns) =>
       ns.map((n) => Number(n.getAttribute('stroke-width')))
     );
     if (new Set(widths).size < 3) throw new Error(`limbs all one weight: ${widths}`);
+
+    // Every drawn part has to move, or it detaches from the body mid-rep.
+    const lines = await page.locator('.fig .flimb, .fig .ffar, .fig .fmuscle').count();
     const animations = await page.locator('.fig animate').count();
-    if (animations !== 26) throw new Error(`expected 26 animations, found ${animations}`);
+    if (animations !== lines * 4 + 2) {
+      throw new Error(`${lines} lines and a head need ${lines * 4 + 2} animations, found ${animations}`);
+    }
 
     const box = await page.locator('.fig').boundingBox();
     if (!box || box.width < 120 || box.height < 60) throw new Error(`figure collapsed: ${JSON.stringify(box)}`);
