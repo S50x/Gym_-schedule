@@ -168,6 +168,15 @@ like `nutrition`. **Rules that must not be broken:**
   progress rail, the rest-day line and the finish screen all do. Both are derived
   from the programme itself, so a future goal gets it right without anyone
   remembering to update a list.
+- **A set log is keyed by day AND exercise** (`setsKey(day, id)` → `"tue:str_ham"`).
+  The old flat key assumed no programme ever repeats a movement in one week —
+  true of the five original goals, false of `cardio`, which stretches the
+  hamstrings on five days, so ticking Tuesday ticked Sunday and Thursday too.
+  Read one day with `setsOfDay(week, day)`; fold the week for progression with
+  `setsByExercise(week, goal)`, which only counts a movement finished when every
+  day it appears on is. `normalize()` lifts legacy flat keys on every load and
+  **never drops** an id the current goal does not programme — that is history
+  belonging to a goal the user may switch back to.
 - **A stretch is `step: 0` with a `fine`.** It is adjustable by hand but never
   progresses: a 30-second hold must still be 30 seconds a year later. That is why
   the `fine <= step` guard only applies to movements that actually progress.

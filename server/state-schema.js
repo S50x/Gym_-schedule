@@ -12,6 +12,7 @@ import {
   EXERCISE_IDS,
   MACHINE_KEYS,
   FEEDBACK_VALUES,
+  LIFT_DAY_KEYS,
   MAX_SETS,
   MAX_LOAD,
   MAX_MACHINES_PER_DAY,
@@ -22,6 +23,7 @@ import {
 import { MAX_WEEK } from '../public/js/engine.js';
 
 const EX_IDS = new Set(EXERCISE_IDS);
+const DAY_OF_WEEK = new Set(LIFT_DAY_KEYS);
 const MACHINES = new Set(MACHINE_KEYS);
 const FEEDBACK = new Set(FEEDBACK_VALUES);
 const GOALS = new Set(GOAL_KEYS);
@@ -71,11 +73,24 @@ function weightsOf(raw, path) {
  * would mean that switching from strength to fat loss makes an already-saved
  * document invalid, and the user's sync stops entirely with a 400.
  */
+/**
+ * A set-log key is `day:exerciseId` — both halves checked against the program.
+ * A bare exercise id is the older shape and still accepted: the client lifts it
+ * onto a day-scoped key the next time that exercise belongs to a day, and until
+ * then it is somebody's history that the server has no business dropping.
+ */
+function validSetsKey(key) {
+  if (EX_IDS.has(key)) return true;
+  const at = key.indexOf(':');
+  if (at < 1) return false;
+  return DAY_OF_WEEK.has(key.slice(0, at)) && EX_IDS.has(key.slice(at + 1));
+}
+
 function setsOf(raw, path) {
   if (!isPlainObject(raw)) return {};
   const out = {};
   for (const [id, value] of Object.entries(raw)) {
-    if (!EX_IDS.has(id) || !Array.isArray(value)) continue;
+    if (!validSetsKey(id) || !Array.isArray(value)) continue;
     if (value.length > MAX_SETS) throw new Invalid(`${path}.${id}`, 'مجموعات أكثر من المسموح');
     out[id] = value.map((x) => x === true);
   }

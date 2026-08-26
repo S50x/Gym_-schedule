@@ -19,6 +19,8 @@ import {
   DEFAULT_LEVEL,
   GOALS,
   LEVELS,
+  migrateSetsKeys,
+  setsByExercise,
 } from './program.js';
 import { progress, verdict, MAX_WEEK } from './engine.js';
 
@@ -206,7 +208,8 @@ class Store extends EventTarget {
         this.doc.weeks[String(i - 2)]?.body || null,
         this.goal
       );
-      weights = progress(weights, prevWeek, gate);
+      // One record per exercise, folded across every day that programmes it.
+      weights = progress(weights, { ...prevWeek, sets: setsByExercise(prevWeek, this.goal) }, gate);
       const overrides = this.doc.weeks[String(i)]?.weights || {};
       for (const [id, value] of Object.entries(overrides)) {
         if (exById(id)) weights[id] = value;
@@ -475,8 +478,15 @@ function normalize(doc) {
   out.meta.week = clampWeek(doc.meta?.week || 1);
   out.nutrition = doc.nutrition || null;
   out.profile = doc.profile || null;
+  // Set logs used to be keyed by exercise id alone. Every load lifts whatever
+  // is still on the old shape onto day-scoped keys, so a document written by an
+  // older version — or logged under a goal the user has since left and come
+  // back to — reads correctly without anyone running anything.
+  const goalKey = GOALS[out.profile?.goal] ? out.profile.goal : DEFAULT_GOAL;
   for (const [key, week] of Object.entries(doc.weeks || {})) {
-    out.weeks[String(clampWeek(key))] = { ...emptyWeek(), ...week };
+    const merged = { ...emptyWeek(), ...week };
+    merged.sets = migrateSetsKeys(merged.sets, goalKey);
+    out.weeks[String(clampWeek(key))] = merged;
   }
   return out;
 }
@@ -553,8 +563,12 @@ function migrateLegacy() {
     return null;
   }
   if (!found) return null;
-  writeLocal(doc);
-  return doc;
+  // Through normalize like any other read, so a document rebuilt from the very
+  // old per-key storage gets its set logs day-scoped too instead of arriving
+  // on a shape nothing reads any more.
+  const migrated = normalize(doc);
+  writeLocal(migrated);
+  return migrated;
 }
 
 export const store = new Store();
