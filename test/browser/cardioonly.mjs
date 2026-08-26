@@ -65,6 +65,28 @@ export default async function run({ base, browser, problems, step }) {
     await noStrayNulls(page, 'cardio-only · gym');
   });
 
+  await step('the cue carries a looping figure, built only while it is open', async () => {
+    if (await page.locator('.fig').count()) throw new Error('a closed cue is drawing a figure');
+    await page.locator('.glink').last().click();
+    await page.waitForSelector('.fig', { timeout: 4000 });
+
+    // A polyline for the body, a circle for the head, and the animations that
+    // move them. No <img>, no fetch — it costs the page nothing to carry.
+    if (!(await page.locator('.fig .fbody').count())) throw new Error('no body chain');
+    if (!(await page.locator('.fig .fhead').count())) throw new Error('no head');
+    const animations = await page.locator('.fig animate').count();
+    if (animations !== 3) throw new Error(`expected 3 animations, found ${animations}`);
+
+    const box = await page.locator('.fig').boundingBox();
+    if (!box || box.width < 120 || box.height < 60) throw new Error(`figure collapsed: ${JSON.stringify(box)}`);
+
+    // A hidden <animate> keeps running, and gym mode redraws on every ticked
+    // set, so closing the cue has to take the figure with it.
+    await page.locator('.glink').last().click();
+    await page.waitForTimeout(200);
+    if (await page.locator('.fig').count()) throw new Error('the figure outlived the open cue');
+  });
+
   await step('a timed stretch counts itself down', async () => {
     // Walk to a stretch: it is timed, so it gets the hold control.
     for (let i = 0; i < 12; i++) {

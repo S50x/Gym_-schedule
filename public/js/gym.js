@@ -4,6 +4,7 @@ import { el, clear, append, richText, safeUrl } from './dom.js';
 import { fmt, fmtN, toast, buzz, beep, primeAudio } from './ui.js';
 import { planOf, fineStep, setsKey, setsOfDay, MAX_LOAD } from './program.js';
 import { dayVolume, formatRest } from './engine.js';
+import { exerciseFigure } from './figure.js';
 
 const FEEDBACK = [
   { v: 'light', label: 'كان خفيف', toast: 'بنزيده قفزتين الأسبوع الجاي' },
@@ -351,6 +352,9 @@ export class GymMode {
       el(
         'div',
         { class: ['cue', this.cueOpen ? 'open' : ''] },
+        // The loop is built only while the panel is open: a hidden <animate>
+        // still runs, and gym mode redraws on every set that gets ticked.
+        this.cueOpen ? exerciseFigure(exercise.id) : null,
         el('div', {}, ...richText(exercise.cue))
       ),
       el(
