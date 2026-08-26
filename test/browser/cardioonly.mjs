@@ -65,6 +65,28 @@ export default async function run({ base, browser, problems, step }) {
     await noStrayNulls(page, 'cardio-only · gym');
   });
 
+  await step('the cue carries a photographed pair of the movement', async () => {
+    if (await page.locator('.fphoto, .fig').count()) throw new Error('a closed cue is drawing');
+    await page.locator('.glink').last().click();
+    await page.waitForSelector('.fphoto', { timeout: 5000 });
+
+    const frames = page.locator('.fphoto img');
+    if ((await frames.count()) !== 2) throw new Error('a rep has a start and an end');
+    // Both must actually decode: a 404 pulls the box and leaves the cue bare.
+    const loaded = await frames.evaluateAll((imgs) =>
+      imgs.every((i) => i.complete && i.naturalWidth > 0)
+    );
+    if (!loaded) throw new Error('a frame failed to load');
+    if (!(await frames.first().getAttribute('alt'))) throw new Error('the pair is unlabelled');
+
+    const box = await page.locator('.fphoto').boundingBox();
+    if (!box || box.width < 120 || box.height < 60) throw new Error(`collapsed: ${JSON.stringify(box)}`);
+
+    await page.locator('.glink').last().click();
+    await page.waitForTimeout(200);
+    if (await page.locator('.fphoto').count()) throw new Error('the pair outlived the open cue');
+  });
+
   await step('a timed stretch counts itself down', async () => {
     // Walk to a stretch: it is timed, so it gets the hold control.
     for (let i = 0; i < 12; i++) {
@@ -76,6 +98,24 @@ export default async function run({ base, browser, problems, step }) {
     if (!(await page.locator('.hold').count())) throw new Error('the stretch has no countdown');
     const seconds = (await page.textContent('.wnum')).trim();
     if (seconds !== '30') throw new Error(`stretch starts at "${seconds}", expected 30`);
+    await page.locator('#gx').click();
+    await page.waitForSelector('#gym.on', { state: 'hidden', timeout: 5000 });
+  });
+
+  await step('a movement with no photograph falls back to the drawing', async () => {
+    // bird dog is the one movement in this programme the photo set has no
+    // entry for, so it is the case that proves the fallback is wired up.
+    await page.evaluate(() => document.querySelectorAll('.wlift:not(.ghost)')[2]?.click());
+    await page.waitForSelector('#gym.on', { timeout: 5000 });
+    for (let i = 0; i < 8; i++) {
+      const name = await page.locator('.gname').evaluate((n) => n.childNodes[0].textContent.trim());
+      if (name.includes('بيرد')) break;
+      await page.locator('.arrows button').nth(1).click();
+    }
+    await page.locator('.glink').last().click();
+    await page.waitForSelector('.fig', { timeout: 5000 });
+    if (await page.locator('.fphoto').count()) throw new Error('bird dog claims a photograph');
+    if (!(await page.locator('.fig .fmuscle').count())) throw new Error('the drawing lost its muscle mark');
     await page.locator('#gx').click();
     await page.waitForSelector('#gym.on', { state: 'hidden', timeout: 5000 });
   });

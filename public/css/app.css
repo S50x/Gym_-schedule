@@ -873,7 +873,104 @@ input.wedit::-webkit-inner-spin-button {
   transition: max-height 0.32s ease;
 }
 .cue.open {
-  max-height: 400px;
+  /* Room for the figure as well as the text. */
+  max-height: 640px;
+}
+
+/* ══════ the photographed pair ══════ */
+.fphoto {
+  position: relative;
+  width: 100%;
+  max-width: 300px;
+  margin: 10px auto 0;
+  aspect-ratio: 3 / 2;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--ink-2);
+}
+.fphoto .fframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Two moments of one movement. Holding each, then crossing over, reads as the
+     rep; cutting between them reads as a glitch. */
+  animation: fswap 3.2s ease-in-out infinite;
+}
+.fphoto .f1 {
+  animation-delay: -1.6s;
+}
+@keyframes fswap {
+  0%,
+  38% {
+    opacity: 1;
+  }
+  50%,
+  88% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+/* Somebody who asked the system to stop animating gets the first frame, held. */
+@media (prefers-reduced-motion: reduce) {
+  .fphoto .fframe {
+    animation: none;
+  }
+  .fphoto .f1 {
+    opacity: 0;
+  }
+}
+
+/* ══════ the drawn figure, for movements with no photograph ══════ */
+.fig {
+  display: block;
+  width: 100%;
+  max-width: 300px;
+  margin: 10px auto 0;
+  aspect-ratio: 3 / 2;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+/* Round caps are what turn the seam between two segments into a joint. */
+.fig .flimb {
+  stroke-linecap: round;
+}
+/* The arm and leg on the far side of the body: the depth cue. */
+.fig .ffar {
+  stroke: #808c72;
+  stroke-linecap: round;
+}
+/* Lit from the upper left. Three stops, so a limb has a turn to it. */
+.fig .flit {
+  stop-color: #ffffff;
+}
+.fig .fmid {
+  stop-color: #e4ead9;
+}
+.fig .fdim {
+  stop-color: #aab49b;
+}
+/* The muscle the movement is for, drawn over the limb that carries it. */
+.fig .fmuscle {
+  stroke: var(--coral);
+  stroke-linecap: round;
+  stroke-opacity: 0.92;
+}
+.fig .fhead {
+  stroke: none;
+}
+/* The floor, a bench, a wall, a limb holding still — context, not the subject. */
+.fig .fprop {
+  fill: none;
+  stroke: var(--mut);
+  stroke-opacity: 0.55;
+  stroke-width: 2.4;
+  stroke-linecap: round;
 }
 .cue div {
   margin-top: 10px;
