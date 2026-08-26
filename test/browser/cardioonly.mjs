@@ -70,12 +70,17 @@ export default async function run({ base, browser, problems, step }) {
     await page.locator('.glink').last().click();
     await page.waitForSelector('.fig', { timeout: 4000 });
 
-    // A polyline for the body, a circle for the head, and the animations that
-    // move them. No <img>, no fetch — it costs the page nothing to carry.
-    if (!(await page.locator('.fig .fbody').count())) throw new Error('no body chain');
+    // Five limbs at their own weights, a neck, a head — and the animations that
+    // move them. No <img>, no fetch: it costs the page nothing to carry.
+    const limbs = await page.locator('.fig .flimb, .fig .ftorso').count();
+    if (limbs !== 6) throw new Error(`expected 5 limbs and a neck, found ${limbs}`);
     if (!(await page.locator('.fig .fhead').count())) throw new Error('no head');
+    const widths = await page.locator('.fig .flimb').evaluateAll((ns) =>
+      ns.map((n) => Number(n.getAttribute('stroke-width')))
+    );
+    if (new Set(widths).size < 3) throw new Error(`limbs all one weight: ${widths}`);
     const animations = await page.locator('.fig animate').count();
-    if (animations !== 3) throw new Error(`expected 3 animations, found ${animations}`);
+    if (animations !== 26) throw new Error(`expected 26 animations, found ${animations}`);
 
     const box = await page.locator('.fig').boundingBox();
     if (!box || box.width < 120 || box.height < 60) throw new Error(`figure collapsed: ${JSON.stringify(box)}`);

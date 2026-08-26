@@ -888,13 +888,15 @@ input.wedit::-webkit-inner-spin-button {
   border: 1px solid var(--line);
   border-radius: 14px;
 }
-.fig .fbody,
-.fig .fhead {
-  fill: none;
+/* Round caps are what turn the seam between two segments into a joint. */
+.fig .flimb,
+.fig .ftorso {
   stroke: var(--txt);
-  stroke-width: 3.4;
   stroke-linecap: round;
-  stroke-linejoin: round;
+}
+.fig .fhead {
+  fill: var(--txt);
+  stroke: none;
 }
 /* The floor, a bench, a wall, a limb holding still — context, not the subject. */
 .fig .fprop {

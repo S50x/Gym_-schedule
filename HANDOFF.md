@@ -198,8 +198,12 @@ like `nutrition`. **Rules that must not be broken:**
   and work with no network. Every number was placed by hand, so
   `test/engine.test.js` asserts the geometry — six joints, inside the box, above
   the floor, and the two ends far enough apart to read as a movement. That last
-  one has already caught two figures that barely moved. **They are schematics,
-  not form references**; the cue text and the clip stay the authority.
+  one has already caught two figures that barely moved. Segment weights matter
+  more than they look: drawing every limb at one width is exactly what made the
+  first version read as a child's drawing, so the torso, thigh, shin, upper arm
+  and forearm each carry their own `stroke-width` and every joint is a round
+  cap. **They are pictograms, not form references**; the cue text and the clip
+  stay the authority.
 - **A stretch is `step: 0` with a `fine`.** It is adjustable by hand but never
   progresses: a 30-second hold must still be 30 seconds a year later. That is why
   the `fine <= step` guard only applies to movements that actually progress.

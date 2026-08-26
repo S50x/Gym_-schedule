@@ -142,7 +142,25 @@ const svg = (tag, attrs) => {
   return node;
 };
 
-const asPoints = (pose) => pose.p.map(([x, y]) => `${x},${y}`).join(' ');
+/**
+ * A body is not five identical sticks. Drawing every segment at one width is
+ * what makes a figure read as a child's drawing rather than as a pictogram, so
+ * each limb gets the weight it actually has — thigh heaviest, forearm lightest,
+ * torso widest of all — and every joint is a round cap, which turns the seams
+ * between segments into knees and elbows instead of corners.
+ *
+ * Indices into the six-joint chain: 0 wrist · 1 elbow · 2 shoulder · 3 hip ·
+ * 4 knee · 5 ankle.
+ */
+const SEGMENTS = [
+  { from: 3, to: 2, w: 8.4, cls: 'ftorso' },
+  { from: 3, to: 4, w: 6, cls: 'flimb' },
+  { from: 4, to: 5, w: 4.6, cls: 'flimb' },
+  { from: 2, to: 1, w: 4.4, cls: 'flimb' },
+  { from: 1, to: 0, w: 3.4, cls: 'flimb' },
+];
+
+const at = (pose, i) => pose.p[i];
 
 /** `values` for a there-and-back loop, so the rep reverses instead of jumping. */
 const loop = (from, to) => `${from};${to};${from}`;
@@ -161,10 +179,45 @@ function animate(attr, from, to, dur) {
   });
 }
 
+/** One limb, animated from its pose in `a` to its pose in `b`. */
+function segment({ from, to, w, cls }, fig, still) {
+  const [x1, y1] = at(fig.a, from);
+  const [x2, y2] = at(fig.a, to);
+  const line = svg('line', { class: cls, 'stroke-width': w, x1, y1, x2, y2 });
+  if (still) return line;
+  const ends = [
+    ['x1', x1, at(fig.b, from)[0]],
+    ['y1', y1, at(fig.b, from)[1]],
+    ['x2', x2, at(fig.b, to)[0]],
+    ['y2', y2, at(fig.b, to)[1]],
+  ];
+  for (const [attr, one, two] of ends) line.appendChild(animate(attr, one, two, fig.dur));
+  return line;
+}
+
 /**
- * A looping figure for one movement, or null when none is drawn for it — the
- * caller renders nothing rather than an empty box.
+ * The neck, drawn from the shoulder toward the head so the head is attached to
+ * the body instead of floating beside it.
  */
+function neck(fig, still) {
+  const [sx, sy] = at(fig.a, 2);
+  const line = svg('line', {
+    class: 'ftorso',
+    'stroke-width': 5,
+    x1: sx,
+    y1: sy,
+    x2: (sx + fig.a.head[0]) / 2,
+    y2: (sy + fig.a.head[1]) / 2,
+  });
+  if (still) return line;
+  const [bx, by] = at(fig.b, 2);
+  line.appendChild(animate('x1', sx, bx, fig.dur));
+  line.appendChild(animate('y1', sy, by, fig.dur));
+  line.appendChild(animate('x2', (sx + fig.a.head[0]) / 2, (bx + fig.b.head[0]) / 2, fig.dur));
+  line.appendChild(animate('y2', (sy + fig.a.head[1]) / 2, (by + fig.b.head[1]) / 2, fig.dur));
+  return line;
+}
+
 export function exerciseFigure(exId) {
   const fig = FIGURES[exId];
   if (!fig) return null;
@@ -180,19 +233,23 @@ export function exerciseFigure(exId) {
 
   for (const d of fig.props) root.appendChild(svg('path', { class: 'fprop', d }));
 
-  const body = svg('polyline', { class: 'fbody', points: asPoints(fig.a) });
-  const head = svg('circle', { class: 'fhead', cx: fig.a.head[0], cy: fig.a.head[1], r: 6 });
-
   // Someone who asked the system to stop animating gets the start of the rep,
   // held still, instead of a loop they cannot switch off.
-  const still = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+  const still = !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+
+  root.appendChild(neck(fig, still));
+  for (const seg of SEGMENTS) root.appendChild(segment(seg, fig, still));
+
+  const head = svg('circle', {
+    class: 'fhead',
+    cx: fig.a.head[0],
+    cy: fig.a.head[1],
+    r: 5.2,
+  });
   if (!still) {
-    body.appendChild(animate('points', asPoints(fig.a), asPoints(fig.b), fig.dur));
     head.appendChild(animate('cx', fig.a.head[0], fig.b.head[0], fig.dur));
     head.appendChild(animate('cy', fig.a.head[1], fig.b.head[1], fig.dur));
   }
-
-  root.appendChild(body);
   root.appendChild(head);
   return root;
 }
