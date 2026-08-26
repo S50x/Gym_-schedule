@@ -11,7 +11,7 @@
 
 A single 1124-line Arabic localStorage HTML file became a deployed, tested,
 hardened Node app: accounts, Postgres, cross-device sync, optional 2FA, strict
-CSP, and five training goals that reshape the whole programme.
+CSP, and six training goals that reshape the whole programme.
 
 **The code is complete and green. The remaining work is on the user's side, in
 the Render and Neon dashboards.** Do not rewrite what already works.
@@ -23,14 +23,21 @@ the Render and Neon dashboards.** Do not rewrite what already works.
 ## 1. Current state (verified)
 
 ```
-main:    e4398d7   (PR #9 merged — nothing open)
-tests:   npm test     → 204 pass / 0 fail   (~15s, PGlite in-process)
-browser: npm run browser → 9 journeys clean (~3m, boots its own server)
-code:    ~8,500 lines across 28 modules; 5 runtime deps, 2 dev
+main:    e368576   (PR #15 merged — PR #16 OPEN, see below)
+tests:   npm test     → 237 pass / 0 fail    (~15s, PGlite in-process)
+browser: npm run browser → 11 journeys clean (~3m, boots its own server)
+code:    ~9,200 lines across 28 modules; 5 runtime deps, 2 dev
 ```
 
-New since the goals work: the password-reset flow (`test/reset.test.js`, 12) and
-per-muscle-group strength levels (`test/groups.test.js`, 19).
+These numbers were taken on the branch of **PR #16**, which was open when this
+was written — `git log origin/main` tells you whether it landed. It fixes a live
+bug: a week's set log was keyed by exercise id alone, so on the `cardio` goal —
+which programmes the same stretch on five days — finishing Tuesday marked Sunday
+and Thursday done too. If it has not landed, that bug is still in the app.
+
+New since the goals work: the password-reset flow (`test/reset.test.js`, 12),
+per-muscle-group strength levels (`test/groups.test.js`, 19), and a run of load
+and programme work — see the last four entries of "Shipped in order" below.
 
 **Visual blueprint** — system layers, module graph, request pipeline, sync
 protocol, database schema, the synced document, and every API endpoint:
@@ -47,15 +54,20 @@ scale-to-zero hardening → honest network errors → safe-area fix → Volt red
 height → bilingual names, cardio splitting, plank timer → progress cards →
 five goals + onboarding → live calorie target + goal review → browser journeys
 moved into the repo (`npm run browser`) → email password reset → a stringified
-null on screen → per-muscle-group strength levels.
+null on screen → per-muscle-group strength levels → a typed exact load and the
+weight cache that swallowed it (#13) → `fine`, so the buttons move by the rack
+and not by the weekly jump (#14) → the `cardio` goal, six days with no iron in
+them (#15) → set logs keyed by day, not by exercise alone (#16, open).
 
 ## 2. What the app is
 
 Arabic gym and nutrition tracker. Mobile-first PWA: installs to the home screen,
 works offline, syncs when the network returns.
 
-- **The goal shapes everything** (§3b). Five of them; the fat-loss programme is
+- **The goal shapes everything** (§3b). Six of them; the fat-loss programme is
   3 lifting days + 6 cardio days, but that is one goal's shape, not the app's.
+  `cardio` has no loaded movement at all — never assume a programme has iron in
+  it, ask `goalHasLoads(goalKey)`.
 - **Progression is conditional:** a lift only goes up if every set was completed,
   perceived effort allows it, and the weekly weigh-in says the body can take it.
 - **Nutrition** derives maintenance from today's weight, and can back-calculate a
@@ -95,8 +107,8 @@ public/
   js/views/         onboarding · home · cardio · week · nutri · account · reset
   sw.js             offline caching (network-first; never caches /api)
   fonts/            self-hosted (no third-party request, no missing SRI)
-test/               204 unit tests: auth · reset · groups · security · state · engine · totp · qr · mfa · postgres
-test/browser/       9 Playwright journeys — see §8
+test/               237 unit tests: auth · reset · groups · security · state · engine · totp · qr · mfa · postgres
+test/browser/       11 Playwright journeys — see §8
 docs/               BUGS.md (26) · SECURITY.md (21 findings + S21 2FA)
 render.yaml         Render blueprint — provisions service + database together
 ```
@@ -106,8 +118,8 @@ There is no second copy of the exercise list to drift.
 
 ## 3b. Goals — the axis everything turns on
 
-`program.js` has two layers: an `EXERCISES` catalogue (33 movements — names, cue,
-weight step, starting load, and default sets/reps/rest) and five `GOALS`
+`program.js` has two layers: an `EXERCISES` catalogue (42 movements — names, cue,
+weight step, starting load, and default sets/reps/rest) and six `GOALS`
 (`cut` · `muscle` · `recomp` · `fitness` · `strength`) that pick from it, override
 sets/reps/rest, and carry their own 7-day cardio week, nutrition direction and
 weigh-in thresholds.
@@ -258,10 +270,10 @@ the hand-run-SQL reset in §9 is still the fallback when it isn't wired up.
   the transcript.
 - `SESSION_SECRET` comes from Render's Generate button, never from chat.
 
-## 7. Eight defects that unit tests could not catch
+## 7. Eleven defects that unit tests could not catch
 
-All eight passed a green suite and were found only by driving the real app. This
-is why §8 exists.
+All eleven passed a green suite and were found only by driving the real app, or
+by a user using it. This is why §8 exists.
 
 1. **Recovery codes lost forever** — `refreshUser()` repainted and detached the
    one-time codes node. Fixed by making it silent; callers repaint.
@@ -289,14 +301,29 @@ is why §8 exists.
    in `test/browser/helpers.mjs` now scans the visible text and is called from
    the gym and groups journeys.
 
+10. **Every hand-set weight came back undone** — the app paints once before
+    `store.init()` reads localStorage, and that paint filled the derived weight
+    cache from the empty document every session starts with. Installing the real
+    document never cleared it, so a manual adjustment looked saved and was gone
+    on the next open. Signed-in users were spared by chance: `pull()` clears the
+    cache. Unit tests all passed — the store held the right number, the reader
+    never asked it.
+11. **One set log shared between two days** — a week stored one record per
+    exercise id, which quietly assumed no programme repeats a movement in a
+    week. True of the five original goals, false of `cardio`, so ticking
+    Tuesday's stretches ticked Sunday's and Thursday's. Found by the user, not
+    by the suite: every test used a goal where the assumption held.
+
 Recurring theme: **verify what a system decides, not what it was told** — and
-what it actually renders, not what it computed.
+what it actually renders, not what it computed. Both of the last two hid behind
+an invariant that happened to be true of all existing data; when you add data
+that breaks one, no existing test notices.
 
 ## 8. How to run
 
 ```bash
 npm install
-npm test                  # 173 unit tests on PGlite — no database to install
+npm test                  # 237 unit tests on PGlite — no database to install
 npm start                 # http://localhost:3000 (PGlite in ./data if no DATABASE_URL)
 npm run dev               # auto-restart
 
@@ -312,7 +339,7 @@ Chromium binary: it looks under `PLAYWRIGHT_BROWSERS_PATH` (default
 
 | journey | covers |
 |---|---|
-| `goals` | the pre-goals regression (an old document must render unchanged) + all five goals differing in substance |
+| `goals` | the pre-goals regression (an old document must render unchanged) + all six goals differing in substance |
 | `features` | bilingual names, tab-bar navigation, cardio split, plank countdown |
 | `gymgoal` | gym mode serves the current goal's programme |
 | `cardioonly` | the goal with no iron: the week never says «حديد», rounds and reps and clips are on every movement, a clashing machine pair warns without blocking |
@@ -329,14 +356,21 @@ been caught by one of them.
 
 ## 9. Known gaps
 
-- **14 of the 33 exercises have no video link.** The new movements (barbell squat,
-  bench, deadlift, overhead press, row, hip thrust, goblet squat, lunges, push-up,
-  cable fly, side plank, bird dog, kettlebell swing, step-up) shipped without one
-  because this environment's network policy blocks every exercise-video host, so
-  no link could be verified. Guessed URLs were deliberately not shipped. The UI
-  omits the button when `v` is absent, and a test enforces that any link present
-  is https. **Adding verified links is a good first task** in an environment with
-  network access.
+- **11 of the 42 exercises have no video link:** `bench_bb` `ohp_bb` `fly_cable`
+  `row_bb` `squat_bb` `goblet` `dead_bb` `hip_thrust` `lunge_db` `stepup`
+  `kb_swing` — the barbell and machine movements. Every bodyweight and stretch
+  movement has one.
+
+  **The earlier note here said no link could be verified because the network
+  policy blocks every video host. That is only half true and it stopped the
+  work.** `WebFetch` of `muscleandstrength.com` is blocked (which is why the
+  plank's old link pointed at a page nobody could open), but `WebSearch`
+  restricted to `youtube.com` works and returns real URLs *with their titles* —
+  enough to confirm a clip names the movement before shipping it. Thirteen links
+  were added that way in one pass. **Filling the remaining eleven is a good first
+  task**; search the Arabic name, and only ship a link whose title names the
+  movement. Never guess a video id. The UI omits the button when `v` is absent,
+  and tests enforce https, no placeholder, and no accidental duplicate.
 - **Fat-loss protein moved from 1.6 to 2.0 g/kg** with the goals work, so an
   existing user's displayed protein target rose. Intentional, and flagged to the
   user, but worth knowing if they ask.
@@ -375,7 +409,8 @@ been caught by one of them.
 
 ## 10. Next step for you
 
-Nothing is pending in the code. Concretely:
+Check `git log origin/main` first: **PR #16** was open when this was written and
+is the only thing that was pending. Concretely:
 
 - Answer the user's questions in Arabic, one concrete step at a time.
 - If they report a bug: **reproduce it in a real browser first** (§7), then fix on
@@ -384,3 +419,11 @@ Nothing is pending in the code. Concretely:
   (`git checkout -B <branch> origin/main`); never stack on merged history.
 - When you change behaviour, run `npm test` **and** `npm run browser`, and update
   §1 of this file with the real numbers.
+- **This user merges early.** Twice in one session a PR was merged while work was
+  still being pushed to its branch, stranding a commit on a branch whose PR was
+  closed. Say plainly when you are finished, and when a branch's PR turns out to
+  be merged, restart from `main` and open a new PR rather than stacking.
+- **Before adding anything to a programme, check what it assumes.** The last two
+  defects in §7 were both invariants that held for every goal until one did not:
+  "a manual weight is only read after a write" and "no exercise repeats in a
+  week". Adding the `cardio` goal broke both.
