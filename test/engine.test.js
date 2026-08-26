@@ -15,6 +15,8 @@ import {
   todayKey,
   formatRest,
 } from '../public/js/engine.js';
+import fs from 'node:fs';
+import { FIGURE_IDS, figureOf, hasFigure, hasPhoto, PHOTO_IDS, photoFrame } from '../public/js/figure.js';
 import {
   PLAN,
   ALL_EXERCISES,
@@ -323,6 +325,131 @@ test('a set log belongs to a day, not just to an exercise', async (t) => {
     assert.deepEqual(migrateSetsKeys(null, 'cut'), {});
     assert.deepEqual(migrateSetsKeys({ chest_db: 'nope' }, 'cut'), {});
     assert.deepEqual(setsOfDay({ sets: { 'sat:chest_db': 'nope' } }, 'sat'), {});
+  });
+});
+
+test('the teaching figures', async (t) => {
+  const BOX = { x: 120, y: 80 };
+
+  await t.test('every movement the cardio goal programmes has one', () => {
+    const need = new Set(
+      Object.values(planOf('cardio')).flatMap((d) => d.ex.map((e) => e.id))
+    );
+    for (const id of need) assert.ok(hasFigure(id), `${id} has no figure`);
+  });
+
+  await t.test('and no figure is drawn for a movement that does not exist', () => {
+    for (const id of FIGURE_IDS) assert.ok(exById(id), `figure for unknown ${id}`);
+    assert.equal(figureOf('nonsense'), null);
+  });
+
+  await t.test('both ends of every rep are a full six-joint chain', () => {
+    // wrist · elbow · shoulder · hip · knee · ankle — the polyline is the body,
+    // so a short chain silently drops a limb.
+    for (const id of FIGURE_IDS) {
+      const fig = figureOf(id);
+      for (const end of ['a', 'b']) {
+        assert.equal(fig[end].p.length, 6, `${id}.${end} is not six joints`);
+        assert.equal(fig[end].head.length, 2, `${id}.${end} head`);
+      }
+    }
+  });
+
+  await t.test('nothing is drawn outside the box it is drawn in', () => {
+    for (const id of FIGURE_IDS) {
+      const fig = figureOf(id);
+      for (const end of ['a', 'b']) {
+        for (const [x, y] of [...fig[end].p, fig[end].head]) {
+          assert.ok(x >= 0 && x <= BOX.x, `${id}.${end}: x=${x} off canvas`);
+          assert.ok(y >= 0 && y <= BOX.y, `${id}.${end}: y=${y} off canvas`);
+        }
+      }
+    }
+  });
+
+  await t.test('nobody stands below the floor', () => {
+    // The floor is at y=67.5; a joint under it reads as sinking through it.
+    for (const id of FIGURE_IDS) {
+      const fig = figureOf(id);
+      for (const end of ['a', 'b']) {
+        for (const [, y] of fig[end].p) {
+          assert.ok(y <= 68, `${id}.${end}: a joint at y=${y} is under the floor`);
+        }
+      }
+    }
+  });
+
+  await t.test('the two ends actually differ, or it is not a movement', () => {
+    for (const id of FIGURE_IDS) {
+      const fig = figureOf(id);
+      const moved = fig.a.p.reduce(
+        (most, [x, y], i) => Math.max(most, Math.hypot(x - fig.b.p[i][0], y - fig.b.p[i][1])),
+        0
+      );
+      // Plank and side plank are holds: they breathe rather than travel.
+      const floor = ['plank', 'side_plank'].includes(id) ? 1 : 8;
+      assert.ok(moved >= floor, `${id} barely moves (${moved.toFixed(1)})`);
+      assert.ok(moved <= 60, `${id} teleports (${moved.toFixed(1)})`);
+    }
+  });
+
+  await t.test('every movement says which muscle it is for', () => {
+    // Marking the worked muscle is the one thing a photograph of a stranger
+    // cannot do, so no figure ships without it.
+    for (const id of FIGURE_IDS) {
+      const { muscle } = figureOf(id);
+      assert.ok(Array.isArray(muscle) && muscle.length, `${id} marks no muscle`);
+      for (const m of muscle) {
+        assert.ok(m.seg >= 0 && m.seg <= 4, `${id} marks segment ${m.seg}`);
+        assert.ok(m.from >= 0 && m.to <= 1, `${id} marks ${m.from}..${m.to}`);
+        assert.ok(m.to - m.from >= 0.15, `${id}'s mark is too short to see`);
+      }
+    }
+  });
+
+  await t.test('every rep has a sane tempo', () => {
+    for (const id of FIGURE_IDS) {
+      const { dur } = figureOf(id);
+      assert.ok(dur >= 2 && dur <= 8, `${id} loops in ${dur}s`);
+    }
+  });
+});
+
+test('the photographed pairs', async (t) => {
+  const file = (id, frame) => new URL(`../public${photoFrame(id, frame)}`, import.meta.url);
+
+  await t.test('both frames of every photographed movement are on disk', () => {
+    // A missing file leaves the cue empty: the img error handler pulls the box
+    // rather than showing a torn half-image, so nothing on screen says why.
+    for (const id of PHOTO_IDS) {
+      for (const frame of [0, 1]) {
+        assert.ok(fs.existsSync(file(id, frame)), `${id} frame ${frame} is missing`);
+        assert.ok(fs.statSync(file(id, frame)).size > 2000, `${id} frame ${frame} is empty`);
+      }
+    }
+  });
+
+  await t.test('the set stays small enough to carry offline', () => {
+    const total = PHOTO_IDS.reduce(
+      (sum, id) => sum + [0, 1].reduce((n, f) => n + fs.statSync(file(id, f)).size, 0),
+      0
+    );
+    assert.ok(total < 700 * 1024, `${(total / 1024).toFixed(0)}KB of frames is too much to cache`);
+  });
+
+  await t.test('every photographed id is a movement the app actually programmes', () => {
+    for (const id of PHOTO_IDS) assert.ok(exById(id), `photo for unknown ${id}`);
+  });
+
+  await t.test('a movement with no photograph still has something to show', () => {
+    // birddog is the one this set does not carry; the drawing has to cover it.
+    assert.equal(hasPhoto('birddog'), false);
+    assert.ok(hasFigure('birddog'), 'birddog has neither a photo nor a drawing');
+    for (const day of Object.values(planOf('cardio'))) {
+      for (const e of day.ex) {
+        assert.ok(hasPhoto(e.id) || hasFigure(e.id), `${e.id} shows nothing at all`);
+      }
+    }
   });
 });
 
