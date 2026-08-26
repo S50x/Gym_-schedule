@@ -31,12 +31,14 @@ const FLOOR = 'M2 67.5 H118';
 const FIGURES = {
   pushup: {
     dur: 2.4,
+    muscle: [{ seg: 0, from: 0.55, to: 0.95 }, { seg: 3, from: 0.15, to: 0.85 }],
     props: [FLOOR],
     a: { p: [[88, 67], [88, 56], [88, 44], [58, 54], [38, 60], [18, 67]], head: [98, 41] },
     b: { p: [[88, 67], [80, 64], [86, 57], [58, 61], [38, 64], [18, 67]], head: [96, 54] },
   },
   pushup_inc: {
     dur: 2.4,
+    muscle: [{ seg: 0, from: 0.55, to: 0.95 }, { seg: 3, from: 0.15, to: 0.85 }],
     // The bench: the whole point of this variation is the raised hands.
     props: [FLOOR, 'M82 48 H118 M86 48 V67 M114 48 V67'],
     a: { p: [[96, 48], [93, 41], [90, 38], [56, 51], [36, 58], [14, 67]], head: [99, 33] },
@@ -44,12 +46,14 @@ const FIGURES = {
   },
   crunch: {
     dur: 2.6,
+    muscle: [{ seg: 0, from: 0.15, to: 0.7 }],
     props: [FLOOR],
     a: { p: [[22, 55], [27, 60], [30, 64], [58, 64], [80, 46], [96, 65]], head: [18, 58] },
     b: { p: [[27, 40], [32, 47], [38, 52], [58, 64], [80, 46], [96, 65]], head: [28, 44] },
   },
   plank: {
     dur: 4,
+    muscle: [{ seg: 0, from: 0.12, to: 0.72 }],
     props: [FLOOR],
     // A hold, so the two poses are almost the same — just enough motion to read
     // as alive rather than as a frozen drawing.
@@ -58,6 +62,7 @@ const FIGURES = {
   },
   side_plank: {
     dur: 4,
+    muscle: [{ seg: 0, from: 0.1, to: 0.7 }],
     // The raised arm and the stacked top leg cannot live on one chain.
     props: [FLOOR, 'M84 42 V21'],
     a: { p: [[84, 66], [84, 54], [84, 42], [52, 54], [33, 60], [14, 66]], head: [93, 36] },
@@ -65,18 +70,21 @@ const FIGURES = {
   },
   glute_bridge: {
     dur: 2.6,
+    muscle: [{ seg: 1, from: 0, to: 0.4 }, { seg: 0, from: 0, to: 0.22 }],
     props: [FLOOR],
     a: { p: [[40, 66], [31, 66], [24, 64], [52, 64], [76, 48], [92, 66]], head: [15, 61] },
     b: { p: [[40, 66], [31, 66], [24, 64], [52, 50], [76, 44], [92, 66]], head: [15, 61] },
   },
   superman: {
     dur: 3,
+    muscle: [{ seg: 0, from: 0, to: 0.55 }],
     props: [FLOOR],
     a: { p: [[16, 65], [30, 66], [44, 65], [72, 65], [86, 66], [100, 65]], head: [36, 60] },
     b: { p: [[13, 53], [29, 58], [44, 63], [72, 64], [87, 58], [102, 51]], head: [35, 55] },
   },
   deadbug: {
     dur: 3,
+    muscle: [{ seg: 0, from: 0.15, to: 0.75 }],
     // The opposite arm and leg hold their start position while these two move.
     props: [FLOOR],
     a: { p: [[33, 33], [37, 47], [38, 61], [70, 61], [73, 42], [91, 46]], head: [27, 58] },
@@ -84,6 +92,7 @@ const FIGURES = {
   },
   birddog: {
     dur: 3,
+    muscle: [{ seg: 0, from: 0.08, to: 0.8 }],
     // The arm and leg holding the body up.
     props: [FLOOR, 'M36 42 L41 67', 'M74 42 L70 67'],
     a: { p: [[42, 58], [37, 50], [36, 42], [74, 42], [72, 54], [64, 59]], head: [27, 39] },
@@ -91,6 +100,7 @@ const FIGURES = {
   },
   str_ham: {
     dur: 5,
+    muscle: [{ seg: 1, from: 0.12, to: 0.92 }],
     // Bench under the raised heel, and the leg still standing on the floor.
     props: [FLOOR, 'M74 42 H112 M78 42 V67 M108 42 V67', 'M38 46 L58 44 L78 42'],
     a: { p: [[60, 37], [50, 32], [40, 29], [38, 46], [36, 57], [34, 67]], head: [41, 21] },
@@ -98,6 +108,7 @@ const FIGURES = {
   },
   str_hipflex: {
     dur: 5,
+    muscle: [{ seg: 1, from: 0, to: 0.45 }],
     props: [FLOOR, 'M46 48 L70 53 L70 67'],
     // Driving the hips forward IS the stretch, so the travel has to be visible.
     a: { p: [[42, 58], [42, 52], [43, 36], [44, 49], [26, 65], [13, 67]], head: [43, 28] },
@@ -105,6 +116,7 @@ const FIGURES = {
   },
   str_calf: {
     dur: 5,
+    muscle: [{ seg: 2, from: 0.08, to: 0.78 }],
     props: [FLOOR, 'M104 16 V67'],
     // Leaning into the wall with the heel pinned is the whole movement; a
     // couple of pixels of lean teaches nobody anything.
@@ -113,6 +125,7 @@ const FIGURES = {
   },
   str_chest: {
     dur: 5,
+    muscle: [{ seg: 0, from: 0.6, to: 1 }, { seg: 3, from: 0, to: 0.5 }],
     // The door frame the forearm presses against.
     props: [FLOOR, 'M96 14 V67'],
     a: { p: [[92, 25], [92, 40], [80, 43], [77, 54], [77, 61], [77, 67]], head: [77, 34] },
@@ -120,6 +133,7 @@ const FIGURES = {
   },
   str_back: {
     dur: 5,
+    muscle: [{ seg: 0, from: 0, to: 0.6 }],
     props: [FLOOR],
     a: { p: [[40, 52], [46, 48], [52, 44], [56, 60], [56, 66], [72, 67]], head: [52, 36] },
     b: { p: [[14, 64], [28, 62], [44, 60], [58, 60], [58, 66], [74, 67]], head: [38, 55] },
@@ -153,14 +167,30 @@ const svg = (tag, attrs) => {
  * 4 knee · 5 ankle.
  */
 const SEGMENTS = [
-  { from: 3, to: 2, w: 8.4, cls: 'ftorso' },
-  { from: 3, to: 4, w: 6, cls: 'flimb' },
-  { from: 4, to: 5, w: 4.6, cls: 'flimb' },
-  { from: 2, to: 1, w: 4.4, cls: 'flimb' },
-  { from: 1, to: 0, w: 3.4, cls: 'flimb' },
+  { from: 3, to: 2, w: 8.4 }, // 0 torso
+  { from: 3, to: 4, w: 6 }, //   1 thigh
+  { from: 4, to: 5, w: 4.6 }, // 2 shin
+  { from: 2, to: 1, w: 4.4 }, // 3 upper arm
+  { from: 1, to: 0, w: 3.4 }, // 4 forearm
 ];
 
+/** The limbs that have a twin on the far side of the body. */
+const FAR_LIMBS = [1, 2, 3, 4];
+
+/**
+ * How far the far-side arm and leg sit behind the near ones.
+ *
+ * This is the whole depth cue. A side view with one arm and one leg reads flat
+ * however well it is shaded; the moment a dimmer second pair appears behind the
+ * body, the eye reads a person standing in space rather than a decal. It is a
+ * cheat — there is no third dimension here — but it is the same cheat every
+ * flat exercise pictogram uses.
+ */
+const FAR = { dx: -4.5, dy: 1.5 };
+
 const at = (pose, i) => pose.p[i];
+const lerp = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
+const shift = ([x, y]) => [x + FAR.dx, y + FAR.dy];
 
 /** `values` for a there-and-back loop, so the rep reverses instead of jumping. */
 const loop = (from, to) => `${from};${to};${from}`;
@@ -179,44 +209,37 @@ function animate(attr, from, to, dur) {
   });
 }
 
-/** One limb, animated from its pose in `a` to its pose in `b`. */
-function segment({ from, to, w, cls }, fig, still) {
-  const [x1, y1] = at(fig.a, from);
-  const [x2, y2] = at(fig.a, to);
-  const line = svg('line', { class: cls, 'stroke-width': w, x1, y1, x2, y2 });
+/** A line that travels from its pose-A ends to its pose-B ends and back. */
+function movingLine(cls, w, aFrom, aTo, bFrom, bTo, dur, still, stroke) {
+  const line = svg('line', {
+    class: cls,
+    'stroke-width': w,
+    x1: aFrom[0],
+    y1: aFrom[1],
+    x2: aTo[0],
+    y2: aTo[1],
+    ...(stroke ? { stroke } : {}),
+  });
   if (still) return line;
-  const ends = [
-    ['x1', x1, at(fig.b, from)[0]],
-    ['y1', y1, at(fig.b, from)[1]],
-    ['x2', x2, at(fig.b, to)[0]],
-    ['y2', y2, at(fig.b, to)[1]],
-  ];
-  for (const [attr, one, two] of ends) line.appendChild(animate(attr, one, two, fig.dur));
+  for (const [attr, one, two] of [
+    ['x1', aFrom[0], bFrom[0]],
+    ['y1', aFrom[1], bFrom[1]],
+    ['x2', aTo[0], bTo[0]],
+    ['y2', aTo[1], bTo[1]],
+  ]) {
+    line.appendChild(animate(attr, one, two, dur));
+  }
   return line;
 }
 
-/**
- * The neck, drawn from the shoulder toward the head so the head is attached to
- * the body instead of floating beside it.
- */
-function neck(fig, still) {
-  const [sx, sy] = at(fig.a, 2);
-  const line = svg('line', {
-    class: 'ftorso',
-    'stroke-width': 5,
-    x1: sx,
-    y1: sy,
-    x2: (sx + fig.a.head[0]) / 2,
-    y2: (sy + fig.a.head[1]) / 2,
-  });
-  if (still) return line;
-  const [bx, by] = at(fig.b, 2);
-  line.appendChild(animate('x1', sx, bx, fig.dur));
-  line.appendChild(animate('y1', sy, by, fig.dur));
-  line.appendChild(animate('x2', (sx + fig.a.head[0]) / 2, (bx + fig.b.head[0]) / 2, fig.dur));
-  line.appendChild(animate('y2', (sy + fig.a.head[1]) / 2, (by + fig.b.head[1]) / 2, fig.dur));
-  return line;
+/** The neck, so the head is attached to the body instead of floating beside it. */
+function neck(fig, still, paint) {
+  const mid = (pose) => lerp(at(pose, 2), pose.head, 0.5);
+  return movingLine('flimb', 5, at(fig.a, 2), mid(fig.a), at(fig.b, 2), mid(fig.b), fig.dur, still, paint);
 }
+
+/** Gradient ids have to be unique: two figures on one page must not collide. */
+let idSeed = 0;
 
 export function exerciseFigure(exId) {
   const fig = FIGURES[exId];
@@ -231,21 +254,82 @@ export function exerciseFigure(exId) {
     focusable: 'false',
   });
 
+  const gid = `fg${(idSeed += 1)}`;
+  const defs = svg('defs', {});
+  const grad = svg('linearGradient', {
+    id: gid,
+    gradientUnits: 'userSpaceOnUse',
+    // Light from above, down the box rather than across it: a sideways ramp
+    // left every figure on the right-hand side of its frame sitting entirely
+    // in the shadow half.
+    x1: 0,
+    y1: 14,
+    x2: 0,
+    y2: 72,
+  });
+  // Three stops, so a limb has a turn to it instead of one flat tone.
+  for (const [offset, cls] of [['0%', 'flit'], ['55%', 'fmid'], ['100%', 'fdim']]) {
+    grad.appendChild(svg('stop', { offset, class: cls }));
+  }
+  defs.appendChild(grad);
+  root.appendChild(defs);
+
   for (const d of fig.props) root.appendChild(svg('path', { class: 'fprop', d }));
 
   // Someone who asked the system to stop animating gets the start of the rep,
   // held still, instead of a loop they cannot switch off.
   const still = !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+  const paint = `url(#${gid})`;
 
-  root.appendChild(neck(fig, still));
-  for (const seg of SEGMENTS) root.appendChild(segment(seg, fig, still));
+  // The far side first — it has to sit behind everything else.
+  for (const i of FAR_LIMBS) {
+    const seg = SEGMENTS[i];
+    root.appendChild(
+      movingLine(
+        'ffar',
+        seg.w * 0.92,
+        shift(at(fig.a, seg.from)),
+        shift(at(fig.a, seg.to)),
+        shift(at(fig.b, seg.from)),
+        shift(at(fig.b, seg.to)),
+        fig.dur,
+        still
+      )
+    );
+  }
 
-  const head = svg('circle', {
-    class: 'fhead',
-    cx: fig.a.head[0],
-    cy: fig.a.head[1],
-    r: 5.2,
-  });
+  root.appendChild(neck(fig, still, paint));
+  for (const seg of SEGMENTS) {
+    root.appendChild(
+      movingLine(
+        'flimb',
+        seg.w,
+        at(fig.a, seg.from),
+        at(fig.a, seg.to),
+        at(fig.b, seg.from),
+        at(fig.b, seg.to),
+        fig.dur,
+        still,
+        paint
+      )
+    );
+  }
+
+  // The muscle the movement is actually for, laid over the limb that carries
+  // it. This is the one thing a photograph of a stranger cannot tell you.
+  for (const m of fig.muscle || []) {
+    const seg = SEGMENTS[m.seg];
+    const ends = (pose) => [
+      lerp(at(pose, seg.from), at(pose, seg.to), m.from),
+      lerp(at(pose, seg.from), at(pose, seg.to), m.to),
+    ];
+    const [a1, a2] = ends(fig.a);
+    const [b1, b2] = ends(fig.b);
+    root.appendChild(movingLine('fmuscle', seg.w * 0.62, a1, a2, b1, b2, fig.dur, still));
+  }
+
+  const head = svg('circle', { class: 'fhead', cx: fig.a.head[0], cy: fig.a.head[1], r: 5.2 });
+  head.setAttribute('fill', paint);
   if (!still) {
     head.appendChild(animate('cx', fig.a.head[0], fig.b.head[0], fig.dur));
     head.appendChild(animate('cy', fig.a.head[1], fig.b.head[1], fig.dur));

@@ -392,6 +392,20 @@ test('the teaching figures', async (t) => {
     }
   });
 
+  await t.test('every movement says which muscle it is for', () => {
+    // Marking the worked muscle is the one thing a photograph of a stranger
+    // cannot do, so no figure ships without it.
+    for (const id of FIGURE_IDS) {
+      const { muscle } = figureOf(id);
+      assert.ok(Array.isArray(muscle) && muscle.length, `${id} marks no muscle`);
+      for (const m of muscle) {
+        assert.ok(m.seg >= 0 && m.seg <= 4, `${id} marks segment ${m.seg}`);
+        assert.ok(m.from >= 0 && m.to <= 1, `${id} marks ${m.from}..${m.to}`);
+        assert.ok(m.to - m.from >= 0.15, `${id}'s mark is too short to see`);
+      }
+    }
+  });
+
   await t.test('every rep has a sane tempo', () => {
     for (const id of FIGURE_IDS) {
       const { dur } = figureOf(id);
