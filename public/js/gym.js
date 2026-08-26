@@ -354,7 +354,7 @@ export class GymMode {
         { class: ['cue', this.cueOpen ? 'open' : ''] },
         // The loop is built only while the panel is open: a hidden <animate>
         // still runs, and gym mode redraws on every set that gets ticked.
-        this.cueOpen ? exerciseFigure(exercise.id) : null,
+        this.cueOpen ? exerciseFigure(exercise.id, exercise.n) : null,
         el('div', {}, ...richText(exercise.cue))
       ),
       el(

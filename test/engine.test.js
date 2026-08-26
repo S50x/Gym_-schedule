@@ -15,7 +15,8 @@ import {
   todayKey,
   formatRest,
 } from '../public/js/engine.js';
-import { FIGURE_IDS, figureOf, hasFigure } from '../public/js/figure.js';
+import fs from 'node:fs';
+import { FIGURE_IDS, figureOf, hasFigure, hasPhoto, PHOTO_IDS, photoFrame } from '../public/js/figure.js';
 import {
   PLAN,
   ALL_EXERCISES,
@@ -410,6 +411,44 @@ test('the teaching figures', async (t) => {
     for (const id of FIGURE_IDS) {
       const { dur } = figureOf(id);
       assert.ok(dur >= 2 && dur <= 8, `${id} loops in ${dur}s`);
+    }
+  });
+});
+
+test('the photographed pairs', async (t) => {
+  const file = (id, frame) => new URL(`../public${photoFrame(id, frame)}`, import.meta.url);
+
+  await t.test('both frames of every photographed movement are on disk', () => {
+    // A missing file leaves the cue empty: the img error handler pulls the box
+    // rather than showing a torn half-image, so nothing on screen says why.
+    for (const id of PHOTO_IDS) {
+      for (const frame of [0, 1]) {
+        assert.ok(fs.existsSync(file(id, frame)), `${id} frame ${frame} is missing`);
+        assert.ok(fs.statSync(file(id, frame)).size > 2000, `${id} frame ${frame} is empty`);
+      }
+    }
+  });
+
+  await t.test('the set stays small enough to carry offline', () => {
+    const total = PHOTO_IDS.reduce(
+      (sum, id) => sum + [0, 1].reduce((n, f) => n + fs.statSync(file(id, f)).size, 0),
+      0
+    );
+    assert.ok(total < 700 * 1024, `${(total / 1024).toFixed(0)}KB of frames is too much to cache`);
+  });
+
+  await t.test('every photographed id is a movement the app actually programmes', () => {
+    for (const id of PHOTO_IDS) assert.ok(exById(id), `photo for unknown ${id}`);
+  });
+
+  await t.test('a movement with no photograph still has something to show', () => {
+    // birddog is the one this set does not carry; the drawing has to cover it.
+    assert.equal(hasPhoto('birddog'), false);
+    assert.ok(hasFigure('birddog'), 'birddog has neither a photo nor a drawing');
+    for (const day of Object.values(planOf('cardio'))) {
+      for (const e of day.ex) {
+        assert.ok(hasPhoto(e.id) || hasFigure(e.id), `${e.id} shows nothing at all`);
+      }
     }
   });
 });
