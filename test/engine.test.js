@@ -21,6 +21,10 @@ import {
   baseWeights,
   clashesOf,
   clashesWith,
+  migrateSetsKeys,
+  setsByExercise,
+  setsKey,
+  setsOfDay,
   exById,
   EXERCISE_IDS,
   fineStep,
@@ -251,6 +255,74 @@ test('every video link is a real link', async (t) => {
                       'str_chest', 'str_back']) {
       assert.ok(exById(id).v, `${id} needs an explainer clip`);
     }
+  });
+});
+
+test('a set log belongs to a day, not just to an exercise', async (t) => {
+  const done = (n) => Array.from({ length: n }, () => true);
+
+  await t.test('finishing one day leaves the same movement untouched elsewhere', () => {
+    // The bug this exists for: `cardio` stretches the hamstrings on five days,
+    // and one flat record per exercise meant ticking Tuesday ticked all five.
+    const week = { sets: { [setsKey('tue', 'str_ham')]: done(2) } };
+    assert.deepEqual(setsOfDay(week, 'tue'), { str_ham: [true, true] });
+    for (const day of ['sun', 'thu', 'sat', 'wed']) {
+      assert.deepEqual(setsOfDay(week, day), {}, `${day} was marked done by Tuesday`);
+    }
+  });
+
+  await t.test('the goal really does repeat movements — that is the point', () => {
+    const days = new Map();
+    for (const [day, d] of Object.entries(planOf('cardio'))) {
+      for (const e of d.ex) days.set(e.id, [...(days.get(e.id) || []), day]);
+    }
+    assert.ok(days.get('str_ham').length >= 3, 'the hamstring stretch must repeat');
+  });
+
+  await t.test('a movement rises only when every day it is on is finished', () => {
+    const partial = { sets: { [setsKey('sat', 'plank')]: done(3) } };
+    const folded = setsByExercise(partial, 'cardio');
+    assert.ok(!folded.plank.every(Boolean), 'Saturday alone must not count as the week');
+
+    const both = {
+      sets: {
+        [setsKey('sat', 'plank')]: done(3),
+        [setsKey('wed', 'plank')]: done(3),
+      },
+    };
+    assert.deepEqual(setsByExercise(both, 'cardio').plank, [true, true, true]);
+  });
+
+  await t.test('a goal that never repeats reads exactly as it always did', () => {
+    const week = { sets: { [setsKey('sat', 'chest_db')]: done(3) } };
+    assert.deepEqual(setsByExercise(week, 'cut').chest_db, [true, true, true]);
+  });
+
+  await t.test('an old flat log is lifted onto the day that programmes it', () => {
+    const migrated = migrateSetsKeys({ chest_db: done(3), leg_press: done(3) }, 'cut');
+    assert.deepEqual(migrated, {
+      [setsKey('sat', 'chest_db')]: done(3),
+      [setsKey('mon', 'leg_press')]: done(3),
+    });
+  });
+
+  await t.test('migrating twice changes nothing', () => {
+    const once = migrateSetsKeys({ chest_db: done(3) }, 'cut');
+    assert.deepEqual(migrateSetsKeys(once, 'cut'), once);
+  });
+
+  await t.test('history under another goal is kept, never tidied away', () => {
+    // squat_bb is not in the fat-loss programme. Dropping the key to make the
+    // shape neat would be deleting a record the user gets back on switching.
+    const kept = migrateSetsKeys({ squat_bb: done(5) }, 'cut');
+    assert.deepEqual(kept, { squat_bb: done(5) });
+    assert.deepEqual(migrateSetsKeys(kept, 'strength'), { [setsKey('sat', 'squat_bb')]: done(5) });
+  });
+
+  await t.test('junk in the log never becomes a key', () => {
+    assert.deepEqual(migrateSetsKeys(null, 'cut'), {});
+    assert.deepEqual(migrateSetsKeys({ chest_db: 'nope' }, 'cut'), {});
+    assert.deepEqual(setsOfDay({ sets: { 'sat:chest_db': 'nope' } }, 'sat'), {});
   });
 });
 

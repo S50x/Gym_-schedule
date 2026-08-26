@@ -1381,6 +1381,22 @@ const JS_DAY = [6, 0, 1, 2, 3, 4, 5];
 export const ALL_EXERCISES = Object.entries(EXERCISES).map(([id, e]) => ({ id, ...e }));
 export const EXERCISE_IDS = Object.keys(EXERCISES);
 export const MACHINE_KEYS = MACH.map((m) => m.k);
+
+/**
+ * The key a week's set log is stored under.
+ *
+ * It used to be the exercise id alone, which quietly assumed no programme ever
+ * repeats a movement in one week. The five original goals happen to satisfy
+ * that; `cardio` does not — it stretches the hamstrings on five days — so
+ * ticking Tuesday's stretches marked Sunday's and Thursday's done too. The day
+ * is part of the identity of a logged set, so it is part of the key.
+ */
+export const setsKey = (dayKey, exId) => `${dayKey}:${exId}`;
+
+/** Every day key any goal uses, for validating a stored key. */
+export const LIFT_DAY_KEYS = [
+  ...new Set(Object.values(GOALS).flatMap((g) => g.days.map((d) => d.key))),
+];
 export const FEEDBACK_VALUES = ['light', 'ok', 'heavy'];
 
 const BY_ID = new Map(ALL_EXERCISES.map((e) => [e.id, e]));
@@ -1553,6 +1569,80 @@ export function baseWeights(goalKey = DEFAULT_GOAL, levelKey = DEFAULT_LEVEL, le
       const mult = levelOf(levelForGroup(e.g, levelKey, levels)).mult;
       out[e.id] = mult === 1 ? e.base : toStep(e.base * mult, e.step);
     }
+  }
+  return out;
+}
+
+/* ── a week's set log ─────────────────────────────────────────── */
+
+/**
+ * The sets logged for one day, flattened back to `{ exerciseId: boolean[] }`.
+ * Only that day's entries — a movement programmed on Sunday and on Tuesday
+ * keeps a separate record for each.
+ */
+export function setsOfDay(week, dayKey) {
+  const out = {};
+  const prefix = `${dayKey}:`;
+  for (const [key, value] of Object.entries(week?.sets || {})) {
+    if (Array.isArray(value) && key.startsWith(prefix)) out[key.slice(prefix.length)] = value;
+  }
+  return out;
+}
+
+/**
+ * One completion record per exercise for the whole week, for deciding what
+ * goes up next week.
+ *
+ * A movement programmed on more than one day only counts as finished when
+ * every one of those days is finished — half the week's work does not earn a
+ * heavier bar. Positions are ANDed so an untouched day drags the record down
+ * rather than being ignored.
+ */
+export function setsByExercise(week, goalKey = DEFAULT_GOAL) {
+  const out = {};
+  for (const day of goalOf(goalKey).days) {
+    for (const item of day.ex) {
+      const e = resolveExercise(item);
+      if (!e) continue;
+      const logged = week?.sets?.[setsKey(day.key, e.id)] || [];
+      const before = out[e.id];
+      if (!before) {
+        out[e.id] = [...logged];
+        continue;
+      }
+      const merged = Array.from({ length: Math.max(before.length, logged.length) }, (_, i) =>
+        Boolean(before[i] && logged[i])
+      );
+      out[e.id] = merged;
+    }
+  }
+  return out;
+}
+
+/**
+ * Move a legacy set log — keyed by exercise id alone — onto day-scoped keys.
+ *
+ * Runs on every load, so a document written by an older version, or one whose
+ * goal has since changed, is fixed the moment the exercise belongs to a day
+ * again. A key that no day in the current goal programmes is left exactly as it
+ * is: it is somebody's history under a goal they may yet switch back to, and
+ * dropping it to tidy the shape would be deleting their record.
+ */
+export function migrateSetsKeys(sets, goalKey = DEFAULT_GOAL) {
+  if (!sets || typeof sets !== 'object' || Array.isArray(sets)) return {};
+  const firstDay = new Map();
+  for (const day of goalOf(goalKey).days) {
+    for (const item of day.ex) {
+      const e = resolveExercise(item);
+      if (e && !firstDay.has(e.id)) firstDay.set(e.id, day.key);
+    }
+  }
+  const out = {};
+  for (const [key, value] of Object.entries(sets)) {
+    if (!Array.isArray(value)) continue;
+    // Already day-scoped, or an id this goal does not programme: leave it.
+    const day = key.includes(':') ? null : firstDay.get(key);
+    out[day ? setsKey(day, key) : key] = value;
   }
   return out;
 }
