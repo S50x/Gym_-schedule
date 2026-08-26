@@ -1,6 +1,6 @@
 import { el, richText } from '../dom.js';
 import { bulletList, toast } from '../ui.js';
-import { planOf, goalHasLoads, goalOf, exById } from '../program.js';
+import { planOf, goalHasLoads, goalOf, exById, setsByExercise, setsKey } from '../program.js';
 import { verdict, progress, proteinTarget, MAX_WEEK } from '../engine.js';
 
 export function renderWeek(ctx) {
@@ -18,7 +18,9 @@ export function renderWeek(ctx) {
   const ups = [];
   if (week.body) {
     const current = store.weightsFor(wk);
-    const next = progress(current, week, v);
+    // Progression reads one record per exercise, folded across every day that
+    // programmes it — a movement only rises when the whole week's work is in.
+    const next = progress(current, { ...week, sets: setsByExercise(week, goalKey) }, v);
     for (const [id, value] of Object.entries(next)) {
       const e = exById(id);
       if (!e || e.body) continue;
@@ -30,7 +32,7 @@ export function renderWeek(ctx) {
     (acc, d) =>
       acc +
       PLAN[d].ex.filter((e) => {
-        const sets = week.sets[e.id] || [];
+        const sets = week.sets[setsKey(d, e.id)] || [];
         return sets.length >= e.sets && sets.slice(0, e.sets).every(Boolean);
       }).length,
     0

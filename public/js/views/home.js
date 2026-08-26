@@ -7,6 +7,7 @@ import {
   dayHasLoads,
   goalHasLoads,
   goalOf,
+  setsKey,
   todayLift,
   DAY_NAMES,
   exById,
@@ -41,9 +42,11 @@ export function renderHome(ctx) {
   // which programme the trainee is on.
   const restLine = hasLoads ? 'لا حديد ولا كارديو' : 'لا كارديو ولا تمارين';
 
+  // Keyed by day as well as by exercise: this goal stretches the hamstrings on
+  // five days, and finishing Tuesday must not tick Sunday and Thursday too.
   const doneCount = (dayKey) =>
     PLAN[dayKey].ex.filter((e) => {
-      const sets = week.sets[e.id] || [];
+      const sets = week.sets[setsKey(dayKey, e.id)] || [];
       return sets.length >= e.sets && sets.slice(0, e.sets).every(Boolean);
     }).length;
 

@@ -2,7 +2,7 @@
 
 import { el, clear, append, richText, safeUrl } from './dom.js';
 import { fmt, fmtN, toast, buzz, beep, primeAudio } from './ui.js';
-import { planOf, fineStep, MAX_LOAD } from './program.js';
+import { planOf, fineStep, setsKey, setsOfDay, MAX_LOAD } from './program.js';
 import { dayVolume, formatRest } from './engine.js';
 
 const FEEDBACK = [
@@ -80,7 +80,7 @@ export class GymMode {
     const week = this.store.week();
     const index = Math.max(
       0,
-      plan[day].ex.findIndex((e) => !isDone(e, week))
+      plan[day].ex.findIndex((e) => !isDone(e, week, day))
     );
     this.state = { day, index: index === -1 ? 0 : index, editWeight: false };
     this.cueOpen = false;
@@ -146,7 +146,7 @@ export class GymMode {
     const { plan, exercise } = this.current();
     const week = this.store.week();
     const weights = this.store.weightsFor();
-    const sets = week.sets[exercise.id] || [];
+    const sets = week.sets[setsKey(this.state.day, exercise.id)] || [];
     const nextSet = nextSetIndex(sets, exercise.sets);
     const weight = weights[exercise.id];
 
@@ -155,7 +155,7 @@ export class GymMode {
     clear(this.nodes.dots);
     plan.ex.forEach((x, i) => {
       this.nodes.dots.appendChild(
-        el('i', { class: isDone(x, week) ? 'd' : i === this.state.index ? 'c' : '' })
+        el('i', { class: isDone(x, week, this.state.day) ? 'd' : i === this.state.index ? 'c' : '' })
       );
     });
 
@@ -266,7 +266,7 @@ export class GymMode {
     }
 
     /* foot */
-    const allDone = isDone(exercise, week);
+    const allDone = isDone(exercise, week, this.state.day);
     const feedback = week.fb[exercise.id];
     clear(this.nodes.foot);
 
@@ -543,10 +543,11 @@ export class GymMode {
   toggleSet(index) {
     const { exercise } = this.current();
     this.store.update(this.store.viewWeek, (w) => {
-      const sets = [...(w.sets[exercise.id] || [])];
+      const key = setsKey(this.state.day, exercise.id);
+      const sets = [...(w.sets[key] || [])];
       while (sets.length < exercise.sets) sets.push(false);
       sets[index] = !sets[index];
-      w.sets = { ...w.sets, [exercise.id]: sets };
+      w.sets = { ...w.sets, [key]: sets };
     });
     this.draw();
   }
@@ -559,7 +560,7 @@ export class GymMode {
     const { plan, exercise } = this.current();
     const week = this.store.week();
 
-    if (isDone(exercise, week)) {
+    if (isDone(exercise, week, this.state.day)) {
       if (this.state.index < plan.ex.length - 1) this.step(1);
       else this.finish();
       return;
@@ -567,18 +568,19 @@ export class GymMode {
 
     let completedIndex = -1;
     this.store.update(this.store.viewWeek, (w) => {
-      const sets = [...(w.sets[exercise.id] || [])];
+      const key = setsKey(this.state.day, exercise.id);
+      const sets = [...(w.sets[key] || [])];
       while (sets.length < exercise.sets) sets.push(false);
       completedIndex = sets.findIndex((x) => !x);
       if (completedIndex === -1) return;
       sets[completedIndex] = true;
-      w.sets = { ...w.sets, [exercise.id]: sets };
+      w.sets = { ...w.sets, [key]: sets };
     });
 
     buzz(35);
     this.draw();
 
-    const nowDone = isDone(exercise, this.store.week());
+    const nowDone = isDone(exercise, this.store.week(), this.state.day);
     const next = plan.ex[this.state.index + 1];
     this.startRest(
       exercise.rest,
@@ -591,12 +593,13 @@ export class GymMode {
   finish() {
     const { plan } = this.current();
     const week = this.store.week();
+    const daySets = setsOfDay(week, this.state.day);
     const minutes = Math.max(1, Math.round((Date.now() - this.sessionStart) / 60000));
     const setCount = plan.ex.reduce(
-      (acc, e) => acc + (week.sets[e.id] || []).filter(Boolean).length,
+      (acc, e) => acc + (daySets[e.id] || []).filter(Boolean).length,
       0
     );
-    const volume = dayVolume(plan.ex, this.store.weightsFor(), week.sets);
+    const volume = dayVolume(plan.ex, this.store.weightsFor(), daySets);
 
     this.nodes.finP.textContent = `${plan.day} — ${plan.title}`;
     clear(this.nodes.finStats);
@@ -708,8 +711,8 @@ export class GymMode {
  * three-set one leaves a longer array behind, and that should read as finished,
  * not as permanently incomplete.
  */
-export function isDone(exercise, week) {
-  const sets = week.sets?.[exercise.id] || [];
+export function isDone(exercise, week, dayKey) {
+  const sets = week.sets?.[setsKey(dayKey, exercise.id)] || [];
   return sets.length >= exercise.sets && sets.slice(0, exercise.sets).every(Boolean);
 }
 

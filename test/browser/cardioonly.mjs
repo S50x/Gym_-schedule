@@ -80,6 +80,45 @@ export default async function run({ base, browser, problems, step }) {
     await page.waitForSelector('#gym.on', { state: 'hidden', timeout: 5000 });
   });
 
+  await step('finishing one day does not tick the same movement on another', async () => {
+    // The reported bug: this goal stretches the hamstrings on five days, and a
+    // set log keyed by exercise alone meant Tuesday's work marked Sunday and
+    // Thursday done as well.
+    const counts = () =>
+      page.locator('.wrow .wlift:not(.ghost) .n').allTextContents().then((t) => t.map((x) => x.trim()));
+    const before = await counts();
+    if (before.some((c) => !c.startsWith('0/'))) throw new Error(`not a clean week: ${before}`);
+
+    await page.evaluate(() => document.querySelectorAll('.wlift:not(.ghost)')[3]?.click()); // الثلاثاء
+    await page.waitForSelector('#gym.on', { timeout: 5000 });
+    const day = (await page.textContent('#gcount')).trim();
+    if (!day.includes('الثلاثاء')) throw new Error(`opened "${day}", expected Tuesday`);
+
+    const dots = page.locator('.sdot');
+    const n = await dots.count();
+    for (let i = 0; i < n; i++) await dots.nth(i).click();
+
+    // The write must be day-scoped, with nothing left on the old flat shape.
+    const keys = await page.evaluate(() => {
+      const doc = JSON.parse(localStorage.getItem('hadeed:doc'));
+      return Object.keys(doc.weeks['1'].sets);
+    });
+    if (!keys.every((k) => k.startsWith('tue:'))) throw new Error(`stray keys: ${keys.join(', ')}`);
+
+    await page.locator('#gx').click();
+    await page.waitForSelector('#gym.on', { state: 'hidden', timeout: 5000 });
+
+    const after = await counts();
+    const [sat, sun, mon, tue, wed, thu] = after;
+    if (tue !== '1/5') throw new Error(`Tuesday should read 1/5, reads ${tue}`);
+    for (const [name, value] of [['الأحد', sun], ['الخميس', thu]]) {
+      if (value !== '0/5') throw new Error(`${name} was marked by Tuesday's work: ${value}`);
+    }
+    for (const [name, value] of [['السبت', sat], ['الاثنين', mon], ['الأربعاء', wed]]) {
+      if (value !== '0/7') throw new Error(`${name} was marked by Tuesday's work: ${value}`);
+    }
+  });
+
   await step('pairing two machines that fight is warned about, not blocked', async () => {
     await tab(page, 'cardio');
     const chips = page.locator('.crow').first().locator('.mchip');

@@ -154,6 +154,33 @@ test('state validation', async (t) => {
     assert.equal({}.polluted, undefined);
   });
 
+  await t.test('accepts a day-scoped set key, and still accepts the old flat one', () => {
+    const ok = validateState(
+      docWith({ 1: { sets: { 'sat:chest_db': [true, true, true], leg_press: [true] } } })
+    );
+    assert.ok(ok.ok, ok.error);
+    assert.deepEqual(ok.doc.weeks['1'].sets['sat:chest_db'], [true, true, true]);
+    assert.deepEqual(ok.doc.weeks['1'].sets.leg_press, [true], 'the older shape survives');
+  });
+
+  await t.test('a set key with an unknown day or exercise is dropped', () => {
+    const { doc } = validateState(
+      docWith({
+        1: {
+          sets: {
+            'nosuchday:chest_db': [true],
+            'sat:evil_injected_id': [true],
+            'sat:': [true],
+            ':chest_db': [true],
+            'sat:chest_db:extra': [true],
+            'sat:chest_db': [true],
+          },
+        },
+      })
+    );
+    assert.deepEqual(Object.keys(doc.weeks['1'].sets), ['sat:chest_db']);
+  });
+
   await t.test('bounds stored sets by the programme-wide maximum', () => {
     // The limit is deliberately not the exercise's own set count, which now
     // depends on the goal. A lift run for five sets under "strength" must stay
