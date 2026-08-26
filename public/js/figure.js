@@ -140,6 +140,35 @@ const FIGURES = {
   },
 };
 
+/**
+ * Movements with a photographed pair in `public/img/ex/` — a real person in the
+ * start and the end of the rep, from the public-domain free-exercise-db set.
+ *
+ * A photograph beats a drawing at showing what a movement looks like and loses
+ * to it at showing where the work lands, so the drawing stays the fallback for
+ * anything unphotographed rather than being replaced outright. `birddog` is the
+ * one movement in this programme that set does not carry.
+ */
+const PHOTOGRAPHED = new Set([
+  'pushup',
+  'pushup_inc',
+  'crunch',
+  'plank',
+  'side_plank',
+  'glute_bridge',
+  'superman',
+  'deadbug',
+  'str_ham',
+  'str_hipflex',
+  'str_calf',
+  'str_chest',
+  'str_back',
+]);
+
+export const PHOTO_IDS = [...PHOTOGRAPHED];
+export const hasPhoto = (exId) => PHOTOGRAPHED.has(exId);
+export const photoFrame = (exId, frame) => `/img/ex/${exId}-${frame}.webp`;
+
 export const FIGURE_IDS = Object.keys(FIGURES);
 export const hasFigure = (exId) => Object.hasOwn(FIGURES, exId);
 
@@ -241,7 +270,41 @@ function neck(fig, still, paint) {
 /** Gradient ids have to be unique: two figures on one page must not collide. */
 let idSeed = 0;
 
-export function exerciseFigure(exId) {
+/**
+ * The two photographed ends of the rep, stacked and cross-faded by CSS.
+ *
+ * Two frames is not a film — it is the start and the end of the rep. Fading
+ * between them reads as the movement; cutting between them reads as a glitch,
+ * which is why this is a fade and not a swap. No timer and no script: the
+ * animation lives in the stylesheet, so nothing has to be torn down when the
+ * panel closes.
+ */
+function photoPair(exId, alt) {
+  const box = document.createElement('div');
+  box.className = 'fphoto';
+  for (const frame of [0, 1]) {
+    const img = document.createElement('img');
+    img.className = `fframe f${frame}`;
+    img.src = photoFrame(exId, frame);
+    // Only one of the pair is described: they are two moments of one movement,
+    // and a screen reader announcing the name twice is noise.
+    img.alt = frame === 0 ? alt : '';
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    // A missing or unreachable file must not leave a torn half-image on screen.
+    img.addEventListener('error', () => box.remove(), { once: true });
+    box.appendChild(img);
+  }
+  return box;
+}
+
+/**
+ * What to show for a movement: the photographed pair when there is one, the
+ * drawn figure otherwise, or null when there is neither — the caller renders
+ * nothing rather than an empty box.
+ */
+export function exerciseFigure(exId, alt = '') {
+  if (PHOTOGRAPHED.has(exId)) return photoPair(exId, alt);
   const fig = FIGURES[exId];
   if (!fig) return null;
 

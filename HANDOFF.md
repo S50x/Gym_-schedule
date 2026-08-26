@@ -189,6 +189,17 @@ like `nutrition`. **Rules that must not be broken:**
   day it appears on is. `normalize()` lifts legacy flat keys on every load and
   **never drops** an id the current goal does not programme — that is history
   belonging to a goal the user may switch back to.
+- **A movement shows a photograph when there is one, a drawing when there is
+  not.** `public/img/ex/<id>-0.webp` and `-1.webp` are the start and the end of
+  the rep, cross-faded by CSS — 13 of the cardio programme's 14 movements, 407 KB
+  for all 26 frames. They came from **free-exercise-db** (`yuhonas/free-exercise-db`
+  on GitHub), which is released under the Unlicense: public domain, no purchase,
+  no attribution required. Fetched with curl and re-encoded to WebP at 640px with
+  `sharp`; the originals are 850px JPEGs about four times the size. `birddog` is
+  the one movement that set does not carry, which is why the drawn figure stays.
+  They are deliberately **not** in the service worker's precache list — the
+  runtime cache picks them up on first view rather than making every install
+  400 KB heavier.
 - **The teaching figures live in `public/js/figure.js`.** A movement is two poses
   of six joints — `wrist → elbow → shoulder → hip → knee → ankle` — because the
   skeleton is one open chain, so the whole body is one `<polyline>` the browser
