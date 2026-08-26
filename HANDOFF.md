@@ -23,17 +23,18 @@ the Render and Neon dashboards.** Do not rewrite what already works.
 ## 1. Current state (verified)
 
 ```
-main:    e368576   (PR #15 merged — PR #16 OPEN, see below)
-tests:   npm test     → 237 pass / 0 fail    (~15s, PGlite in-process)
+main:    93aef0f   (PR #16 merged — one PR open with the work below)
+tests:   npm test     → 251 pass / 0 fail    (~15s, PGlite in-process)
 browser: npm run browser → 11 journeys clean (~3m, boots its own server)
-code:    ~9,200 lines across 28 modules; 5 runtime deps, 2 dev
+code:    ~9,500 lines across 29 modules; 5 runtime deps, 2 dev
+assets:  public/img/ex — 26 WebP frames, 468 KB
 ```
 
-These numbers were taken on the branch of **PR #16**, which was open when this
-was written — `git log origin/main` tells you whether it landed. It fixes a live
-bug: a week's set log was keyed by exercise id alone, so on the `cardio` goal —
-which programmes the same stretch on five days — finishing Tuesday marked Sunday
-and Thursday done too. If it has not landed, that bug is still in the app.
+These numbers were taken on a branch that was open when this was written —
+`git log origin/main` tells you whether it landed. A security review of that
+branch found nothing: it adds no server code, no CSP exception and no new
+origin, and the one place it builds a path from a variable
+(`photoFrame()` in `figure.js`) sits behind a hard-coded allow-list.
 
 New since the goals work: the password-reset flow (`test/reset.test.js`, 12),
 per-muscle-group strength levels (`test/groups.test.js`, 19), and a run of load
@@ -57,7 +58,8 @@ moved into the repo (`npm run browser`) → email password reset → a stringifi
 null on screen → per-muscle-group strength levels → a typed exact load and the
 weight cache that swallowed it (#13) → `fine`, so the buttons move by the rack
 and not by the weekly jump (#14) → the `cardio` goal, six days with no iron in
-them (#15) → set logs keyed by day, not by exercise alone (#16, open).
+them (#15) → set logs keyed by day, not by exercise alone (#16) → a drawn figure
+per movement, then a photographed one where the public-domain set has it.
 
 ## 2. What the app is
 
@@ -189,6 +191,10 @@ like `nutrition`. **Rules that must not be broken:**
   day it appears on is. `normalize()` lifts legacy flat keys on every load and
   **never drops** an id the current goal does not programme — that is history
   belonging to a goal the user may switch back to.
+- **`public/img/ex` is the only binary asset directory the app ships**, and it
+  is the reason `npm test` now checks file sizes: a 404 there fails silently on
+  screen, because the img error handler pulls its own box rather than showing a
+  torn half-image.
 - **A movement shows a photograph when there is one, a drawing when there is
   not.** `public/img/ex/<id>-0.webp` and `-1.webp` are the start and the end of
   the rep, cross-faded by CSS — 13 of the cardio programme's 14 movements, 407 KB
