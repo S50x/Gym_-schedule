@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Lets you re-run the whole thing from the Actions tab without an empty
+  # commit. GitHub only offers this for workflows on the default branch.
+  workflow_dispatch:
 
 # A second push to the same branch makes the first run pointless — drop it
 # rather than queue both.
