@@ -4,6 +4,18 @@ import { api, ApiError, NetworkError } from '../api.js';
 import { SYNC } from '../store.js';
 import { goalOf, levelOf } from '../program.js';
 
+/**
+ * Mirrors EMAIL_RE in server/routes/auth.js. The server stays the one that
+ * decides — this only spares the user a round trip and a generic error for a
+ * typo it can see from here.
+ */
+const EMAIL_RE =
+  /^[^\s@,;:<>"'\\]{1,64}@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/;
+const MAX_EMAIL = 254;
+const BAD_EMAIL = 'اكتب بريد إلكتروني صحيح.';
+
+const validEmail = (email) => email.length <= MAX_EMAIL && EMAIL_RE.test(email);
+
 const SYNC_TEXT = {
   [SYNC.OFF]: 'ما سجّلت دخول — بياناتك محفوظة على هذا الجهاز بس.',
   [SYNC.SYNCED]: 'كل شي متزامن. تقدر تفتح من أي جهاز وتلقى نفس البيانات.',
@@ -503,6 +515,7 @@ function authForms(ctx) {
     const email = emailInput.value.trim();
     const password = passwordInput.value;
     if (!email || !password) return setError('اكتب بريدك وكلمة السر.');
+    if (!validEmail(email)) return setError(BAD_EMAIL);
     if (mode === 'register' && password.length < 10) {
       return setError('كلمة السر لازم 10 خانات على الأقل.');
     }
@@ -592,6 +605,9 @@ function showForgotForm(ctx, card, prefill) {
     const email = emailInput.value.trim();
     if (!email) {
       return message.replaceChildren(el('div', { class: 'formerr', text: 'اكتب بريدك.' }));
+    }
+    if (!validEmail(email)) {
+      return message.replaceChildren(el('div', { class: 'formerr', text: BAD_EMAIL }));
     }
     button.disabled = true;
     button.textContent = 'لحظة…';

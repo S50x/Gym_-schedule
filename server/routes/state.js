@@ -1,5 +1,6 @@
 import express from 'express';
 import { validateState, mergeStates, emptyState } from '../state-schema.js';
+import { memoryRateLimit, clientIp } from '../security.js';
 
 /**
  * مزامنة البيانات بين الأجهزة.
@@ -22,6 +23,33 @@ export function stateRouter(db) {
     }
     next();
   };
+
+  // Keyed on the account, not the address, so a household behind one IP is not
+  // one shared budget. Unauthenticated requests never get this far anyway.
+  const keyByUser = (req) => (req.user ? `state:${req.user.userId}` : clientIp(req));
+
+  /**
+   * A write carries up to 600kb that is parsed before it is validated, so the
+   * global ceiling still leaves room to push ~144MB a minute through JSON.parse
+   * and into the database. The client debounces pushes by 1.5s (PUSH_DELAY in
+   * public/js/store.js), so even continuous editing tops out near 40/min — this
+   * leaves headroom over that and still bites long before the global limit.
+   */
+  const writeLimiter = memoryRateLimit({
+    windowMs: 60 * 1000,
+    max: 60,
+    keyFn: keyByUser,
+    message: 'مزامنة كثيرة بسرعة. انتظر شوي.',
+  });
+
+  // Wiping every workout back to an empty document — destructive, and nothing
+  // legitimate repeats it.
+  const resetLimiter = memoryRateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    keyFn: keyByUser,
+    message: 'محاولات تصفير كثيرة. انتظر شوي.',
+  });
 
   /**
    * Read the row, creating it if this is the account's first sync.
@@ -56,7 +84,7 @@ export function stateRouter(db) {
     res.json({ version: row.version, doc: JSON.parse(row.doc), updatedAt: row.updated_at });
   });
 
-  router.put('/', requireAuth, async (req, res) => {
+  router.put('/', requireAuth, writeLimiter, async (req, res) => {
     const baseVersion = Number(req.body?.baseVersion);
     if (!Number.isInteger(baseVersion) || baseVersion < 0) {
       return res.status(400).json({ error: 'invalid', message: 'baseVersion مفقود أو غير صحيح.' });
@@ -102,7 +130,7 @@ export function stateRouter(db) {
       .json({ version: out.version, doc: out.doc, merged: out.conflict, updatedAt: now });
   });
 
-  router.delete('/', requireAuth, async (req, res) => {
+  router.delete('/', requireAuth, resetLimiter, async (req, res) => {
     const now = Date.now();
     const out = await db.tx(async (t) => {
       const row = await readRow(t, req.user.userId, { lock: true });
