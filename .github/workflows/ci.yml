@@ -1,0 +1,169 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to the same branch makes the first run pointless — drop it
+# rather than queue both.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Nothing here writes to the repository.
+permissions:
+  contents: read
+
+env:
+  # Keeps npm quiet and non-interactive in logs.
+  NPM_CONFIG_FUND: "false"
+  NPM_CONFIG_AUDIT: "false"
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      # `high` on purpose: express currently pulls a moderate advisory in `qs`
+      # with no fix available, and a gate nobody can turn green is a gate people
+      # learn to ignore. Anything high or critical still stops the merge.
+      - name: npm audit (high and above)
+        run: npm audit --audit-level=high
+
+  test:
+    name: test (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The floor from package.json engines, and the version the Dockerfile
+        # actually ships.
+        node: ['20', '22']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      # No TEST_DATABASE_URL, so this is the PGlite path — the same one a
+      # contributor gets locally with no database running.
+      - run: npm test
+
+  test-postgres:
+    name: test (real postgres)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      # PGlite is a WASM build of Postgres and never touches the `pg` driver,
+      # which is exactly what test/postgres.test.js exists to guard. Each test
+      # file cuts itself a scratch database — see test/helpers.js.
+      - name: npm test
+        run: npm test
+        env:
+          TEST_DATABASE_URL: postgres://ci:ci@127.0.0.1:5432/ci
+
+  browser:
+    name: browser journeys
+    runs-on: ubuntu-latest
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.pw-browsers
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+
+      # playwright-core ships no browser. Cache it against the lockfile so a
+      # run that changes no dependency does not re-download Chromium.
+      - name: Cache Chromium
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.pw-browsers
+          key: pw-chromium-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      # Lands at .pw-browsers/chromium-<rev>/chrome-linux/chrome, which is the
+      # layout resolveChrome() in test/browser/helpers.mjs looks for.
+      - name: Install Chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright-core install chromium
+
+      - run: npm run browser
+
+  docker:
+    name: docker image
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: docker build -t hadeed:ci .
+
+      # Boot the image the way Render does and prove it answers. The secret is
+      # generated here and dies with the job — nothing is stored in GitHub.
+      # Host networking so the container can reach the service's mapped port.
+      - name: Boot the image and check its health endpoint
+        run: |
+          docker run -d --name hadeed-ci --network host \
+            -e NODE_ENV=production \
+            -e PORT=3000 \
+            -e ORIGIN=http://127.0.0.1:3000 \
+            -e DATABASE_URL='postgres://ci:ci@127.0.0.1:5432/ci' \
+            -e SESSION_SECRET="$(openssl rand -base64 48 | tr -d '\n')" \
+            hadeed:ci
+
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3000/api/health | grep -q '"ok":true'; then
+              echo "healthy after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+
+          echo "::error::the container never answered /api/health"
+          docker logs hadeed-ci
+          exit 1
