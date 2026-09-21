@@ -35,9 +35,56 @@ export async function resetRateLimits() {
   resetAllRateLimits();
 }
 
-/** Boots the real app on the reserved port with an in-process Postgres (PGlite). */
+/**
+ * Set TEST_DATABASE_URL to run the whole suite against a real Postgres instead
+ * of PGlite — which is what CI does, because PGlite is a WASM build and never
+ * exercises the `pg` driver that postgres.test.js exists to guard.
+ *
+ * node:test runs one process per test file, concurrently. Against PGlite each
+ * process has its own in-memory database, so nothing collides. A single shared
+ * Postgres would: auth.test.js and reset.test.js both register the same default
+ * address, and whichever lands second gets a 409. So each startServer() cuts
+ * itself a fresh database and drops it on the way out.
+ */
+const PG_URL = process.env.TEST_DATABASE_URL || '';
+let dbCounter = 0;
+
+const withDbName = (url, name) => {
+  const u = new URL(url);
+  u.pathname = '/' + name;
+  return u.toString();
+};
+
+/** A short-lived admin connection on the URL's own database, for CREATE/DROP. */
+async function onAdmin(fn) {
+  const { default: pg } = await import('pg');
+  const client = new pg.Client({ connectionString: PG_URL });
+  await client.connect();
+  try {
+    return await fn(client);
+  } finally {
+    await client.end();
+  }
+}
+
+/**
+ * Boots the real app on the reserved port, against PGlite by default or a
+ * throwaway Postgres database when TEST_DATABASE_URL is set.
+ */
 export async function startServer() {
-  const db = await createDb('');
+  let db;
+  let scratchDb = null;
+
+  if (PG_URL) {
+    // Generated here from pid and a counter — no caller input reaches it — and
+    // still quoted, because an unquoted identifier is a habit worth not having.
+    scratchDb = `hadeed_test_${process.pid}_${dbCounter++}`;
+    await onAdmin((c) => c.query(`CREATE DATABASE "${scratchDb}"`));
+    db = await createDb(withDbName(PG_URL, scratchDb));
+  } else {
+    db = await createDb('');
+  }
+
   currentDb = db;
   const app = createApp(db);
   const server = await new Promise((resolve) => {
@@ -53,6 +100,10 @@ export async function startServer() {
       clearInterval(app.locals.sweepTimer);
       await new Promise((resolve) => server.close(resolve));
       await db.close();
+      if (scratchDb) {
+        // FORCE because a pooled connection can outlive pool.end() by a moment.
+        await onAdmin((c) => c.query(`DROP DATABASE IF EXISTS "${scratchDb}" WITH (FORCE)`));
+      }
     },
   };
 }
@@ -98,7 +149,7 @@ export function makeClient(origin) {
     });
     absorb(res);
 
-    let data = null;
+    let data;
     if ((res.headers.get('content-type') || '').includes('application/json')) {
       data = await res.json().catch(() => null);
     } else {

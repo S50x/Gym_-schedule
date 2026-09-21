@@ -62,7 +62,7 @@ function programmeCard(ctx) {
 }
 
 export function renderAccount(ctx) {
-  const { store } = ctx;
+  const { store, navigate } = ctx;
 
   if (!store.user) {
     // Reached from onboarding's "I already have an account": there is no
