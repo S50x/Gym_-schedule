@@ -148,17 +148,26 @@ export function memoryRateLimit({ windowMs, max, keyFn, message }) {
   return limiter;
 }
 
+/** IP plus the account being named, which is what a login-shaped body carries. */
+function defaultBuckets(req) {
+  const buckets = [`ip:${clientIp(req)}`];
+  const email = typeof req.body?.email === 'string' ? normalizeEmailForBucket(req.body.email) : '';
+  if (email) buckets.push(`acct:${email}`);
+  return buckets;
+}
+
 /**
- * Durable limiter for authentication. Backed by SQLite so restarting the
+ * Durable limiter for authentication. Backed by the database so restarting the
  * process does not hand an attacker a fresh budget, and keyed on both IP and
  * account so neither a single IP nor a single account can be hammered.
+ *
+ * `buckets` overrides how the keys are derived, for a route that identifies the
+ * account by session rather than by an email in the body.
  */
-export function authRateLimit(db, { windowMs, max }) {
+export function authRateLimit(db, { windowMs, max, buckets: bucketsFn, message }) {
   return async function limiter(req, res, next) {
     const now = Date.now();
-    const buckets = [`ip:${clientIp(req)}`];
-    const email = typeof req.body?.email === 'string' ? normalizeEmailForBucket(req.body.email) : '';
-    if (email) buckets.push(`acct:${email}`);
+    const buckets = (bucketsFn ? bucketsFn(req) : defaultBuckets(req)).filter(Boolean);
 
     for (const bucket of buckets) {
       const row = await db.one(
@@ -172,7 +181,7 @@ export function authRateLimit(db, { windowMs, max }) {
         return res.status(429).json({
           error: 'rate_limited',
           retryAfter,
-          message: 'محاولات دخول كثيرة. انتظر شوي وحاول مرة ثانية.',
+          message: message || 'محاولات دخول كثيرة. انتظر شوي وحاول مرة ثانية.',
         });
       }
     }

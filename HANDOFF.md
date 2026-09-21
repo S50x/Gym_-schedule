@@ -23,10 +23,10 @@ the Render and Neon dashboards.** Do not rewrite what already works.
 ## 1. Current state (verified)
 
 ```
-main:    93aef0f   (PR #16 merged — one PR open with the work below)
-tests:   npm test     → 251 pass / 0 fail    (~15s, PGlite in-process)
-browser: npm run browser → 11 journeys clean (~3m, boots its own server)
-code:    ~9,500 lines across 29 modules; 5 runtime deps, 2 dev
+main:    3daf45e   (PR #17 merged — one branch open with the work below)
+tests:   npm test     → 258 pass / 0 fail    (~17s, PGlite in-process)
+browser: npm run browser → 11 journeys clean (~2m15s, boots its own server)
+code:    ~9,700 lines across 29 modules; 5 runtime deps, 2 dev
 assets:  public/img/ex — 26 WebP frames, 468 KB
 ```
 
@@ -59,7 +59,9 @@ null on screen → per-muscle-group strength levels → a typed exact load and t
 weight cache that swallowed it (#13) → `fine`, so the buttons move by the rack
 and not by the weekly jump (#14) → the `cardio` goal, six days with no iron in
 them (#15) → set logs keyed by day, not by exercise alone (#16) → a drawn figure
-per movement, then a photographed one where the public-domain set has it.
+per movement, then a photographed one where the public-domain set has it →
+per-route rate limits on the three endpoints the global ceiling was too loose
+for, plus the email check the login forms were missing (see §4).
 
 ## 2. What the app is
 
@@ -247,6 +249,15 @@ like `nutrition`. **Rules that must not be broken:**
 ## 4. Security model (don't weaken these)
 
 - **Passwords:** scrypt (N=65536), account-enumeration resistant.
+- **Rate limits:** two kinds, and the difference matters. Login, register and
+  change-password count in **Postgres**, so a restart is not a fresh budget and
+  the key is IP *and* account. Everything else counts in process memory. Every
+  route that changes state or calls `scryptSync` has a ceiling of its own — the
+  global 240/min is a backstop, not the protection. **Do not remove the one on
+  `/api/auth/change-password` as redundant:** it verifies the current password
+  with a synchronous, deliberately slow `scryptSync`, so without it the route is
+  both a password-guessing oracle behind a stolen session and a way to pin the
+  event loop. `docs/SECURITY.md` §S22 has the reasoning and the numbers.
 - **Sessions:** tokens stored only as HMAC-SHA256 with a server pepper.
 - **CSRF:** three independent layers — SameSite=Strict, Origin check, double-submit token.
 - **CSP:** `default-src 'none'`, no `unsafe-inline`, no external origins. This is
@@ -403,6 +414,14 @@ been caught by one of them.
   task**; search the Arabic name, and only ship a link whose title names the
   movement. Never guess a video id. The UI omits the button when `v` is absent,
   and tests enforce https, no placeholder, and no accidental duplicate.
+- **Rate limits break if you ever run more than one instance.** The
+  database-backed ones (login, register, change-password) are fine at any scale.
+  The in-memory ones (`memoryRateLimit` — state writes, resets, logout-all, 2FA,
+  forgot, and the global 240/min) count **per process**, so two instances means
+  every one of those ceilings is effectively doubled. Render is on a single
+  instance today, so the numbers are honest as deployed. **Check this before
+  scaling out**, not after: the fix is to move those counters into Postgres the
+  way `authRateLimit` already does.
 - **Fat-loss protein moved from 1.6 to 2.0 g/kg** with the goals work, so an
   existing user's displayed protein target rose. Intentional, and flagged to the
   user, but worth knowing if they ask.
@@ -441,8 +460,10 @@ been caught by one of them.
 
 ## 10. Next step for you
 
-Check `git log origin/main` first: **PR #16** was open when this was written and
-is the only thing that was pending. Concretely:
+Check `git log origin/main` first: `main` was at **3daf45e** (PR #17 merged) when
+this was written, and the branch `claude/feature-check-implement-53bbpr` — the
+rate-limit and email-validation work in §4 and §9 — was pushed but not yet
+merged. Concretely:
 
 - Answer the user's questions in Arabic, one concrete step at a time.
 - If they report a bug: **reproduce it in a real browser first** (§7), then fix on
