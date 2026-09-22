@@ -318,7 +318,7 @@ the hand-run-SQL reset in §9 is still the fallback when it isn't wired up.
   the transcript.
 - `SESSION_SECRET` comes from Render's Generate button, never from chat.
 
-## 7. Twelve defects that unit tests could not catch
+## 7. Thirteen defects that unit tests could not catch
 
 All eleven passed a green suite and were found only by driving the real app, or
 by a user using it. This is why §8 exists.
@@ -370,6 +370,18 @@ by a user using it. This is why §8 exists.
     closure costs nothing until the closure runs. **ESLint's `no-undef` found
     it in the first run** — which is most of the argument for having a linter
     on a codebase with no type checker. `smoke` now clicks it.
+
+13. **A rate limit added to close a hole opened a denial-of-service one.** The
+    change-password limiter ran before the handler's own `!req.user` check and
+    carried an `ip:` bucket, so ten anonymous 401s — the CSRF cookie is free
+    from `/api/config` — locked every real user behind that address out of
+    changing their password for fifteen minutes, durably, since the counter
+    lives in Postgres. The same review found the scrypt oracle it closed was
+    still open, wider, on `/2fa/*`, because "verify a password" and "rate limit
+    that verification" were two things a route author had to remember to pair.
+    They are now one array, `checksPassword()`, mounted whole. Both were found
+    by review on a PR whose six CI checks were green: **green means the tests
+    that exist pass, not that the code is right.**
 
 Recurring theme: **verify what a system decides, not what it was told** — and
 what it actually renders, not what it computed. Both of the last two hid behind

@@ -9,10 +9,11 @@ on:
   workflow_dispatch:
 
 # A second push to the same branch makes the first run pointless — drop it
-# rather than queue both.
+# rather than queue both. Never on main, though: cancelling there would leave
+# the superseded merge commit with no completed run against it.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 # Nothing here writes to the repository.
 permissions:
@@ -28,18 +29,20 @@ jobs:
     name: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
       - run: npm ci
       - run: npm run lint
-      # `high` on purpose: express currently pulls a moderate advisory in `qs`
-      # with no fix available, and a gate nobody can turn green is a gate people
-      # learn to ignore. Anything high or critical still stops the merge.
-      - name: npm audit (high and above)
-        run: npm audit --audit-level=high
+      # Production dependencies only: eslint and playwright never reach the
+      # image, so an advisory against them is not exposure and should not block
+      # a merge. `high` for the same reason — express currently pulls a moderate
+      # advisory in `qs` with no fix available, and a gate nobody can turn green
+      # is a gate people learn to ignore.
+      - name: npm audit (runtime deps, high and above)
+        run: npm audit --omit=dev --audit-level=high
 
   test:
     name: test (node ${{ matrix.node }})
@@ -47,12 +50,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The floor from package.json engines, and the version the Dockerfile
-        # actually ships.
-        node: ['20', '22']
+        # The exact floor from package.json engines — pinned, because '20'
+        # resolves to the latest 20.x and would never test the floor itself —
+        # and the version the Dockerfile actually ships.
+        node: ['20.19', '22']
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node }}
           cache: npm
@@ -79,8 +83,8 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
@@ -99,8 +103,8 @@ jobs:
     env:
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.pw-browsers
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
@@ -110,7 +114,7 @@ jobs:
       # run that changes no dependency does not re-download Chromium.
       - name: Cache Chromium
         id: pw-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ github.workspace }}/.pw-browsers
           key: pw-chromium-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
@@ -141,7 +145,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Build
         run: docker build -t hadeed:ci .
