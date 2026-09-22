@@ -46,6 +46,15 @@ test('postgres behaviour', async (t) => {
     const user = await app.db.one('SELECT created_at FROM users WHERE email_norm = $1', [
       'counts@example.com',
     ]);
+    // This came back null once on CI and the TypeError said nothing about why.
+    // If it happens again, the message should distinguish "the row is gone"
+    // from "it is there under a different email_norm".
+    if (!user) {
+      const { rows } = await app.db.query('SELECT id, email, email_norm FROM users');
+      assert.fail(
+        `no users row for counts@example.com — table holds ${rows.length}: ${JSON.stringify(rows)}`
+      );
+    }
     assert.equal(typeof user.created_at, 'number', 'BIGINT timestamps must be numbers');
   });
 

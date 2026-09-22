@@ -1,4 +1,5 @@
 import net from 'node:net';
+import { randomUUID } from 'node:crypto';
 
 process.env.NODE_ENV = 'test';
 process.env.SESSION_SECRET = 'test-secret-that-is-definitely-long-enough-32+';
@@ -76,9 +77,13 @@ export async function startServer() {
   let scratchDb = null;
 
   if (PG_URL) {
-    // Generated here from pid and a counter — no caller input reaches it — and
-    // still quoted, because an unquoted identifier is a habit worth not having.
-    scratchDb = `hadeed_test_${process.pid}_${dbCounter++}`;
+    // Random rather than pid-derived: a pid is only unique among *live*
+    // processes, and node:test starts a fresh one per file as earlier ones
+    // exit, so the OS is free to hand the same number out twice in one run.
+    // Two files agreeing on a name would mean one dropping the other's
+    // database mid-test. No caller input reaches this, and it is still quoted,
+    // because an unquoted identifier is a habit worth not having.
+    scratchDb = `hadeed_test_${randomUUID().replaceAll('-', '')}_${dbCounter++}`;
     await onAdmin((c) => c.query(`CREATE DATABASE "${scratchDb}"`));
     db = await createDb(withDbName(PG_URL, scratchDb));
   } else {
