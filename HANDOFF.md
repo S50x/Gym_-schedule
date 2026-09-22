@@ -330,7 +330,13 @@ by a user using it. This is why §8 exists.
    check: it asserted what was *passed to* the library rather than
    `client.connectionParameters.ssl`, the value the driver actually resolves.
 3. **UI under the Dynamic Island** — visible but untappable. `env(safe-area-inset-*)`
-   is 0 in every desktop browser, so no screenshot ever showed it.
+   is 0 in every desktop browser, so no screenshot ever showed it. **It came back**:
+   `.wrap`, the container every tab scrolls in, gave content 6px over the inset
+   (0 on home) while `#gym`, `#rest` and the dialogs all gave 10–28px, so on a
+   notched phone the first heading crowded the status bar. Reported by the user
+   from their own screen, not by the suite. `features` now sets the `--safe-*`
+   variables to an iPhone 15 Pro Max and asserts the clearance, top and bottom —
+   the only way to see this without the hardware.
 4. **An error message that lied** — every network failure blamed the user's
    connection when the real cause was free hosting waking from sleep.
 5. **Stale service-worker cache** served old JavaScript against a newer API.
