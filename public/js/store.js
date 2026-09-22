@@ -404,6 +404,17 @@ class Store extends EventTarget {
       this._pushTimer = setTimeout(() => this.push(), 15000);
       return;
     }
+    // The server asked us to slow down. Nothing is wrong with the document, so
+    // say PENDING (there are unsent edits) and come back rather than parking in
+    // ERROR, which schedules nothing and strands the edits until the next one.
+    if (err instanceof ApiError && err.status === 429) {
+      this.setSync(SYNC.PENDING);
+      const wait = Number(err.body?.retryAfter);
+      const seconds = Number.isFinite(wait) && wait > 0 ? Math.min(wait, 300) : 60;
+      clearTimeout(this._pushTimer);
+      this._pushTimer = setTimeout(() => this.push(), seconds * 1000 + 500);
+      return;
+    }
     this.setSync(SYNC.ERROR, err.message);
   }
 
