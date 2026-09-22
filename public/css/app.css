@@ -109,7 +109,9 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 0 12px;
+  /* No top padding: .wrap owns the space above the fold via --top-gap, and a
+     second helping here is what made home sit 18px lower than every other tab. */
+  padding: 0 0 12px;
   gap: 10px;
 }
 .logo {
@@ -238,9 +240,6 @@ ul.t b {
   margin-bottom: 14px;
   background: linear-gradient(150deg, var(--orange), #9be01f);
   color: var(--accent-ink);
-}
-.today.top {
-  margin-top: 6px;
 }
 .today.rest {
   background: linear-gradient(140deg, var(--surf-2), var(--surf));

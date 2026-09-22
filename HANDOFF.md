@@ -324,7 +324,7 @@ the hand-run-SQL reset in §9 is still the fallback when it isn't wired up.
   the transcript.
 - `SESSION_SECRET` comes from Render's Generate button, never from chat.
 
-## 7. Thirteen defects that unit tests could not catch
+## 7. Fourteen defects that unit tests could not catch
 
 All eleven passed a green suite and were found only by driving the real app, or
 by a user using it. This is why §8 exists.
@@ -394,6 +394,16 @@ by a user using it. This is why §8 exists.
     They are now one array, `checksPassword()`, mounted whole. Both were found
     by review on a PR whose six CI checks were green: **green means the tests
     that exist pass, not that the code is right.**
+
+14. **Home sat 18px below every other tab**, and the test written one commit
+    earlier to prevent exactly this missed it. That test measured
+    `firstElementChild.getBoundingClientRect().top` — the *box*. `.hd` carried
+    its own `padding-top: 18px`, which lives inside the box and so never moved
+    it, so home read 20px like everyone else and passed. Reported by the user
+    from their own screen. The check now measures where the text starts (a
+    `Range` over the first text node) and compares the tabs against each other,
+    exempting filled surfaces, whose edge is legitimately the visual start.
+    A box is not content; measure the thing you actually care about.
 
 Recurring theme: **verify what a system decides, not what it was told** — and
 what it actually renders, not what it computed. Both of the last two hid behind
