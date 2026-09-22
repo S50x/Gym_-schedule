@@ -121,22 +121,58 @@ export function authRouter(db) {
     message: 'محاولات كثيرة. انتظر شوي وحاول مرة ثانية.',
   });
 
+  const requireAuth = (req, res, next) => {
+    if (!req.user) return res.status(401).json({ error: 'unauthenticated' });
+    next();
+  };
+
   /**
-   * Changing a password verifies the *current* one, and `verifyPassword` calls
-   * `scryptSync` — synchronous, and deliberately expensive. Without a ceiling of
-   * its own the route is two things at once: an oracle for guessing the current
-   * password behind a stolen session, and a way to pin the event loop with a few
-   * hundred requests a minute. Durable, so a restart is not a fresh budget.
+   * Every route that re-checks an account's password runs `verifyPassword`,
+   * which calls `scryptSync` — synchronous, and deliberately expensive. Each
+   * such route is therefore two things at once: an oracle for guessing the
+   * password behind a stolen session, and a way to pin the event loop.
+   *
+   * Its own bucket namespace, never the `ip:` one the login limiter uses:
+   * sharing that would let failed password checks lock the account out of
+   * logging in, and — worse — let a success clear the login budget.
+   *
+   * Keyed on the account alone. An IP bucket here would be spendable against
+   * everyone behind one address, which is the same denial-of-service this
+   * limiter is supposed to prevent, and `requireAuth` already means a caller
+   * needs a real session before any of it is reachable.
    */
-  const changePasswordLimiter = authRateLimit(db, {
+  const passwordCheckLimiter = authRateLimit(db, {
     windowMs: 15 * 60 * 1000,
     max: 10,
-    // Its own IP namespace, not the shared `ip:` one the login limiter uses.
-    // Sharing it would mean failed password changes locking this address out of
-    // logging in, and — worse — a successful change clearing the login budget.
-    buckets: (req) => [`pwchg-ip:${clientIp(req)}`, req.user ? `pwchg:${req.user.userId}` : ''],
-    message: 'محاولات كثيرة لتغيير كلمة السر. انتظر شوي وحاول مرة ثانية.',
+    buckets: (req) => [`pwcheck:${req.user.userId}`],
+    message: 'محاولات كثيرة على كلمة السر. انتظر شوي وحاول مرة ثانية.',
   });
+
+  /** Re-check the password before any change to it or to the second factor. */
+  const requirePassword = (field = 'password') =>
+    async function checkPassword(req, res, next) {
+      const password = typeof req.body?.[field] === 'string' ? req.body[field] : '';
+      if (!password || password.length > MAX_PASSWORD) {
+        return res.status(400).json({ error: 'invalid', message: 'اكتب كلمة السر.' });
+      }
+      const row = await db.one('SELECT password_hash FROM users WHERE id = $1', [req.user.userId]);
+      if (!row || !verifyPassword(password, row.password_hash)) {
+        return res
+          .status(401)
+          .json({ error: 'bad_credentials', message: 'كلمة السر غلط.' });
+      }
+      next();
+    };
+
+  /**
+   * The guard for a password-checking route, as one array. requireAuth comes
+   * first so an anonymous request is refused before it can spend anyone's
+   * budget; the limiter comes before the check so a guess is counted whether or
+   * not it is right. Mount the whole thing — the three parts only work together,
+   * and splitting them is how `/2fa/*` ended up rate limited per IP, in memory,
+   * while change-password was not rate limited for its own account at all.
+   */
+  const checksPassword = (field) => [requireAuth, passwordCheckLimiter, requirePassword(field)];
 
   // Signing every device out is destructive and has no reason to repeat quickly.
   const logoutAllLimiter = memoryRateLimit({
@@ -411,19 +447,10 @@ export function authRouter(db) {
     res.status(204).end();
   });
 
-  router.post('/change-password', changePasswordLimiter, async (req, res) => {
-    if (!req.user) return res.status(401).json({ error: 'unauthenticated' });
-
-    const current = typeof req.body?.currentPassword === 'string' ? req.body.currentPassword : '';
+  router.post('/change-password', ...checksPassword('currentPassword'), async (req, res) => {
+    // The guard has already proved the current password; this is the new one.
     const checked = checkCredentials({ email: req.user.email, password: req.body?.newPassword });
     if (checked.error) return res.status(400).json({ error: 'invalid', message: checked.error });
-
-    const row = await db.one('SELECT password_hash FROM users WHERE id = $1', [req.user.userId]);
-    if (!row || !verifyPassword(current, row.password_hash)) {
-      return res
-        .status(401)
-        .json({ error: 'bad_credentials', message: 'كلمة السر الحالية غلط.' });
-    }
 
     await db.run('UPDATE users SET password_hash = $1, updated_at = $2 WHERE id = $3', [
       hashPassword(checked.password),
@@ -442,24 +469,7 @@ export function authRouter(db) {
 
   /* ────────────────────────── two-factor authentication ────────────────────────── */
 
-  const requireAuth = (req, res, next) => {
-    if (!req.user) return res.status(401).json({ error: 'unauthenticated' });
-    next();
-  };
-
-  /** Re-check the password before any change to the second factor. */
-  const requirePassword = async (req, res, next) => {
-    const password = typeof req.body?.password === 'string' ? req.body.password : '';
-    if (!password || password.length > MAX_PASSWORD) {
-      return res.status(400).json({ error: 'invalid', message: 'اكتب كلمة السر.' });
-    }
-    const row = await db.one('SELECT password_hash FROM users WHERE id = $1', [req.user.userId]);
-    if (!row || !verifyPassword(password, row.password_hash)) {
-      return res.status(401).json({ error: 'bad_credentials', message: 'كلمة السر غلط.' });
-    }
-    next();
-  };
-
+  // For /2fa/enable, which proves a six-digit TOTP code rather than a password.
   const twoFactorLimiter = memoryRateLimit({
     windowMs: 15 * 60 * 1000,
     max: 20,
@@ -472,7 +482,7 @@ export function authRouter(db) {
    * authenticator app actually holds it. Enabling without that check is how
    * people lock themselves out.
    */
-  router.post('/2fa/setup', requireAuth, twoFactorLimiter, requirePassword, async (req, res) => {
+  router.post('/2fa/setup', ...checksPassword(), async (req, res) => {
     const row = await db.one('SELECT totp_enabled FROM users WHERE id = $1', [req.user.userId]);
     if (row?.totp_enabled) {
       return res
@@ -533,7 +543,7 @@ export function authRouter(db) {
     res.json({ recoveryCodes: codes });
   });
 
-  router.post('/2fa/disable', requireAuth, twoFactorLimiter, requirePassword, async (req, res) => {
+  router.post('/2fa/disable', ...checksPassword(), async (req, res) => {
     const row = await db.one(
       'SELECT id, totp_secret, totp_enabled, totp_last_step FROM users WHERE id = $1',
       [req.user.userId]
@@ -572,9 +582,7 @@ export function authRouter(db) {
   /** Fresh recovery codes; the old ones stop working immediately. */
   router.post(
     '/2fa/recovery-codes',
-    requireAuth,
-    twoFactorLimiter,
-    requirePassword,
+    ...checksPassword(),
     async (req, res) => {
       const row = await db.one('SELECT totp_enabled FROM users WHERE id = $1', [req.user.userId]);
       if (!row?.totp_enabled) {
