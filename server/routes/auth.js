@@ -14,7 +14,7 @@ import {
   hashToken,
 } from '../auth.js';
 import { sendPasswordReset } from '../mailer.js';
-import { authRateLimit, clearAuthAttempts, memoryRateLimit } from '../security.js';
+import { authRateLimit, clearAuthAttempts, clientIp, memoryRateLimit } from '../security.js';
 import { emptyState } from '../state-schema.js';
 import { UNIQUE_VIOLATION } from '../db.js';
 import { generateSecret, otpauthUrl, verifyCode } from '../totp.js';
@@ -118,6 +118,31 @@ export function authRouter(db) {
   const resetLimiter = memoryRateLimit({
     windowMs: 15 * 60 * 1000,
     max: 20,
+    message: 'محاولات كثيرة. انتظر شوي وحاول مرة ثانية.',
+  });
+
+  /**
+   * Changing a password verifies the *current* one, and `verifyPassword` calls
+   * `scryptSync` — synchronous, and deliberately expensive. Without a ceiling of
+   * its own the route is two things at once: an oracle for guessing the current
+   * password behind a stolen session, and a way to pin the event loop with a few
+   * hundred requests a minute. Durable, so a restart is not a fresh budget.
+   */
+  const changePasswordLimiter = authRateLimit(db, {
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    // Its own IP namespace, not the shared `ip:` one the login limiter uses.
+    // Sharing it would mean failed password changes locking this address out of
+    // logging in, and — worse — a successful change clearing the login budget.
+    buckets: (req) => [`pwchg-ip:${clientIp(req)}`, req.user ? `pwchg:${req.user.userId}` : ''],
+    message: 'محاولات كثيرة لتغيير كلمة السر. انتظر شوي وحاول مرة ثانية.',
+  });
+
+  // Signing every device out is destructive and has no reason to repeat quickly.
+  const logoutAllLimiter = memoryRateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    keyFn: (req) => (req.user ? `logoutall:${req.user.userId}` : clientIp(req)),
     message: 'محاولات كثيرة. انتظر شوي وحاول مرة ثانية.',
   });
 
@@ -379,14 +404,14 @@ export function authRouter(db) {
     res.status(204).end();
   });
 
-  router.post('/logout-all', async (req, res) => {
+  router.post('/logout-all', logoutAllLimiter, async (req, res) => {
     if (!req.user) return res.status(401).json({ error: 'unauthenticated' });
     await destroyAllSessions(db, req.user.userId);
     clearSessionCookie(res);
     res.status(204).end();
   });
 
-  router.post('/change-password', async (req, res) => {
+  router.post('/change-password', changePasswordLimiter, async (req, res) => {
     if (!req.user) return res.status(401).json({ error: 'unauthenticated' });
 
     const current = typeof req.body?.currentPassword === 'string' ? req.body.currentPassword : '';
@@ -405,6 +430,9 @@ export function authRouter(db) {
       Date.now(),
       req.user.userId,
     ]);
+    // Proving the current password clears the budget, so a user who fat-fingered
+    // it a few times is not locked out of their own account for the window.
+    await clearAuthAttempts(db, req);
     // Changing the password kicks every other device out.
     await destroyAllSessions(db, req.user.userId);
     const token = await createSession(db, req.user.userId, deviceLabel(req));

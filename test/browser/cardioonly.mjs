@@ -72,10 +72,20 @@ export default async function run({ base, browser, problems, step }) {
 
     const frames = page.locator('.fphoto img');
     if ((await frames.count()) !== 2) throw new Error('a rep has a start and an end');
-    // Both must actually decode: a 404 pulls the box and leaves the cue bare.
-    const loaded = await frames.evaluateAll((imgs) =>
-      imgs.every((i) => i.complete && i.naturalWidth > 0)
+
+    // waitForSelector above returns as soon as .fphoto exists, which is before
+    // its images have necessarily decoded — sampling `complete` right here is a
+    // race, and it lost often enough to matter. Settle first: a 404 also ends
+    // up `complete`, so the naturalWidth check below still catches one.
+    await page.waitForFunction(
+      () => {
+        const imgs = [...document.querySelectorAll('.fphoto img')];
+        return imgs.length === 2 && imgs.every((i) => i.complete);
+      },
+      { timeout: 10_000 }
     );
+
+    const loaded = await frames.evaluateAll((imgs) => imgs.every((i) => i.naturalWidth > 0));
     if (!loaded) throw new Error('a frame failed to load');
     if (!(await frames.first().getAttribute('alt'))) throw new Error('the pair is unlabelled');
 

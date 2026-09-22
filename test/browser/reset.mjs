@@ -54,6 +54,49 @@ export default async function reset({ base, browser, problems, step }) {
     await page.waitForSelector('.formok', { timeout: 10_000 });
   });
 
+  // The server has always rejected a malformed address; these two steps are
+  // about the client refusing to send it in the first place — the check exists
+  // on both sides, and only a browser can prove the near side of it. They run
+  // in this order because the way back to the login card is the button on the
+  // forgot form's *success* state, which the error state does not render.
+  await step('a malformed email never leaves the login card', async () => {
+    await page.locator('.cta.ghost', { hasText: 'رجوع لتسجيل الدخول' }).click();
+    await page.waitForSelector('.authtabs', { timeout: 8000 });
+
+    let sent = 0;
+    const count = (req) => {
+      if (/\/api\/auth\/(login|register)/.test(req.url())) sent++;
+    };
+    page.on('request', count);
+    await page.fill('input[type=email]', 'still@not@valid');
+    await page.fill('input[type=password]', PASSWORD);
+    await page.locator('.cta', { hasText: 'دخول' }).first().click();
+    await page.waitForSelector('.formerr', { timeout: 5000 });
+    const err = await page.locator('.formerr').innerText();
+    page.off('request', count);
+
+    if (!err.includes('بريد إلكتروني صحيح')) throw new Error(`expected an email error, saw: ${err}`);
+    if (sent !== 0) throw new Error(`the login card sent ${sent} request(s) for a malformed address`);
+  });
+
+  await step('a malformed email never leaves the forgot form', async () => {
+    await page.locator('.linkbtn', { hasText: 'نسيت كلمة السر' }).click();
+
+    let sent = 0;
+    const count = (req) => {
+      if (req.url().includes('/api/auth/forgot')) sent++;
+    };
+    page.on('request', count);
+    await page.fill('input[type=email]', 'not-an-email');
+    await page.locator('.cta', { hasText: 'أرسل رابط إعادة التعيين' }).click();
+    await page.waitForSelector('.formerr', { timeout: 5000 });
+    const err = await page.locator('.formerr').innerText();
+    page.off('request', count);
+
+    if (!err.includes('بريد إلكتروني صحيح')) throw new Error(`expected an email error, saw: ${err}`);
+    if (sent !== 0) throw new Error(`the form sent ${sent} request(s) for a malformed address`);
+  });
+
   await step('the reset link lands on the reset screen', async () => {
     await page.goto(`${base}/reset?token=made-up-token-that-is-not-real`, {
       waitUntil: 'networkidle',

@@ -28,26 +28,46 @@ const REPO_ROOT = new URL('../../', import.meta.url).pathname;
  * this project's environment puts them, and if that fails say exactly what to
  * set rather than dying with a stack trace about a missing executable.
  */
+/**
+ * Playwright has shipped two directory layouts: `chrome-linux/` on the older
+ * builds, and `chrome-linux64/` since it moved to Chrome for Testing — and the
+ * headless shell has its own pair again. A pinned playwright-core still
+ * resolves to whichever build its version wants, so a machine provisioned a
+ * while ago and a fresh `playwright-core install` do not agree. Check every
+ * layout rather than the one this repo happened to be developed against.
+ */
+const CHROME_LAYOUTS = [
+  { rel: 'chrome-linux/chrome', shell: false },
+  { rel: 'chrome-linux64/chrome', shell: false },
+  { rel: 'chrome-linux/headless_shell', shell: true },
+  { rel: 'chrome-headless-shell-linux64/chrome-headless-shell', shell: true },
+];
+
 export function resolveChrome() {
   if (process.env.CHROME_PATH) return process.env.CHROME_PATH;
 
   const root = process.env.PLAYWRIGHT_BROWSERS_PATH || '/opt/pw-browsers';
-  const candidates = [];
+  const found = [];
   if (fs.existsSync(root)) {
     for (const entry of fs.readdirSync(root)) {
       if (!entry.startsWith('chromium')) continue;
-      for (const rel of ['chrome-linux/chrome', 'chrome-linux/headless_shell']) {
+      // The trailing number is the playwright build, so prefer the newest.
+      const build = Number(entry.match(/(\d+)$/)?.[1] ?? 0);
+      for (const { rel, shell } of CHROME_LAYOUTS) {
         const full = path.join(root, entry, rel);
-        if (fs.existsSync(full)) candidates.push(full);
+        if (fs.existsSync(full)) found.push({ full, shell, build });
       }
     }
   }
-  if (candidates.length) return candidates.sort().at(-1);
+  // A full chrome beats a headless shell; among equals, the newer build wins.
+  // Which of the two directory layouts it came from is not a preference.
+  found.sort((a, b) => Number(a.shell) - Number(b.shell) || b.build - a.build);
+  if (found.length) return found[0].full;
 
   throw new Error(
     `No Chromium found under ${root}.\n` +
       'Set CHROME_PATH to a Chrome/Chromium binary, or PLAYWRIGHT_BROWSERS_PATH to a\n' +
-      'directory containing chromium*/chrome-linux/chrome.'
+      `directory containing one of: ${CHROME_LAYOUTS.map((l) => 'chromium*/' + l.rel).join(', ')}.`
   );
 }
 

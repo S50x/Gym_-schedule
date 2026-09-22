@@ -94,7 +94,6 @@ export function createApp(db) {
 
   /* ── errors ────────────────────────────────────────────────── */
 
-  // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {
     const status = err.status || err.statusCode || 500;
     if (status >= 500) console.error('[error]', err);

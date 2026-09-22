@@ -109,7 +109,7 @@ function feedbackOf(raw, path) {
   return out;
 }
 
-function dayFlagsOf(raw, path) {
+function dayFlagsOf(raw, _path) {
   if (!isPlainObject(raw)) return {};
   const out = {};
   for (const [key, value] of Object.entries(raw)) {

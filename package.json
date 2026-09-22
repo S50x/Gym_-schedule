@@ -11,7 +11,8 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "NODE_ENV=development node --watch server/index.js",
-    "test": "node --test 'test/**/*.test.js'",
+    "test": "node --test test/*.test.js",
+    "lint": "eslint .",
     "fonts": "node scripts/fetch-fonts.mjs",
     "browser": "node test/browser/run.mjs"
   },
@@ -24,7 +25,10 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "qrcode": "^1.5.4",
-    "playwright-core": "^1.62.1"
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.11.0",
+    "globals": "^17.12.0",
+    "playwright-core": "^1.62.1",
+    "qrcode": "^1.5.4"
   }
 }
