@@ -1,5 +1,5 @@
 /**
- * Renders the PNG icons from public/img/icon.svg.
+ * Renders the PNG icons from public/img/icon-v2.svg (see ICON below).
  *
  *   npm run icons
  *
@@ -12,6 +12,15 @@
  * Chromium is already here for the browser journeys, and rasterising an SVG is
  * the one thing a browser is guaranteed to do exactly like the browsers that
  * will display it.
+ *
+ * CHANGING THE ICON MEANS A NEW FILE NAME. Everything under /img is served
+ * `immutable` for a year (server/app.js), so a phone that has fetched
+ * icon-v2-180.png once will never ask for it again. Redraw the artwork under
+ * the same name and every device that ever saw the old one keeps it — even
+ * after the home-screen icon is deleted and re-added, because that does not
+ * clear Safari's cache. That exact thing happened with the first glass icon.
+ * So: bump ICON below, run this, then update the names in index.html,
+ * manifest.webmanifest and sw.js. test/shell.test.js fails if one is missed.
  */
 
 import fs from 'node:fs';
@@ -20,7 +29,8 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
 
 const IMG = fileURLToPath(new URL('../public/img/', import.meta.url));
-const SOURCE = path.join(IMG, 'icon.svg');
+const ICON = 'icon-v2';
+const SOURCE = path.join(IMG, `${ICON}.svg`);
 
 /**
  * `any` keeps the rounded plate; `maskable` fills the square edge to edge and
@@ -28,10 +38,10 @@ const SOURCE = path.join(IMG, 'icon.svg');
  * to whatever shape the launcher uses and anything in the corners is lost.
  */
 const OUTPUTS = [
-  { file: 'icon-180.png', size: 180, purpose: 'any' },
-  { file: 'icon-192.png', size: 192, purpose: 'any' },
-  { file: 'icon-512.png', size: 512, purpose: 'any' },
-  { file: 'icon-maskable.png', size: 512, purpose: 'maskable' },
+  { file: `${ICON}-180.png`, size: 180, purpose: 'any' },
+  { file: `${ICON}-192.png`, size: 192, purpose: 'any' },
+  { file: `${ICON}-512.png`, size: 512, purpose: 'any' },
+  { file: `${ICON}-maskable.png`, size: 512, purpose: 'maskable' },
 ];
 
 /** Mirrors resolveChrome() in test/browser/helpers.mjs. */
@@ -77,7 +87,7 @@ try {
   for (const { file, size, purpose } of OUTPUTS) {
     const markup = purpose === 'maskable' ? maskable(svg) : svg;
     if (purpose === 'maskable' && markup === svg) {
-      throw new Error('the maskable transform matched nothing — has icon.svg changed shape?');
+      throw new Error(`the maskable transform matched nothing — has ${ICON}.svg changed shape?`);
     }
     const page = await browser.newPage({ viewport: { width: size, height: size } });
     // A transparent page, so `any` keeps its rounded corners instead of

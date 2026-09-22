@@ -49,3 +49,31 @@ test('the service worker shell', async (t) => {
     }
   });
 });
+
+/**
+ * Everything under /img is served `immutable` for a year, so an icon cannot be
+ * changed in place — a phone that fetched it once never asks again, and
+ * deleting the home-screen icon does not clear Safari's cache. Changing one
+ * therefore means renaming it, and a rename is exactly when one reference gets
+ * missed. A missing icon fails silently: iOS puts a screenshot of the page on
+ * the home screen instead, and nothing logs an error.
+ */
+test('every image the shell points at exists', async () => {
+  const sources = {
+    'index.html': await readFile(new URL('index.html', PUBLIC), 'utf8'),
+    'manifest.webmanifest': await readFile(new URL('manifest.webmanifest', PUBLIC), 'utf8'),
+    'sw.js': await readFile(new URL('sw.js', PUBLIC), 'utf8'),
+  };
+  const onDisk = new Set(await readdir(new URL('img/', PUBLIC)));
+
+  let seen = 0;
+  for (const [file, text] of Object.entries(sources)) {
+    for (const [, name] of text.matchAll(/["']\/img\/([^"'/]+)["']/g)) {
+      seen++;
+      assert.ok(onDisk.has(name), `${file} points at /img/${name}, which does not exist`);
+    }
+  }
+  // Guards the regex as much as the files: a pattern that matched nothing
+  // would pass this test on a shell with no icons at all.
+  assert.ok(seen >= 6, `expected the icon references, found ${seen}`);
+});

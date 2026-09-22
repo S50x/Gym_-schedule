@@ -6,7 +6,7 @@
  * and caching authenticated responses on disk is not something to do casually.
  */
 
-const VERSION = 'hadeed-v6';
+const VERSION = 'hadeed-v7';
 const SHELL = [
   '/',
   '/css/app.css',
@@ -29,7 +29,7 @@ const SHELL = [
   '/js/views/onboarding.js',
   '/js/views/reset.js',
   '/manifest.webmanifest',
-  '/img/icon.svg',
+  '/img/icon-v2.svg',
 ];
 
 self.addEventListener('install', (event) => {
