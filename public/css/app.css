@@ -1,25 +1,74 @@
 @import url('./fonts.css');
 
 :root {
-  /* ── Volt: lime on graphite ──
+  /* ── Volt Glass: lime on graphite — the default, and what a page with no
+     data-theme paints. Two more sets live below; they redefine these tokens
+     and nothing else, so there is exactly one copy of every layout rule.
+
      --orange keeps its name to avoid churn across the file, but it is now the
-     primary lime accent. Text that sits on it uses --accent-ink; text on the
-     success green uses --mint-ink. */
-  --ink: #131512;
-  --ink-2: #191c15;
+     primary lime accent. It is the FILL; text and strokes use --accent-text,
+     which is a lighter shade wherever the fill is too dark to read as type.
+     Text that sits on the fill uses --accent-ink; text on the success green
+     uses --mint-ink. --accent-rgb and --mint-rgb carry the same two colours as
+     bare channels, for the many tints written rgba(…, 0.1x). */
+  --ink: #0f1109;
+  --ink-2: #171a11;
   --surf: #1c1f17;
   --surf-2: #23271c;
   --line: rgba(200, 224, 150, 0.12);
   --line-2: rgba(200, 224, 150, 0.24);
   --txt: #eef2e6;
-  --mut: #8f978a;
+  --txt-2: #dde6cf;
+  /* Raised from #8f978a: measured over the brightest point of --bg, the old
+     grey read 3.5:1 at 11.5px. The captions are most of this app's text. */
+  --mut: #b4bda6;
   --orange: #c4ff36;
+  --accent-text: #c4ff36;
+  --accent-rgb: 196, 255, 54;
   --mint: #4ee39a;
+  --mint-rgb: 78, 227, 154;
   --blue: #63b3ff;
   --coral: #ff6a5a;
   --focus: #c4ff36;
   --accent-ink: #12160a;
   --mint-ink: #052a17;
+
+  /* ── liquid glass ──
+     Every surface is one of two things: a pane, or the page behind it. A pane
+     is --glass + --glass-line + --glass-hi; the page is --bg, whose three
+     lights are the only reason a blur is visible at all — blur over a flat
+     colour is just that colour.
+
+     The pane is a DARK tint carrying a white specular highlight, not a white
+     wash. A white pane lightens whatever sits behind it: measured against the
+     brightest point of --bg it took the 11.5px muted grey to 3.5:1. Dark tint
+     plus highlight is both what iOS actually does and what keeps every theme
+     over 4.5:1 for body and caption text alike. Do not lighten these by eye. */
+  --glass: linear-gradient(158deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.02)),
+    rgba(14, 17, 9, 0.52);
+  --glass-line: rgba(214, 238, 168, 0.2);
+  --glass-hi: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+    0 14px 34px rgba(0, 0, 0, 0.38);
+  --bg: radial-gradient(620px 420px at 82% -8%, rgba(196, 255, 54, 0.26), transparent 62%),
+    radial-gradient(520px 380px at -12% 22%, rgba(45, 212, 191, 0.2), transparent 60%),
+    radial-gradient(700px 500px at 50% 108%, rgba(120, 255, 120, 0.12), transparent 60%), #0f1109;
+  /* Panes scroll and fixed chrome does not, so they do not cost the same: iOS
+     re-blurs a scrolling pane every frame. Cards take the light one; the tab
+     bar and the dialogs, which never move, carry the heavy one. */
+  --blur-card: blur(18px) saturate(180%);
+  --blur-fixed: blur(30px) saturate(180%);
+  --r: 26px;
+  --glass-bar: rgba(16, 19, 11, 0.86);
+  /* A pill or a 44px control carries the highlight alone: the pane's drop
+     shadow is sized for a card and reads as a smudge under anything small. */
+  --glass-hi-sm: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+
+  /* Today's card, the one filled surface on the home screen. */
+  --hero: linear-gradient(152deg, #d4ff5c 0%, #a8ec1f 48%, #7fc90d 100%);
+  --hero-ink: #131a04;
+  --hero-mut: rgba(19, 26, 4, 0.72);
+  --hero-btn: #131a04;
+  --hero-btn-ink: #eaffc0;
 
   /* The viewport is declared `viewport-fit=cover`, so the page extends under
      the status bar, the Dynamic Island and the home indicator. Every screen
@@ -37,6 +86,87 @@
   --safe-right: env(safe-area-inset-right, 0px);
 }
 
+/* ── Midnight Blue: iPhone blue, low contrast, the Control Centre look ── */
+:root[data-theme='midnight'] {
+  --ink: #05070e;
+  --ink-2: #0d1120;
+  --surf: #141a2a;
+  --surf-2: #1c2438;
+  --line: rgba(255, 255, 255, 0.1);
+  --line-2: rgba(255, 255, 255, 0.2);
+  --txt: #e9eefb;
+  --txt-2: #d3dcef;
+  --mut: #a3b0cb;
+  --orange: #0a84ff;
+  /* The fill is too dark to read as 11px type on a dark ground, so text takes
+     the lighter shade. This is the whole reason --accent-text exists. */
+  --accent-text: #5eb0ff;
+  --accent-rgb: 10, 132, 255;
+  --mint: #30d158;
+  --mint-rgb: 48, 209, 88;
+  --blue: #7d7aff;
+  --coral: #ff6a5a;
+  --focus: #5eb0ff;
+  --accent-ink: #ffffff;
+  --mint-ink: #04240f;
+  --glass: linear-gradient(160deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02)),
+    rgba(6, 9, 18, 0.5);
+  --glass-line: rgba(255, 255, 255, 0.13);
+  --glass-hi: inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 18px 40px rgba(0, 0, 0, 0.5);
+  --bg: radial-gradient(660px 460px at 78% -10%, rgba(10, 132, 255, 0.38), transparent 62%),
+    radial-gradient(520px 420px at -10% 30%, rgba(94, 92, 230, 0.3), transparent 62%),
+    radial-gradient(600px 460px at 40% 112%, rgba(48, 209, 88, 0.1), transparent 60%), #05070e;
+  --r: 28px;
+  /* Today's card is glass here rather than a fill — the point of this theme is
+     that nothing shouts. The colour lands on the button instead. */
+  --hero: linear-gradient(158deg, rgba(10, 132, 255, 0.42), rgba(94, 92, 230, 0.2)),
+    rgba(6, 9, 18, 0.34);
+  --hero-ink: #f2f6ff;
+  --hero-mut: rgba(224, 234, 255, 0.76);
+  --hero-btn: #0a84ff;
+  --hero-btn-ink: #ffffff;
+  --glass-bar: rgba(6, 9, 18, 0.86);
+}
+
+/* ── Copper Sunset: warm glass, the one that matches the app icon ── */
+:root[data-theme='copper'] {
+  --ink: #150e0a;
+  --ink-2: #1f1611;
+  --surf: #27190f;
+  --surf-2: #332114;
+  --line: rgba(255, 205, 165, 0.14);
+  --line-2: rgba(255, 205, 165, 0.26);
+  --txt: #fbeee6;
+  --txt-2: #eedbcd;
+  --mut: #cdb8a9;
+  --orange: #ff7a2f;
+  --accent-text: #ff9a5c;
+  --accent-rgb: 255, 122, 47;
+  --mint: #48d597;
+  --mint-rgb: 72, 213, 151;
+  --blue: #63b3ff;
+  --coral: #ff5c7a;
+  --focus: #ff9a5c;
+  --accent-ink: #241004;
+  --mint-ink: #04291a;
+  --glass: linear-gradient(155deg, rgba(255, 236, 214, 0.12), rgba(255, 200, 160, 0.02)),
+    rgba(22, 14, 9, 0.52);
+  --glass-line: rgba(255, 205, 165, 0.22);
+  --glass-hi: inset 0 1px 0 rgba(255, 236, 220, 0.26), inset 0 -1px 0 rgba(60, 20, 0, 0.4),
+    0 16px 38px rgba(40, 12, 0, 0.45);
+  --bg: radial-gradient(640px 440px at 80% -10%, rgba(255, 122, 47, 0.34), transparent 62%),
+    radial-gradient(560px 420px at -8% 26%, rgba(226, 54, 112, 0.26), transparent 62%),
+    radial-gradient(620px 480px at 46% 110%, rgba(255, 191, 73, 0.16), transparent 60%), #150e0a;
+  --r: 24px;
+  --hero: linear-gradient(150deg, #ff9a3d 0%, #ff6a3d 46%, #e23670 100%);
+  --hero-ink: #2a0d04;
+  --hero-mut: rgba(42, 13, 4, 0.74);
+  --hero-btn: #2a0d04;
+  --hero-btn-ink: #ffd9c0;
+  --glass-bar: rgba(22, 14, 9, 0.86);
+}
+
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
@@ -51,7 +181,10 @@ body {
   padding-top: var(--safe-top);
   padding-left: var(--safe-left);
   padding-right: var(--safe-right);
-  background: radial-gradient(1200px 600px at 80% -15%, #20261a 0%, transparent 60%), var(--ink);
+  /* Fixed on purpose, and load-bearing: the lights stay put while the content
+     slides over them, which is the whole reason the panes read as glass. A
+     scrolling background would blur to a flat wash within one swipe. */
+  background: var(--bg);
   background-attachment: fixed;
   color: var(--txt);
   font-family: 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -149,8 +282,11 @@ button {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: var(--surf);
-  border: 1px solid var(--line);
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--glass-hi-sm);
+  backdrop-filter: var(--blur-card);
+  -webkit-backdrop-filter: var(--blur-card);
   border-radius: 999px;
   padding: 4px 5px;
 }
@@ -168,16 +304,19 @@ button {
   font-family: 'Archivo';
   font-weight: 800;
   font-size: 13px;
-  color: var(--orange);
+  color: var(--accent-text);
   min-width: 56px;
   text-align: center;
   direction: ltr;
 }
 
 .card {
-  background: var(--surf);
-  border: 1px solid var(--line);
-  border-radius: 20px;
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--glass-hi);
+  backdrop-filter: var(--blur-card);
+  -webkit-backdrop-filter: var(--blur-card);
+  border-radius: var(--r);
   padding: 16px;
   margin-bottom: 12px;
 }
@@ -224,7 +363,7 @@ ul.t.flush {
 ul.t li {
   margin-bottom: 6px;
   font-size: 13.5px;
-  color: #c5cfea;
+  color: var(--txt-2);
 }
 ul.t b {
   color: var(--txt);
@@ -235,14 +374,19 @@ ul.t b {
 .today {
   position: relative;
   overflow: hidden;
-  border-radius: 22px;
+  border-radius: calc(var(--r) + 2px);
   padding: 20px;
   margin-bottom: 14px;
-  background: linear-gradient(150deg, var(--orange), #9be01f);
-  color: var(--accent-ink);
+  background: var(--hero);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--glass-hi);
+  backdrop-filter: var(--blur-card);
+  -webkit-backdrop-filter: var(--blur-card);
+  color: var(--hero-ink);
 }
+/* A rest day is the same pane without the theme's colour in it. */
 .today.rest {
-  background: linear-gradient(140deg, var(--surf-2), var(--surf));
+  background: var(--glass);
   color: var(--txt);
 }
 .today .lbl {
@@ -250,8 +394,12 @@ ul.t b {
   font-weight: 800;
   font-size: 11px;
   letter-spacing: 0.16em;
-  opacity: 0.72;
+  color: var(--hero-mut);
   direction: ltr;
+}
+.today.rest .lbl,
+.today.rest p {
+  color: var(--mut);
 }
 .today h2 {
   font-family: 'Cairo';
@@ -262,7 +410,7 @@ ul.t b {
 .today p {
   margin: 0 0 16px;
   font-size: 13px;
-  opacity: 0.85;
+  color: var(--hero-mut);
   line-height: 1.5;
 }
 .today p:last-child {
@@ -271,9 +419,10 @@ ul.t b {
 .go {
   display: block;
   width: 100%;
-  background: var(--accent-ink);
-  color: #fff;
-  border-radius: 14px;
+  background: var(--hero-btn);
+  color: var(--hero-btn-ink);
+  border-radius: 16px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
   padding: 15px;
   font-family: 'Cairo';
   font-weight: 900;
@@ -281,8 +430,8 @@ ul.t b {
   text-align: center;
 }
 .today.rest .go {
-  background: var(--txt);
-  color: var(--ink);
+  background: var(--orange);
+  color: var(--accent-ink);
 }
 .go:active {
   transform: scale(0.99);
@@ -298,9 +447,12 @@ ul.t b {
 .pcard {
   position: relative;
   overflow: hidden;
-  background: var(--surf);
-  border: 1px solid var(--line);
-  border-radius: 18px;
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--glass-hi);
+  backdrop-filter: var(--blur-card);
+  -webkit-backdrop-filter: var(--blur-card);
+  border-radius: calc(var(--r) - 6px);
   padding: 13px 13px 0;
   display: flex;
   flex-direction: column;
@@ -324,7 +476,7 @@ ul.t b {
   font-weight: 800;
   font-size: 27px;
   line-height: 1;
-  color: var(--orange);
+  color: var(--accent-text);
   direction: ltr;
   margin-top: 9px;
 }
@@ -341,17 +493,17 @@ ul.t b {
 }
 .spark path {
   fill: none;
-  stroke: var(--orange);
+  stroke: var(--accent-text);
   stroke-width: 2.2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 .spark circle,
 .spark rect {
-  fill: var(--orange);
+  fill: var(--accent-text);
 }
 .spark .sfill {
-  fill: var(--orange);
+  fill: var(--accent-text);
   opacity: 0.14;
   stroke: none;
 }
@@ -363,14 +515,14 @@ ul.t b {
   font-weight: 800;
   font-size: 10px;
   color: var(--mint);
-  background: rgba(78, 227, 154, 0.15);
+  background: rgba(var(--mint-rgb), 0.15);
   padding: 3px 7px;
   border-radius: 7px;
   direction: ltr;
 }
 .pbadge.flat {
   color: var(--mut);
-  background: rgba(190, 205, 255, 0.09);
+  background: rgba(255, 255, 255, 0.09);
 }
 .pbadge.down {
   color: var(--blue);
@@ -391,7 +543,7 @@ ul.t b {
 .wrow.now {
   margin: 0 -14px;
   padding: 13px 14px;
-  background: rgba(196, 255, 54, 0.1);
+  background: rgba(var(--accent-rgb), 0.1);
   border-radius: 14px;
   border-bottom-color: transparent;
 }
@@ -433,8 +585,8 @@ ul.t b {
   color: var(--txt);
 }
 .wlift.full {
-  background: rgba(63, 214, 155, 0.18);
-  border-color: rgba(63, 214, 155, 0.45);
+  background: rgba(var(--mint-rgb), 0.18);
+  border-color: rgba(var(--mint-rgb), 0.45);
   color: var(--mint);
 }
 .wlift.ghost {
@@ -498,6 +650,8 @@ ul.t b {
   color: var(--mut);
 }
 .mchip.on {
+  /* Both --orange: this border traces the chip's own fill, so it has to be
+     the same colour. Everywhere else an accent line takes --accent-text. */
   background: var(--orange);
   border-color: var(--orange);
   color: var(--accent-ink);
@@ -544,7 +698,7 @@ ul.t b {
   flex: 0 0 88px;
 }
 .ni:focus {
-  outline: 2px solid var(--orange);
+  outline: 2px solid var(--accent-text);
   outline-offset: 1px;
 }
 .cchart {
@@ -564,7 +718,7 @@ ul.t b {
 .cbar {
   flex: 1;
   width: 100%;
-  background: rgba(190, 205, 255, 0.07);
+  background: rgba(255, 255, 255, 0.07);
   border-radius: 7px;
   display: flex;
   align-items: flex-end;
@@ -578,7 +732,7 @@ ul.t b {
   left: 0;
   bottom: var(--tl, 74%);
   height: 1px;
-  background: rgba(63, 214, 155, 0.55);
+  background: rgba(var(--mint-rgb), 0.55);
 }
 .cbar i {
   width: 100%;
@@ -604,9 +758,12 @@ ul.t b {
   margin-bottom: 12px;
 }
 .tile {
-  background: var(--surf);
-  border: 1px solid var(--line);
-  border-radius: 18px;
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--glass-hi);
+  backdrop-filter: var(--blur-card);
+  -webkit-backdrop-filter: var(--blur-card);
+  border-radius: calc(var(--r) - 6px);
   padding: 14px;
   text-align: right;
 }
@@ -629,7 +786,8 @@ ul.t b {
   z-index: 50;
   display: none;
   flex-direction: column;
-  background: radial-gradient(900px 500px at 50% -10%, #222b18 0%, transparent 60%), var(--ink);
+  background: var(--bg);
+  background-attachment: fixed;
   padding: calc(var(--safe-top) + 10px) calc(16px + var(--safe-right))
     calc(var(--safe-bottom) + 14px) calc(16px + var(--safe-left));
 }
@@ -667,7 +825,7 @@ ul.t b {
   flex: 1;
   height: 3px;
   border-radius: 99px;
-  background: rgba(190, 205, 255, 0.14);
+  background: rgba(255, 255, 255, 0.14);
 }
 .gdots i.d {
   background: var(--mint);
@@ -732,7 +890,7 @@ button.wnum {
   border-bottom: 2px dashed var(--line-2);
 }
 button.wnum:active {
-  color: var(--orange);
+  color: var(--accent-text);
 }
 input.wedit {
   width: 100%;
@@ -740,9 +898,9 @@ input.wedit {
   /* Digits stay where the reading was: the RTL row starts on the right. */
   text-align: right;
   background: none;
-  color: var(--orange);
+  color: var(--accent-text);
   border: 0;
-  border-bottom: 2px solid var(--orange);
+  border-bottom: 2px solid var(--accent-text);
   padding: 0;
   border-radius: 0;
   -moz-appearance: textfield;
@@ -770,9 +928,12 @@ input.wedit::-webkit-inner-spin-button {
 .adj button {
   width: 44px;
   height: 38px;
-  border-radius: 11px;
-  background: var(--surf);
-  border: 1px solid var(--line-2);
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--glass-hi-sm);
+  backdrop-filter: var(--blur-card);
+  -webkit-backdrop-filter: var(--blur-card);
+  border-radius: 13px;
   font-size: 19px;
   font-family: 'Archivo';
   font-weight: 800;
@@ -793,11 +954,11 @@ input.wedit::-webkit-inner-spin-button {
   font-size: 11.5px;
   padding: 4px 10px;
   border-radius: 8px;
-  background: rgba(196, 255, 54, 0.13);
-  color: var(--orange);
+  background: rgba(var(--accent-rgb), 0.13);
+  color: var(--accent-text);
 }
 .chip.g {
-  background: rgba(190, 205, 255, 0.09);
+  background: rgba(255, 255, 255, 0.09);
   color: var(--mut);
 }
 
@@ -826,9 +987,9 @@ input.wedit::-webkit-inner-spin-button {
   color: var(--mint-ink);
 }
 .sdot.now {
-  border-color: var(--orange);
-  color: var(--orange);
-  box-shadow: 0 0 0 3px rgba(196, 255, 54, 0.16);
+  border-color: var(--accent-text);
+  color: var(--accent-text);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.16);
 }
 
 .gfoot {
@@ -864,9 +1025,12 @@ input.wedit::-webkit-inner-spin-button {
 .glink {
   flex: 1;
   text-align: center;
-  background: var(--surf);
-  border: 1px solid var(--line);
-  border-radius: 13px;
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--glass-hi-sm);
+  backdrop-filter: var(--blur-card);
+  -webkit-backdrop-filter: var(--blur-card);
+  border-radius: 15px;
   padding: 11px;
   font-size: 12.5px;
   color: var(--txt);
@@ -874,7 +1038,7 @@ input.wedit::-webkit-inner-spin-button {
   display: block;
 }
 .glink b {
-  color: var(--orange);
+  color: var(--accent-text);
 }
 .cue {
   max-height: 0;
@@ -983,13 +1147,16 @@ input.wedit::-webkit-inner-spin-button {
 }
 .cue div {
   margin-top: 10px;
-  background: var(--surf);
-  border: 1px solid var(--line);
-  border-radius: 14px;
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--glass-hi);
+  backdrop-filter: var(--blur-card);
+  -webkit-backdrop-filter: var(--blur-card);
+  border-radius: calc(var(--r) - 10px);
   padding: 13px;
   font-size: 13px;
   line-height: 1.75;
-  color: #c5cfea;
+  color: var(--txt-2);
 }
 .cue b {
   color: var(--txt);
@@ -1019,7 +1186,11 @@ input.wedit::-webkit-inner-spin-button {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: rgba(12, 14, 10, 0.95);
+  /* Frosted over the gym screen rather than painted over it: the exercise you
+     were on stays faintly visible, which is what makes it read as a pause. */
+  background: rgba(8, 9, 6, 0.72);
+  backdrop-filter: var(--blur-fixed);
+  -webkit-backdrop-filter: var(--blur-fixed);
   padding: calc(24px + var(--safe-top)) calc(24px + var(--safe-right))
     calc(24px + var(--safe-bottom)) calc(24px + var(--safe-left));
   text-align: center;
@@ -1114,13 +1285,13 @@ input.wedit::-webkit-inner-spin-button {
   color: var(--mut);
 }
 .fb button[aria-pressed='true'][data-v='light'] {
-  background: rgba(63, 214, 155, 0.18);
+  background: rgba(var(--mint-rgb), 0.18);
   color: var(--mint);
   border-color: transparent;
 }
 .fb button[aria-pressed='true'][data-v='ok'] {
-  background: rgba(196, 255, 54, 0.18);
-  color: var(--orange);
+  background: rgba(var(--accent-rgb), 0.18);
+  color: var(--accent-text);
   border-color: transparent;
 }
 .fb button[aria-pressed='true'][data-v='heavy'] {
@@ -1138,7 +1309,8 @@ input.wedit::-webkit-inner-spin-button {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: var(--ink);
+  background: var(--bg);
+  background-attachment: fixed;
   padding: calc(28px + var(--safe-top)) calc(28px + var(--safe-right))
     calc(28px + var(--safe-bottom)) calc(28px + var(--safe-left));
   text-align: center;
@@ -1177,9 +1349,12 @@ input.wedit::-webkit-inner-spin-button {
 }
 .stat {
   flex: 1;
-  background: var(--surf);
-  border: 1px solid var(--line);
-  border-radius: 16px;
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--glass-hi);
+  backdrop-filter: var(--blur-card);
+  -webkit-backdrop-filter: var(--blur-card);
+  border-radius: calc(var(--r) - 8px);
   padding: 13px 8px;
 }
 .stat b {
@@ -1219,7 +1394,7 @@ input.wedit::-webkit-inner-spin-button {
   direction: ltr;
 }
 .inp input:focus {
-  outline: 2px solid var(--orange);
+  outline: 2px solid var(--accent-text);
   outline-offset: 1px;
 }
 .inp.text input {
@@ -1265,7 +1440,7 @@ input.wedit::-webkit-inner-spin-button {
   font-family: 'Archivo';
   font-weight: 900;
   font-size: 19px;
-  color: var(--orange);
+  color: var(--accent-text);
   direction: ltr;
   min-width: 52px;
   text-align: left;
@@ -1280,7 +1455,7 @@ input[type='range'].gap {
   appearance: none;
 }
 input[type='range'].gap:focus-visible {
-  outline: 2px solid var(--orange);
+  outline: 2px solid var(--accent-text);
   outline-offset: 4px;
   border-radius: 8px;
 }
@@ -1335,8 +1510,8 @@ input[type='range'].gap:active::-webkit-slider-thumb {
   border: 1px solid;
 }
 .verdict.go {
-  background: linear-gradient(160deg, rgba(63, 214, 155, 0.15), rgba(63, 214, 155, 0.03));
-  border-color: rgba(63, 214, 155, 0.4);
+  background: linear-gradient(160deg, rgba(var(--mint-rgb), 0.15), rgba(var(--mint-rgb), 0.03));
+  border-color: rgba(var(--mint-rgb), 0.4);
 }
 .verdict.hold {
   background: linear-gradient(160deg, rgba(255, 122, 47, 0.15), rgba(255, 122, 47, 0.03));
@@ -1356,7 +1531,7 @@ input[type='range'].gap:active::-webkit-slider-thumb {
   margin: 0;
   font-size: 13.5px;
   line-height: 1.7;
-  color: #d3dbf2;
+  color: var(--txt-2);
 }
 .deltas {
   display: flex;
@@ -1413,7 +1588,7 @@ input[type='range'].gap:active::-webkit-slider-thumb {
 .lead {
   margin: 0;
   font-size: 13.5px;
-  color: #c5cfea;
+  color: var(--txt-2);
   line-height: 1.75;
 }
 .lead b {
@@ -1444,8 +1619,11 @@ input[type='range'].gap:active::-webkit-slider-thumb {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: var(--surf);
-  border: 1px solid var(--line);
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--glass-hi-sm);
+  backdrop-filter: var(--blur-card);
+  -webkit-backdrop-filter: var(--blur-card);
   border-radius: 999px;
   padding: 6px 11px;
   font-size: 11.5px;
@@ -1507,8 +1685,8 @@ input[type='range'].gap:active::-webkit-slider-thumb {
 }
 .formok {
   margin-top: 12px;
-  background: rgba(63, 214, 155, 0.12);
-  border: 1px solid rgba(63, 214, 155, 0.4);
+  background: rgba(var(--mint-rgb), 0.12);
+  border: 1px solid rgba(var(--mint-rgb), 0.4);
   border-radius: 12px;
   padding: 11px 13px;
   font-size: 13px;
@@ -1557,11 +1735,11 @@ input[type='range'].gap:active::-webkit-slider-thumb {
   flex: 0 0 auto;
 }
 .pill.on {
-  background: rgba(63, 214, 155, 0.18);
+  background: rgba(var(--mint-rgb), 0.18);
   color: var(--mint);
 }
 .pill.off {
-  background: rgba(190, 205, 255, 0.1);
+  background: rgba(255, 255, 255, 0.1);
   color: var(--mut);
 }
 ol.steps {
@@ -1571,7 +1749,7 @@ ol.steps {
 ol.steps li {
   margin-bottom: 7px;
   font-size: 13.5px;
-  color: #c5cfea;
+  color: var(--txt-2);
 }
 ol.steps b {
   color: var(--txt);
@@ -1646,8 +1824,8 @@ ol.steps b {
 
 /* ══════ goal review prompt ══════ */
 .review {
-  background: linear-gradient(160deg, rgba(196, 255, 54, 0.12), rgba(196, 255, 54, 0.03));
-  border: 1px solid rgba(196, 255, 54, 0.35);
+  background: linear-gradient(160deg, rgba(var(--accent-rgb), 0.12), rgba(var(--accent-rgb), 0.03));
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
   border-radius: 20px;
   padding: 16px;
   margin-bottom: 14px;
@@ -1657,13 +1835,13 @@ ol.steps b {
   font-weight: 900;
   font-size: 15.5px;
   margin: 0 0 6px;
-  color: var(--orange);
+  color: var(--accent-text);
 }
 .review p {
   margin: 0;
   font-size: 13px;
   line-height: 1.65;
-  color: #d5dcc8;
+  color: var(--txt-2);
 }
 .rbtns {
   display: flex;
@@ -1703,15 +1881,18 @@ ol.steps b {
   display: block;
   width: 100%;
   text-align: right;
-  background: var(--surf);
-  border: 1.5px solid var(--line);
-  border-radius: 18px;
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--glass-hi);
+  backdrop-filter: var(--blur-card);
+  -webkit-backdrop-filter: var(--blur-card);
+  border-radius: calc(var(--r) - 6px);
   padding: 14px 15px;
 }
 .gcard.on,
 .lcard.on {
-  border-color: var(--orange);
-  background: rgba(196, 255, 54, 0.07);
+  border-color: var(--accent-text);
+  background: rgba(var(--accent-rgb), 0.07);
 }
 .gtitle,
 .ltitle {
@@ -1722,7 +1903,7 @@ ol.steps b {
 }
 .gcard.on .gtitle,
 .lcard.on .ltitle {
-  color: var(--orange);
+  color: var(--accent-text);
 }
 .gdesc {
   font-size: 12.5px;
@@ -1746,8 +1927,8 @@ ol.steps b {
   padding: 4px 9px;
 }
 .gcard.on .gsum span {
-  color: var(--orange);
-  border-color: rgba(196, 255, 54, 0.35);
+  color: var(--accent-text);
+  border-color: rgba(var(--accent-rgb), 0.35);
 }
 /* ══════ per-group strength (onboarding, optional) ══════ */
 /* A <details>: the browser owns open/closed, so it starts collapsed with no
@@ -1756,7 +1937,7 @@ ol.steps b {
   margin-top: 12px;
   border: 1px dashed var(--line-2);
   border-radius: 14px;
-  background: rgba(196, 255, 54, 0.035);
+  background: rgba(var(--accent-rgb), 0.035);
   overflow: hidden;
 }
 .gdet > summary {
@@ -1768,7 +1949,7 @@ ol.steps b {
   font-family: 'Cairo';
   font-weight: 600;
   font-size: 14px;
-  color: var(--orange);
+  color: var(--accent-text);
   list-style: none;
 }
 .gdet > summary::-webkit-details-marker {
@@ -1781,7 +1962,7 @@ ol.steps b {
   width: 0;
   height: 0;
   border: 5px solid transparent;
-  border-inline-end-color: var(--orange);
+  border-inline-end-color: var(--accent-text);
   transition: transform 0.18s ease;
   flex: 0 0 auto;
 }
@@ -1887,9 +2068,12 @@ small.en {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background: var(--surf);
-  border: 1.5px solid var(--line-2);
-  border-radius: 16px;
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--glass-hi);
+  backdrop-filter: var(--blur-card);
+  -webkit-backdrop-filter: var(--blur-card);
+  border-radius: calc(var(--r) - 8px);
   padding: 14px 16px;
 }
 .hold .hlbl {
@@ -1906,14 +2090,14 @@ small.en {
   direction: ltr;
 }
 .hold.run {
-  border-color: var(--orange);
-  background: rgba(196, 255, 54, 0.08);
+  border-color: var(--accent-text);
+  background: rgba(var(--accent-rgb), 0.08);
 }
 .hold.run .hlbl {
-  color: var(--orange);
+  color: var(--accent-text);
 }
 .hold.run .htime {
-  color: var(--orange);
+  color: var(--accent-text);
 }
 .hold:active {
   transform: scale(0.995);
@@ -1921,7 +2105,7 @@ small.en {
 .hbar {
   height: 5px;
   border-radius: 4px;
-  background: rgba(190, 205, 255, 0.08);
+  background: rgba(255, 255, 255, 0.08);
   margin-top: 7px;
   overflow: hidden;
 }
@@ -1958,9 +2142,9 @@ small.en {
 }
 .split {
   margin-top: 11px;
-  background: var(--ink-2);
-  border: 1px solid var(--line);
-  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--glass-line);
+  border-radius: calc(var(--r) - 10px);
   padding: 10px 12px;
 }
 .srow {
@@ -2034,10 +2218,12 @@ small.en {
   gap: 2px;
   padding: 8px calc(6px + var(--safe-right)) calc(8px + var(--safe-bottom))
     calc(6px + var(--safe-left));
-  background: rgba(19, 21, 18, 0.92);
-  border-top: 1px solid var(--line);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0)),
+    var(--glass-bar);
+  border-top: 1px solid var(--glass-line);
+  box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: var(--blur-fixed);
+  -webkit-backdrop-filter: var(--blur-fixed);
 }
 /* An id selector outranks the browser's own `[hidden] { display: none }`, so
    setting the property would otherwise leave the bar on screen. */
@@ -2067,8 +2253,13 @@ small.en {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+/* The active tab gets a lit pane under it instead of a colour change alone.
+   Background and radius only — the notch journey measures this bar's height
+   against .wrap's bottom padding, so nothing here may grow it. */
 #tabbar .tab.on {
-  color: var(--orange);
+  color: var(--accent-text);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
 }
 #tabbar .tab:active {
   transform: scale(0.94);
@@ -2080,5 +2271,50 @@ small.en {
   *::after {
     transition: none !important;
     animation: none !important;
+  }
+}
+
+/* Somebody who asked the system for less transparency gets flat surfaces: the
+   blur goes, the panes become opaque, and the lights behind them go with it.
+   Nothing moves — only the depth is dropped. */
+@media (prefers-reduced-transparency: reduce) {
+  body,
+  #gym,
+  #fin {
+    background: var(--ink);
+  }
+  .card,
+  .pcard,
+  .tile,
+  .gcard,
+  .lcard,
+  .hold,
+  .stat,
+  .cue div,
+  .glink,
+  .adj button,
+  .wk,
+  .sync,
+  .today.rest,
+  #rest {
+    background: var(--surf);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  #tabbar {
+    background: var(--glass-bar);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .today {
+    background: var(--orange);
+    color: var(--accent-ink);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .today .lbl,
+  .today p {
+    color: var(--accent-ink);
+    opacity: 0.75;
   }
 }

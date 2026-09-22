@@ -25,9 +25,11 @@ the Render and Neon dashboards.** Do not rewrite what already works.
 ```
 main:    3daf45e   (PR #17 merged — one branch open with the work below)
 tests:   npm test     → 265 pass / 0 fail    (~17s, PGlite in-process)
-browser: npm run browser → 11 journeys clean (~2m15s, boots its own server)
+browser: npm run browser → 12 journeys clean (~2m30s, boots its own server)
 code:    ~9,700 lines across 29 modules; 5 runtime deps, 2 dev
 assets:  public/img/ex — 26 WebP frames, 468 KB
+         public/img/icon* — 140 KB (was 34: glass is gradients, and PNG
+         charges for them; see §11)
 ```
 
 These numbers were taken on a branch that was open when this was written —
@@ -66,7 +68,8 @@ and not by the weekly jump (#14) → the `cardio` goal, six days with no iron in
 them (#15) → set logs keyed by day, not by exercise alone (#16) → a drawn figure
 per movement, then a photographed one where the public-domain set has it →
 per-route rate limits on the three endpoints the global ceiling was too loose
-for, plus the email check the login forms were missing (see §4).
+for, plus the email check the login forms were missing (see §4) → the liquid-glass
+redesign: three themes, new tab icons, a glass app icon (see §11).
 
 ## 2. What the app is
 
@@ -264,11 +267,16 @@ like `nutrition`. **Rules that must not be broken:**
   both a password-guessing oracle behind a stolen session and a way to pin the
   event loop. `docs/SECURITY.md` §S22 has the reasoning and the numbers.
 - **Per-device display settings do not sync.** `public/js/display.js` keeps the
-  top-gap preference in localStorage, deliberately outside the synced document:
-  a notch belongs to the phone, not the account, so syncing it would break the
-  laptop to fix the phone. It also stays out of `state-schema.js` that way. Its
-  range floor (12px) is the same clearance the notch journey asserts — a setting
-  added to stop content crowding the status bar must not be able to put it back.
+  top-gap preference **and the theme** in localStorage, deliberately outside the
+  synced document: a notch belongs to the phone, not the account, so syncing it
+  would break the laptop to fix the phone, and a screen read in a bright gym
+  belongs to that room. They also stay out of `state-schema.js` that way. The
+  gap's range floor (12px) is the same clearance the notch journey asserts — a
+  setting added to stop content crowding the status bar must not be able to put
+  it back. **Both settings share one key (`hadeed:display`), so every write goes
+  through `writeSaved()`, which merges.** The original `setTopGap` replaced the
+  whole object; left alone, moving the slider would have wiped the theme, and
+  only on the next launch. `test/browser/theme.mjs` drives both directions.
 - **Sessions:** tokens stored only as HMAC-SHA256 with a server pepper.
 - **CSRF:** three independent layers — SameSite=Strict, Origin check, double-submit token.
 - **CSP:** `default-src 'none'`, no `unsafe-inline`, no external origins. This is
@@ -460,6 +468,7 @@ Chromium binary: it looks under `PLAYWRIGHT_BROWSERS_PATH` (default
 | `mfa` | two-factor end to end, including recovery codes |
 | `reset` | the forgot-password form + the reset screen (generic reply, client validation, a dead link fails gracefully) |
 | `groups` | per-muscle-group levels: collapsed by default, the tag follows the overall level, one group moves only its own weights on screen |
+| `theme` | the three themes each paint a different screen, survive a reload, and do not overwrite the top gap in the storage key they share |
 
 **Run these after any server-side or view change.** Every defect in §7 would have
 been caught by one of them.
@@ -550,3 +559,49 @@ merged. Concretely:
   defects in §7 were both invariants that held for every goal until one did not:
   "a manual weight is only read after a write" and "no exercise repeats in a
   week". Adding the `cardio` goal broke both.
+
+## 11. The glass, and the numbers behind it
+
+Three themes over one layout — `volt` (lime on graphite, the default), `midnight`
+(iPhone blue) and `copper` (warm). Switched from Account → العرض, stored per
+device (§4), applied as `data-theme` on `<html>`. **Every theme is a set of
+custom properties in `app.css` and nothing else.** A theme that needs a layout
+rule of its own is a theme done wrong; fold the difference into a token.
+
+- **`--orange` is the FILL; `--accent-text` is the ink.** Midnight's fill
+  (`#0a84ff`) is too dark to read as 11px type on a dark ground, so anything
+  drawing the accent as text or as a line takes `--accent-text`. The one
+  exception is `.mchip.on`, whose border traces its own fill and is commented
+  as such. `--accent-rgb` / `--mint-rgb` carry the same colours as bare channels
+  for the many `rgba(…, 0.1x)` tints, which used to be written out in full — in
+  two different greens, for one idea.
+- **The pane is a dark tint carrying a white highlight, not a white wash.** This
+  is the one number not to touch by eye. A white pane lightens whatever is
+  behind it: measured at the brightest point of `--bg` it took the 11.5px muted
+  grey to **3.5:1**. The muted greys were raised at the same time. Every theme
+  now clears **4.5:1 for body and caption text both**, measured at the centre of
+  its brightest light, on glass and on the bare background. That is why `--mut`
+  is no longer `#8f978a`.
+- **`--bg` is `background-attachment: fixed` and that is load-bearing.** The
+  lights stay put while content slides over them. Unfix it and every pane blurs
+  to a flat wash within one swipe — the blur has nothing left to sample.
+- **The tab bar does not use `--glass`.** It uses `--glass-bar` (0.86, versus
+  0.52 for a card) because it is *fixed*: text scrolls under it. If
+  `backdrop-filter` is unavailable — an older phone, or reduced transparency —
+  a card still sits on its own backdrop, but the bar would have live text
+  reading straight through it. **Its height is also asserted** by `features.mjs`
+  against `.wrap`'s bottom padding, so its padding and icon size must not grow.
+- **Blur only on top-level surfaces.** Chips inside a card (`.mchip`, `.chip`,
+  `.split`, `.gsum span`) are plain translucent backgrounds. Blur inside blur
+  costs frames on an older phone and samples a backdrop that is already uniform,
+  so it cannot be seen.
+- **`prefers-reduced-transparency`** flattens every pane. It is a setting people
+  turn on for a reason; nothing moves, only the depth goes.
+- **The app icon is `public/img/icon.svg`, and the PNGs are generated** —
+  `npm run icons` (`scripts/render-icons.mjs`, Chromium, no image library
+  added). **Change the SVG without running it and nothing changes on a phone:**
+  iOS puts `icon-180.png` on the home screen, not the SVG. The corner glow is
+  deliberately tight: a gradient across the whole 512px plate came to 16,000
+  distinct colours and **192 KB**, and none of that spread is visible at the
+  60px an icon is actually seen at. `icon-maskable` drops the glow and the
+  sheen entirely, because the launcher crops exactly the band they live in.

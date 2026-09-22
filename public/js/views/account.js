@@ -3,7 +3,16 @@ import { toast, bulletList, qrSvg } from '../ui.js';
 import { api, ApiError, NetworkError } from '../api.js';
 import { SYNC } from '../store.js';
 import { goalOf, levelOf } from '../program.js';
-import { TOP_GAP, applyTopGap, readTopGap, setTopGap } from '../display.js';
+import {
+  TOP_GAP,
+  THEMES,
+  THEME_INFO,
+  applyTopGap,
+  readTopGap,
+  setTopGap,
+  readTheme,
+  setTheme,
+} from '../display.js';
 
 /**
  * Mirrors EMAIL_RE in server/routes/auth.js. The server stays the one that
@@ -59,6 +68,41 @@ function programmeCard(ctx) {
       text: 'عدّل هدفك ومستواك',
       on: { click: () => ctx.editProfile() },
     })
+  );
+}
+
+/**
+ * Which of the three looks the app wears on this device.
+ *
+ * Per device like the gap above, and for a reason of its own: a screen read in
+ * a bright gym is a property of that room, not of the account. Each theme is a
+ * set of custom properties in app.css, so the whole switch is one attribute on
+ * <html> — no second copy of any rule, and nothing the CSP objects to.
+ *
+ * Repaints on change rather than only setting the attribute: the colours would
+ * follow either way, but a chip that does not move to the one just tapped
+ * looks broken.
+ */
+function themeCard(ctx) {
+  const chips = THEMES.map((key) =>
+    el('button', {
+      class: ['mchip', readTheme() === key ? 'on' : ''],
+      text: THEME_INFO[key].label,
+      attrs: { 'aria-pressed': String(readTheme() === key) },
+      on: {
+        click: () => {
+          setTheme(key);
+          ctx.refresh();
+        },
+      },
+    })
+  );
+
+  return el(
+    'div',
+    { class: 'card' },
+    el('div', { class: 'mut', text: 'شكل التطبيق على هذا الجهاز. الترتيب ما يتغيّر — اللون والزجاج بس.' }),
+    el('div', { class: 'mchips' }, chips)
   );
 }
 
@@ -143,6 +187,7 @@ export function renderAccount(ctx) {
       el('h3', { class: 'first', text: 'برنامجك' }),
       programmeCard(ctx),
       el('h3', { text: 'العرض' }),
+      themeCard(ctx),
       displayCard(),
       el('h3', { text: 'حسابك' }),
       authForms(ctx)
@@ -155,6 +200,7 @@ export function renderAccount(ctx) {
     el('h3', { class: 'first', text: 'برنامجك' }),
     programmeCard(ctx),
     el('h3', { text: 'العرض' }),
+    themeCard(ctx),
     displayCard(),
     el('h3', { text: 'حسابك' }),
     el(
