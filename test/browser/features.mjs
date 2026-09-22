@@ -75,6 +75,55 @@ export default async function run({ base, browser, problems, step }) {
     await page.click('#gx');
   });
 
+  /**
+   * §7 of HANDOFF records "UI under the Dynamic Island" as a defect that no
+   * screenshot ever showed, because env(safe-area-inset-*) resolves to 0 in
+   * every desktop browser. It came back — the main scrolling container gave
+   * content 6px over the inset while every other full-screen container gave
+   * 10–28px, and on a notched phone the first heading crowded the status bar.
+   *
+   * The CSS reads the insets through --safe-* variables, so setting those
+   * reproduces a notched phone faithfully. Nothing else here would.
+   */
+  await step('content clears the notch and the tab bar on a notched phone', async () => {
+    // iPhone 15 Pro Max, portrait.
+    await page.setViewportSize({ width: 430, height: 932 });
+    await page.evaluate(() => {
+      document.documentElement.style.setProperty('--safe-top', '59px');
+      document.documentElement.style.setProperty('--safe-bottom', '34px');
+    });
+
+    const MIN_TOP = 12; // enough to read as deliberate space, not a near-miss
+    for (const view of ['home', 'cardio', 'nutri', 'week', 'account']) {
+      await tab(page, view);
+      const m = await page.evaluate(() => {
+        const wrap = document.querySelector('.wrap');
+        const first = wrap && wrap.firstElementChild;
+        const bar = document.querySelector('#tabbar');
+        if (!first) return null;
+        const safeTop = parseFloat(
+          getComputedStyle(document.documentElement).getPropertyValue('--safe-top')
+        ) || 0;
+        return {
+          gapTop: Math.round(first.getBoundingClientRect().top - safeTop),
+          wrapPadBottom: Math.round(parseFloat(getComputedStyle(wrap).paddingBottom)),
+          barHeight: bar && !bar.hidden ? Math.round(bar.getBoundingClientRect().height) : 0,
+        };
+      });
+      if (!m) throw new Error(`${view}: no .wrap content to measure`);
+      if (m.gapTop < MIN_TOP) {
+        throw new Error(`${view}: only ${m.gapTop}px below the safe area, want >= ${MIN_TOP}`);
+      }
+      // The tab bar is fixed, so the scroller has to reserve room for it or the
+      // last control sits under the blur and cannot be tapped.
+      if (m.barHeight && m.wrapPadBottom < m.barHeight) {
+        throw new Error(
+          `${view}: bottom padding ${m.wrapPadBottom}px does not clear the ${m.barHeight}px tab bar`
+        );
+      }
+    }
+  });
+
   await page.context().close();
 }
 
