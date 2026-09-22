@@ -3,6 +3,7 @@ import { toast, bulletList, qrSvg } from '../ui.js';
 import { api, ApiError, NetworkError } from '../api.js';
 import { SYNC } from '../store.js';
 import { goalOf, levelOf } from '../program.js';
+import { TOP_GAP, applyTopGap, readTopGap, setTopGap } from '../display.js';
 
 /**
  * Mirrors EMAIL_RE in server/routes/auth.js. The server stays the one that
@@ -61,6 +62,58 @@ function programmeCard(ctx) {
   );
 }
 
+/**
+ * How much room the screen leaves above the first line.
+ *
+ * A number somebody else picks is always slightly wrong on somebody else's
+ * phone, and this one is pure feel — so it is set here rather than guessed.
+ * Stored per device on purpose: a notch is a property of the phone, not of the
+ * account, so syncing it would break the laptop to fix the phone.
+ */
+function displayCard() {
+  const value = el('span', { class: 'gapval', text: `${readTopGap()}px` });
+
+  const slider = el('input', {
+    class: 'gap',
+    type: 'range',
+    attrs: {
+      min: String(TOP_GAP.min),
+      max: String(TOP_GAP.max),
+      step: String(TOP_GAP.step),
+      value: String(readTopGap()),
+      'aria-label': 'الفراغ فوق أول سطر',
+    },
+    on: {
+      // Live while dragging, saved when the finger lifts: writing to storage on
+      // every pixel of a drag is a lot of writes for no benefit.
+      input: (e) => {
+        value.textContent = `${applyTopGap(e.target.value)}px`;
+      },
+      change: (e) => {
+        value.textContent = `${setTopGap(e.target.value)}px`;
+      },
+    },
+  });
+
+  return el(
+    'div',
+    { class: 'card' },
+    el('div', { class: 'mut', text: 'الفراغ فوق أول سطر في كل شاشة. حرّكه وشوف الفرق.' }),
+    el('div', { class: 'gaprow' }, slider, value),
+    el('button', {
+      class: 'cta ghost',
+      text: 'رجّع الافتراضي',
+      on: {
+        click: () => {
+          const gap = setTopGap(TOP_GAP.fallback);
+          slider.value = String(gap);
+          value.textContent = `${gap}px`;
+        },
+      },
+    })
+  );
+}
+
 export function renderAccount(ctx) {
   const { store, navigate } = ctx;
 
@@ -89,6 +142,8 @@ export function renderAccount(ctx) {
       { class: 'wrap' },
       el('h3', { class: 'first', text: 'برنامجك' }),
       programmeCard(ctx),
+      el('h3', { text: 'العرض' }),
+      displayCard(),
       el('h3', { text: 'حسابك' }),
       authForms(ctx)
     );
@@ -99,6 +154,8 @@ export function renderAccount(ctx) {
     { class: 'wrap' },
     el('h3', { class: 'first', text: 'برنامجك' }),
     programmeCard(ctx),
+    el('h3', { text: 'العرض' }),
+    displayCard(),
     el('h3', { text: 'حسابك' }),
     el(
       'div',
