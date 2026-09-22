@@ -23,8 +23,8 @@ the Render and Neon dashboards.** Do not rewrite what already works.
 ## 1. Current state (verified)
 
 ```
-main:    3daf45e   (PR #17 merged — one branch open with the work below)
-tests:   npm test     → 265 pass / 0 fail    (~17s, PGlite in-process)
+main:    7e239d8   (PR #23 merged — the glass redesign; the icon fix is on a new branch)
+tests:   npm test     → 266 pass / 0 fail    (~17s, PGlite in-process)
 browser: npm run browser → 12 journeys clean (~2m30s, boots its own server)
 code:    ~9,700 lines across 29 modules; 5 runtime deps, 2 dev
 assets:  public/img/ex — 26 WebP frames, 468 KB
@@ -332,7 +332,7 @@ the hand-run-SQL reset in §9 is still the fallback when it isn't wired up.
   the transcript.
 - `SESSION_SECRET` comes from Render's Generate button, never from chat.
 
-## 7. Fourteen defects that unit tests could not catch
+## 7. Fifteen defects that unit tests could not catch
 
 All eleven passed a green suite and were found only by driving the real app, or
 by a user using it. This is why §8 exists.
@@ -412,6 +412,19 @@ by a user using it. This is why §8 exists.
     `Range` over the first text node) and compares the tabs against each other,
     exempting filled surfaces, whose edge is legitimately the visual start.
     A box is not content; measure the thing you actually care about.
+
+15. **The new app icon never reached the phone.** The glass redesign redrew
+    `icon-180.png` under the same name — but everything under `/img` is served
+    `Cache-Control: immutable` for a year (`server/app.js`), which is a promise
+    that the file never changes under that name. Safari kept the old icon, and
+    deleting and re-adding the home-screen icon does not clear its cache, so the
+    advice given at the time ("delete it and add it again") could never have
+    worked. Found by the user. The header was right; breaking its contract was
+    the bug. **An asset under `/img` or `/fonts` is changed by renaming it**
+    (`icon-v2-*` now), and `test/shell.test.js` fails if `index.html`, the
+    manifest or `sw.js` points at an image that is not on disk — a rename is
+    exactly when one reference gets missed, and a missing touch icon fails
+    silently: iOS puts a screenshot of the page there instead.
 
 Recurring theme: **verify what a system decides, not what it was told** — and
 what it actually renders, not what it computed. Both of the last two hid behind
@@ -597,10 +610,13 @@ rule of its own is a theme done wrong; fold the difference into a token.
   so it cannot be seen.
 - **`prefers-reduced-transparency`** flattens every pane. It is a setting people
   turn on for a reason; nothing moves, only the depth goes.
-- **The app icon is `public/img/icon.svg`, and the PNGs are generated** —
+- **The app icon is `public/img/icon-v2.svg`, and the PNGs are generated** —
   `npm run icons` (`scripts/render-icons.mjs`, Chromium, no image library
   added). **Change the SVG without running it and nothing changes on a phone:**
-  iOS puts `icon-180.png` on the home screen, not the SVG. The corner glow is
+  iOS puts `icon-v2-180.png` on the home screen, not the SVG. **And change it
+  without a new name and nothing changes either** — `/img` is `immutable`
+  (§7.15): bump `ICON` in the script, then the names in `index.html`,
+  `manifest.webmanifest` and `sw.js`, and bump `VERSION` in `sw.js`. The corner glow is
   deliberately tight: a gradient across the whole 512px plate came to 16,000
   distinct colours and **192 KB**, and none of that spread is visible at the
   60px an icon is actually seen at. `icon-maskable` drops the glow and the
