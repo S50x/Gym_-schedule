@@ -34,6 +34,10 @@ export function createApp(db) {
       redirect: false,
       setHeaders(res, filePath) {
         if (/[\\/](fonts|img)[\\/]/.test(filePath)) {
+          // A promise, not just a speed-up: a file here never changes content
+          // under the same name. To change one, give it a new name — a phone
+          // that has fetched it will not ask again for a year, and deleting the
+          // home-screen icon does not clear Safari's cache. See HANDOFF §7.15.
           res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
         } else if (filePath.endsWith('sw.js')) {
           res.setHeader('Cache-Control', 'no-cache');
