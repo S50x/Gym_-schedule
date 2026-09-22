@@ -135,6 +135,19 @@ export default async function run({ base, browser, problems, step }) {
     await other.context().close();
   });
 
+  // Nothing clicked this button until ESLint pointed out that `navigate` was
+  // never in scope inside renderAccount — so signing out threw a ReferenceError
+  // *after* the session was already gone, leaving the user on a stale screen.
+  // The journey runner fails on any console error, so this step is the guard.
+  await step('signing out of this device returns to home', async () => {
+    await tab(page, 'account');
+    await page.locator('.cta.ghost', { hasText: 'سجّل خروج من هذا الجهاز' }).click();
+    // The account view re-renders signed-out, and home is what we land on.
+    await page.waitForSelector('.authtabs, .onb', { timeout: 10_000 });
+    const sync = await page.locator('.sync.synced').count();
+    if (sync) throw new Error('still shows a synced session after signing out');
+  });
+
   console.log('\n== stored-XSS probes ==');
   await step('a poisoned document cannot inject script or markup', async () => {
     const probe = await newPage(browser, problems, { allowRejections: true });

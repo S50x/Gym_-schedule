@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { startServer, makeClient, registerAndLogin } from './helpers.js';
+import { startServer, makeClient, registerAndLogin, resetRateLimits, goodPassword } from './helpers.js';
 
 test('security controls', async (t) => {
   const app = await startServer();
@@ -114,6 +114,148 @@ test('security controls', async (t) => {
       doc: { meta: { week: 1 }, weeks: {}, nutrition: null, junk: 'x'.repeat(900 * 1024) },
     });
     assert.ok(res.status === 413 || res.status === 400, `expected 413/400, got ${res.status}`);
+  });
+
+  /* ── per-route rate limits ─────────────────────────────────── */
+
+  await t.test('change-password stops guessing the current password', async () => {
+    const client = makeClient(app.origin);
+    await registerAndLogin(client, 'pwchg-limit@example.com');
+    await resetRateLimits();
+
+    // The route allows 10 attempts per 15 minutes; the 11th must be refused
+    // without ever reaching scrypt.
+    let sawUnauthorized = 0;
+    let limited = null;
+    for (let i = 0; i < 12; i++) {
+      const res = await client.post('/api/auth/change-password', {
+        currentPassword: 'definitely-not-the-password',
+        newPassword: 'a-fresh-password-9',
+      });
+      if (res.status === 401) sawUnauthorized++;
+      if (res.status === 429) {
+        limited = res;
+        break;
+      }
+    }
+    assert.equal(sawUnauthorized, 10, 'exactly 10 guesses get through');
+    assert.ok(limited, 'the 11th attempt is rate limited');
+    assert.equal(limited.data.error, 'rate_limited');
+    assert.ok(limited.headers.get('retry-after'), 'Retry-After is set');
+  });
+
+  await t.test('a correct password clears the change-password budget', async () => {
+    const client = makeClient(app.origin);
+    await registerAndLogin(client, 'pwchg-clear@example.com');
+    await resetRateLimits();
+
+    for (let i = 0; i < 5; i++) {
+      await client.post('/api/auth/change-password', {
+        currentPassword: 'wrong-on-purpose',
+        newPassword: 'a-fresh-password-9',
+      });
+    }
+    const ok = await client.post('/api/auth/change-password', {
+      currentPassword: goodPassword,
+      newPassword: 'a-fresh-password-9',
+    });
+    assert.equal(ok.status, 204, 'the real password still works');
+
+    // Budget spent on failures is returned, so the next attempt is not refused.
+    const after = await client.post('/api/auth/change-password', {
+      currentPassword: 'wrong-again',
+      newPassword: 'another-password-77',
+    });
+    assert.equal(after.status, 401, 'not 429 — the counter was cleared');
+  });
+
+  await t.test('change-password attempts do not spend the login budget', async () => {
+    const email = 'pwchg-isolated@example.com';
+    const client = makeClient(app.origin);
+    await registerAndLogin(client, email);
+    await resetRateLimits();
+
+    // Burn the whole change-password budget on wrong guesses.
+    for (let i = 0; i < 11; i++) {
+      await client.post('/api/auth/change-password', {
+        currentPassword: 'wrong-every-time',
+        newPassword: 'a-fresh-password-9',
+      });
+    }
+
+    // Login is a separate ceiling and must be untouched — a shared IP bucket
+    // here would lock the address out of signing in, and a successful change
+    // would hand back the login budget.
+    const fresh = await makeClient(app.origin).bootstrap();
+    const res = await fresh.post('/api/auth/login', { email, password: goodPassword });
+    assert.equal(res.status, 200, `login should still work, got ${res.status}`);
+  });
+
+  await t.test('logout-all cannot be hammered', async () => {
+    const client = makeClient(app.origin);
+    await registerAndLogin(client, 'logoutall-limit@example.com');
+    await resetRateLimits();
+
+    let limited = false;
+    for (let i = 0; i < 12; i++) {
+      // Logging out drops the session cookie, so sign back in each round to
+      // keep hitting the route as the same authenticated user.
+      if (i > 0) await client.post('/api/auth/login', { email: 'logoutall-limit@example.com', password: goodPassword });
+      const res = await client.post('/api/auth/logout-all');
+      if (res.status === 429) {
+        limited = true;
+        break;
+      }
+    }
+    assert.ok(limited, 'logout-all is rate limited');
+  });
+
+  await t.test('state writes are bounded well below the global ceiling', async () => {
+    const client = makeClient(app.origin);
+    await registerAndLogin(client, 'state-write-limit@example.com');
+    await resetRateLimits();
+
+    const doc = { meta: { week: 1 }, weeks: {}, nutrition: null };
+    let limited = null;
+    let version = 0;
+    for (let i = 0; i < 70; i++) {
+      const res = await client.put('/api/state', { baseVersion: version, doc });
+      if (res.status === 429) {
+        limited = res;
+        break;
+      }
+      if (res.status === 200) version = res.data.version;
+    }
+    assert.ok(limited, 'the write limiter bites before 70 requests');
+    assert.equal(limited.data.error, 'rate_limited');
+  });
+
+  await t.test('wiping all data is bounded tightly', async () => {
+    const client = makeClient(app.origin);
+    await registerAndLogin(client, 'state-reset-limit@example.com');
+    await resetRateLimits();
+
+    let limited = false;
+    for (let i = 0; i < 8; i++) {
+      const res = await client.del('/api/state');
+      if (res.status === 429) {
+        limited = true;
+        assert.ok(i >= 5, `refused after ${i} resets, expected at least 5 to pass`);
+        break;
+      }
+    }
+    assert.ok(limited, 'DELETE /api/state is rate limited');
+  });
+
+  await t.test('reading state is not caught by the write limiter', async () => {
+    const client = makeClient(app.origin);
+    await registerAndLogin(client, 'state-read-free@example.com');
+    await resetRateLimits();
+
+    for (let i = 0; i < 70; i++) {
+      const res = await client.get('/api/state');
+      assert.equal(res.status, 200, `read ${i} should not be limited`);
+    }
   });
 
   await t.test('errors do not leak stack traces', async () => {
