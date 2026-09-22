@@ -21,6 +21,7 @@ const JOURNEYS = [
   ['mfa', 'mfa.mjs', 'two-factor end to end'],
   ['reset', 'reset.mjs', 'forgot-password form + the reset screen'],
   ['groups', 'groups.mjs', 'per-muscle-group strength levels'],
+  ['theme', 'theme.mjs', 'the three themes + the setting they share with the top gap'],
 ];
 
 const filter = process.argv.slice(2).filter((a) => !a.startsWith('-'));
