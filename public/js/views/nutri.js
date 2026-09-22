@@ -107,6 +107,9 @@ export function renderNutri(ctx) {
     { class: 'wrap' },
     el(
       'div',
+      // `top` carries no styling any more — it used to add a 6px margin that
+      // double-counted --top-gap. It stays because goals.mjs and review.mjs
+      // select `.today.top` to tell this card from home's hero of the same name.
       { class: 'today top' },
       el('div', { class: 'lbl', text: 'DAILY TARGET' }),
       el('h2', {}, el('span', { class: 'n', text: fmt(target) }), ' سعرة'),
