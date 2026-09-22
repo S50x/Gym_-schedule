@@ -14,6 +14,7 @@
     "test": "node --test test/*.test.js",
     "lint": "eslint .",
     "fonts": "node scripts/fetch-fonts.mjs",
+    "icons": "node scripts/render-icons.mjs",
     "browser": "node test/browser/run.mjs"
   },
   "dependencies": {

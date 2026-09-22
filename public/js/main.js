@@ -10,7 +10,7 @@ import { renderAccount } from './views/account.js';
 import { renderOnboarding } from './views/onboarding.js';
 import { renderReset } from './views/reset.js';
 import { MAX_WEEK } from './engine.js';
-import { applyTopGap, readTopGap } from './display.js';
+import { applyTopGap, readTopGap, applyTheme, readTheme } from './display.js';
 import { cardioOf, MAX_MACHINES_PER_DAY, machinesOfDay, splitMinutes } from './program.js';
 
 const VIEWS = {
@@ -206,9 +206,10 @@ function render() {
 /* ── boot ────────────────────────────────────────────────── */
 
 async function boot() {
-  // Before the first render, so the page never paints at the default gap and
-  // then jumps to the stored one.
+  // Before the first render, so the page never paints at the default gap or
+  // the default theme and then jumps to the stored one.
   applyTopGap(readTopGap());
+  applyTheme(readTheme());
 
   gym = new GymMode(ctx);
 
