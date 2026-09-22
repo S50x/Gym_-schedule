@@ -24,7 +24,7 @@ the Render and Neon dashboards.** Do not rewrite what already works.
 
 ```
 main:    3daf45e   (PR #17 merged — one branch open with the work below)
-tests:   npm test     → 258 pass / 0 fail    (~17s, PGlite in-process)
+tests:   npm test     → 265 pass / 0 fail    (~17s, PGlite in-process)
 browser: npm run browser → 11 journeys clean (~2m15s, boots its own server)
 code:    ~9,700 lines across 29 modules; 5 runtime deps, 2 dev
 assets:  public/img/ex — 26 WebP frames, 468 KB
@@ -263,6 +263,12 @@ like `nutrition`. **Rules that must not be broken:**
   with a synchronous, deliberately slow `scryptSync`, so without it the route is
   both a password-guessing oracle behind a stolen session and a way to pin the
   event loop. `docs/SECURITY.md` §S22 has the reasoning and the numbers.
+- **Per-device display settings do not sync.** `public/js/display.js` keeps the
+  top-gap preference in localStorage, deliberately outside the synced document:
+  a notch belongs to the phone, not the account, so syncing it would break the
+  laptop to fix the phone. It also stays out of `state-schema.js` that way. Its
+  range floor (12px) is the same clearance the notch journey asserts — a setting
+  added to stop content crowding the status bar must not be able to put it back.
 - **Sessions:** tokens stored only as HMAC-SHA256 with a server pepper.
 - **CSRF:** three independent layers — SameSite=Strict, Origin check, double-submit token.
 - **CSP:** `default-src 'none'`, no `unsafe-inline`, no external origins. This is

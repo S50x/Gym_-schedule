@@ -124,6 +124,56 @@ export default async function run({ base, browser, problems, step }) {
     }
   });
 
+  /**
+   * The top gap is adjustable now (Account → العرض), which adds exactly one new
+   * way to break it: dragging it low enough to put content back under the notch
+   * — the very thing the padding was raised to fix. The range's own floor is the
+   * guarantee, so that floor is what this checks, along with the setting
+   * actually surviving a reload rather than only applying in memory.
+   */
+  await step('the top-gap setting cannot put content back under the notch', async () => {
+    await tab(page, 'account');
+    const slider = page.locator('input[type=range].gap');
+    if (!(await slider.count())) throw new Error('no top-gap slider on the account screen');
+
+    const range = await slider.evaluate((el) => ({
+      min: Number(el.min),
+      max: Number(el.max),
+      value: Number(el.value),
+    }));
+
+    const gapAt = () =>
+      page.evaluate(() => {
+        const wrap = document.querySelector('.wrap');
+        const safeTop =
+          parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-top')) || 0;
+        return Math.round(wrap.firstElementChild.getBoundingClientRect().top - safeTop);
+      });
+
+    // Dragging is live: the gap moves before anything is reloaded.
+    await slider.fill(String(range.max));
+    await slider.dispatchEvent('input');
+    const wide = await gapAt();
+    if (wide < range.max) throw new Error(`max gave ${wide}px, expected at least ${range.max}`);
+
+    // The floor still clears the safe area — this is the actual safety property.
+    await slider.fill(String(range.min));
+    await slider.dispatchEvent('input');
+    await slider.dispatchEvent('change');
+    const tight = await gapAt();
+    if (tight < 12) throw new Error(`the lowest setting leaves only ${tight}px under the notch`);
+
+    // And it was stored, not just applied.
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.evaluate(() => {
+      document.documentElement.style.setProperty('--safe-top', '59px');
+      document.documentElement.style.setProperty('--safe-bottom', '34px');
+    });
+    await tab(page, 'account');
+    const after = await gapAt();
+    if (after !== tight) throw new Error(`gap was ${tight}px, came back as ${after}px after reload`);
+  });
+
   await page.context().close();
 }
 
