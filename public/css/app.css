@@ -79,8 +79,14 @@ button {
 .wrap {
   max-width: 560px;
   margin: 0 auto;
-  /* Bottom room clears the fixed tab bar. */
-  padding: 0 15px calc(86px + var(--safe-bottom));
+  /* Top room clears the status bar and, on a notched phone, the Dynamic Island:
+     body already applies --safe-top, but landing content flush against that
+     edge reads as crowded — and puts the first heading straight into the
+     brightest part of the background glow. Every other full-screen container
+     here (#gym, #rest, the dialogs) gives itself 10–28px over the inset; this
+     one gave 6, via h3.first, and it was the only one that felt wrong on a
+     real phone. Bottom room clears the fixed tab bar. */
+  padding: 20px 15px calc(86px + var(--safe-bottom));
 }
 .sr-only {
   position: absolute;
@@ -186,7 +192,7 @@ h3 {
   color: var(--txt);
 }
 h3.first {
-  margin-top: 6px;
+  margin-top: 0;
 }
 .mut {
   color: var(--mut);
