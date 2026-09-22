@@ -29,11 +29,14 @@ export function stateRouter(db) {
   const keyByUser = (req) => (req.user ? `state:${req.user.userId}` : clientIp(req));
 
   /**
-   * A write carries up to 600kb that is parsed before it is validated, so the
-   * global ceiling still leaves room to push ~144MB a minute through JSON.parse
-   * and into the database. The client debounces pushes by 1.5s (PUSH_DELAY in
-   * public/js/store.js), so even continuous editing tops out near 40/min — this
-   * leaves headroom over that and still bites long before the global limit.
+   * Bounds the database write, not the parse: express.json is mounted on the
+   * API router in server/app.js, ahead of this one, so a 600kb body is already
+   * parsed by the time a 429 goes back. Parse work is bounded by the global
+   * 240/min ceiling instead. What this stops is the row churn behind it.
+   *
+   * The client debounces pushes by 1.5s (PUSH_DELAY in public/js/store.js), so
+   * even continuous editing tops out near 40/min — this leaves headroom over
+   * that and still bites long before the global limit.
    */
   const writeLimiter = memoryRateLimit({
     windowMs: 60 * 1000,

@@ -191,6 +191,78 @@ test('security controls', async (t) => {
     assert.equal(res.status, 200, `login should still work, got ${res.status}`);
   });
 
+  await t.test('anonymous requests cannot spend an account\u2019s password budget', async () => {
+    // The regression this exists for: the limiter used to run before the
+    // handler's own auth check and carried an `ip:` bucket, so ten anonymous
+    // 401s — the CSRF cookie is free from /api/config — locked every real user
+    // behind that address out of changing their password for fifteen minutes.
+    const email = 'anon-budget@example.com';
+    const victim = makeClient(app.origin);
+    await registerAndLogin(victim, email);
+    await resetRateLimits();
+
+    const anon = await makeClient(app.origin).bootstrap();
+    for (let i = 0; i < 12; i++) {
+      const res = await anon.post('/api/auth/change-password', {
+        currentPassword: 'guess',
+        newPassword: 'a-fresh-password-9',
+      });
+      assert.equal(res.status, 401, `anonymous attempt ${i} should be 401, got ${res.status}`);
+    }
+
+    const real = await victim.post('/api/auth/change-password', {
+      currentPassword: goodPassword,
+      newPassword: 'a-fresh-password-9',
+    });
+    assert.equal(real.status, 204, 'the account must be untouched by anonymous traffic');
+  });
+
+  await t.test('2fa/setup is bounded like change-password, per account', async () => {
+    // The same scrypt oracle change-password closed was left open next door:
+    // /2fa/* verified a password behind an in-memory, per-IP ceiling of 20.
+    const client = makeClient(app.origin);
+    await registerAndLogin(client, 'twofa-limit@example.com');
+    await resetRateLimits();
+
+    let refused = 0;
+    let allowed = 0;
+    for (let i = 0; i < 12; i++) {
+      const res = await client.post('/api/auth/2fa/setup', { password: 'not-the-password' });
+      if (res.status === 401) allowed++;
+      if (res.status === 429) refused++;
+    }
+    assert.equal(allowed, 10, 'exactly 10 password guesses reach scrypt');
+    assert.ok(refused > 0, 'the rest are refused');
+
+    // Keyed on the account, so a second user from the same address is free.
+    const other = makeClient(app.origin);
+    await registerAndLogin(other, 'twofa-unaffected@example.com');
+    const res = await other.post('/api/auth/2fa/setup', { password: 'also-wrong' });
+    assert.equal(res.status, 401, 'a different account must not inherit the ceiling');
+  });
+
+  await t.test('one budget covers every route that checks a password', async () => {
+    const client = makeClient(app.origin);
+    await registerAndLogin(client, 'shared-budget@example.com');
+    await resetRateLimits();
+
+    for (let i = 0; i < 5; i++) {
+      await client.post('/api/auth/change-password', {
+        currentPassword: 'wrong',
+        newPassword: 'a-fresh-password-9',
+      });
+    }
+    for (let i = 0; i < 5; i++) {
+      await client.post('/api/auth/2fa/setup', { password: 'wrong' });
+    }
+
+    // Ten guesses spent across two routes; the eleventh is refused on either.
+    const setup = await client.post('/api/auth/2fa/setup', { password: 'wrong' });
+    assert.equal(setup.status, 429, 'the budget is shared, not per route');
+    const codes = await client.post('/api/auth/2fa/recovery-codes', { password: 'wrong' });
+    assert.equal(codes.status, 429, 'recovery-codes draws on the same budget');
+  });
+
   await t.test('logout-all cannot be hammered', async () => {
     const client = makeClient(app.origin);
     await registerAndLogin(client, 'logoutall-limit@example.com');
