@@ -174,6 +174,62 @@ export default async function run({ base, browser, problems, step }) {
     if (after !== tight) throw new Error(`gap was ${tight}px, came back as ${after}px after reload`);
   });
 
+  /**
+   * The check above measures the first element's *box*. That is what let home
+   * drift 18px below every other tab: .hd carried its own padding-top, which
+   * lives inside the box and so never moved it. The property that actually
+   * matters is where the content starts, not where its container does.
+   *
+   * A filled surface is exempt: a card's edge is its visual start, so its
+   * padding is doing a real job. A transparent row has no edge to see, so its
+   * text has to line up with everyone else's.
+   */
+  await step('every tab starts its content at the same height', async () => {
+    const measured = {};
+    for (const view of ['home', 'cardio', 'nutri', 'week', 'account']) {
+      await tab(page, view);
+      measured[view] = await page.evaluate(() => {
+        const first = document.querySelector('.wrap').firstElementChild;
+        const safeTop =
+          parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-top')) || 0;
+        const cs = getComputedStyle(first);
+        const walker = document.createTreeWalker(first, NodeFilter.SHOW_TEXT, {
+          acceptNode: (n) => (n.textContent.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT),
+        });
+        const node = walker.nextNode();
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        return {
+          what: first.className || first.tagName.toLowerCase(),
+          boxTop: Math.round(first.getBoundingClientRect().top - safeTop),
+          inkTop: Math.round(range.getBoundingClientRect().top - safeTop),
+          marginTop: Math.round(parseFloat(cs.marginTop)),
+          filled:
+            cs.backgroundImage !== 'none' ||
+            !/rgba\(0, 0, 0, 0\)|transparent/.test(cs.backgroundColor),
+        };
+      });
+    }
+
+    // Nobody adds their own margin on top of what the container already gave.
+    for (const [view, m] of Object.entries(measured)) {
+      if (m.marginTop !== 0) {
+        throw new Error(`${view}: "${m.what}" adds margin-top ${m.marginTop}px over --top-gap`);
+      }
+    }
+
+    // Every tab that opens with a transparent element must agree on where its
+    // text begins — compared against each other, not against a magic number.
+    const bare = Object.entries(measured).filter(([, m]) => !m.filled);
+    if (bare.length < 2) throw new Error('expected several tabs to start with a bare element');
+    const tops = bare.map(([, m]) => m.inkTop);
+    const spread = Math.max(...tops) - Math.min(...tops);
+    if (spread > 1) {
+      const detail = bare.map(([v, m]) => `${v}(${m.what})=${m.inkTop}`).join(', ');
+      throw new Error(`content starts at different heights: ${detail}`);
+    }
+  });
+
   await page.context().close();
 }
 
