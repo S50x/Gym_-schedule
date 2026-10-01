@@ -87,6 +87,10 @@ export default async function run({ base, browser, problems, step }) {
 
     const loaded = await frames.evaluateAll((imgs) => imgs.every((i) => i.naturalWidth > 0));
     if (!loaded) throw new Error('a frame failed to load');
+    // Every day, not just the one it was trialled on: once both frames are in,
+    // the box is marked ready and the drawing under them is gone.
+    await page.waitForSelector('.fphoto.ready', { timeout: 5000 });
+    if (await page.locator('.fphoto .fig').count()) throw new Error('the drawing outlived the photographs');
     if (!(await frames.first().getAttribute('alt'))) throw new Error('the pair is unlabelled');
 
     const box = await page.locator('.fphoto').boundingBox();
@@ -130,7 +134,7 @@ export default async function run({ base, browser, problems, step }) {
     await page.waitForSelector('#gym.on', { state: 'hidden', timeout: 5000 });
   });
 
-  await step('on Thursday the drawing fills the box until the photographs arrive', async () => {
+  await step('the drawing fills the box until the photographs arrive', async () => {
     // Its own page, with the service worker blocked so the route below sees
     // every image request, and its own problem list: an aborted image is a
     // console error by design here.
@@ -152,13 +156,13 @@ export default async function run({ base, browser, problems, step }) {
       if (!day.includes('الخميس')) throw new Error(`opened "${day}", expected Thursday`);
 
       await thu.locator('.glink').last().click();
-      await thu.waitForSelector('.fphoto.under .fig', { timeout: 5000 });
+      await thu.waitForSelector('.fphoto .fig', { timeout: 5000 });
       if (await thu.locator('.fphoto.ready').count()) throw new Error('ready before the photographs arrived');
       const frame = await thu.locator('.fphoto .fframe').first().evaluate((i) => getComputedStyle(i).opacity);
       if (frame !== '0') throw new Error(`an unloaded frame is showing (opacity ${frame})`);
 
       release();
-      await thu.waitForSelector('.fphoto.under.ready', { timeout: 10_000 });
+      await thu.waitForSelector('.fphoto.ready', { timeout: 10_000 });
       if (await thu.locator('.fphoto .fig').count()) throw new Error('the drawing outlived the photographs');
       const loaded = await thu.locator('.fphoto img').evaluateAll((imgs) => imgs.every((i) => i.naturalWidth > 0));
       if (!loaded) throw new Error('ready, but a frame has no pixels');
@@ -167,11 +171,11 @@ export default async function run({ base, browser, problems, step }) {
       mode = 'abort';
       await thu.locator('.arrows button').nth(1).click();
       await thu.locator('.glink').last().click();
-      await thu.waitForSelector('.fphoto.under .fig', { timeout: 5000 });
+      await thu.waitForSelector('.fphoto .fig', { timeout: 5000 });
       await thu.waitForFunction(() => !document.querySelector('.fphoto img'), null, { timeout: 5000 });
       if (await thu.locator('.fphoto.ready').count()) throw new Error('ready with no photographs');
       if (!(await thu.locator('.fphoto .fig').isVisible())) throw new Error('the fallback drawing is hidden');
-      await noStrayNulls(thu, 'cardio-only · thursday cue');
+      await noStrayNulls(thu, 'cardio-only · cue while loading');
     } finally {
       await thu.context().close();
     }
