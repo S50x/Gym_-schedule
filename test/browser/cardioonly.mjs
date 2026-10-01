@@ -130,6 +130,55 @@ export default async function run({ base, browser, problems, step }) {
     await page.waitForSelector('#gym.on', { state: 'hidden', timeout: 5000 });
   });
 
+  await step('on Thursday the drawing fills the box until the photographs arrive', async () => {
+    // Its own page, with the service worker blocked so the route below sees
+    // every image request, and its own problem list: an aborted image is a
+    // console error by design here.
+    const seen = [];
+    const thu = await newPage(browser, seen, { serviceWorkers: 'block' });
+    let release;
+    const held = new Promise((resolve) => (release = resolve));
+    let mode = 'hold';
+    await thu.context().route('**/img/ex/**', async (route) => {
+      if (mode === 'abort') return route.abort();
+      await held;
+      return route.continue();
+    });
+    try {
+      await onboard(thu, base, { goal: CARDIO_GOAL, weight: 100, height: 183, age: 30 });
+      await thu.evaluate(() => document.querySelectorAll('.wlift:not(.ghost)')[5]?.click()); // الخميس
+      await thu.waitForSelector('#gym.on', { timeout: 5000 });
+      const day = (await thu.textContent('#gcount')).trim();
+      if (!day.includes('الخميس')) throw new Error(`opened "${day}", expected Thursday`);
+
+      await thu.locator('.glink').last().click();
+      await thu.waitForSelector('.fphoto.under .fig', { timeout: 5000 });
+      if (await thu.locator('.fphoto.ready').count()) throw new Error('ready before the photographs arrived');
+      const frame = await thu.locator('.fphoto .fframe').first().evaluate((i) => getComputedStyle(i).opacity);
+      if (frame !== '0') throw new Error(`an unloaded frame is showing (opacity ${frame})`);
+
+      release();
+      await thu.waitForSelector('.fphoto.under.ready', { timeout: 10_000 });
+      if (await thu.locator('.fphoto .fig').count()) throw new Error('the drawing outlived the photographs');
+      const loaded = await thu.locator('.fphoto img').evaluateAll((imgs) => imgs.every((i) => i.naturalWidth > 0));
+      if (!loaded) throw new Error('ready, but a frame has no pixels');
+
+      // Next movement, with the photographs unreachable: the drawing stays.
+      mode = 'abort';
+      await thu.locator('.arrows button').nth(1).click();
+      await thu.locator('.glink').last().click();
+      await thu.waitForSelector('.fphoto.under .fig', { timeout: 5000 });
+      await thu.waitForFunction(() => !document.querySelector('.fphoto img'), null, { timeout: 5000 });
+      if (await thu.locator('.fphoto.ready').count()) throw new Error('ready with no photographs');
+      if (!(await thu.locator('.fphoto .fig').isVisible())) throw new Error('the fallback drawing is hidden');
+      await noStrayNulls(thu, 'cardio-only · thursday cue');
+    } finally {
+      await thu.context().close();
+    }
+    const other = seen.filter((p) => !/Failed to load resource|ERR_FAILED/.test(p));
+    if (other.length) throw new Error(other.join('\n'));
+  });
+
   await step('finishing one day does not tick the same movement on another', async () => {
     // The reported bug: this goal stretches the hamstrings on five days, and a
     // set log keyed by exercise alone meant Tuesday's work marked Sunday and
