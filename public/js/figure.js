@@ -271,35 +271,14 @@ function neck(fig, still, paint) {
 let idSeed = 0;
 
 /**
- * The two photographed ends of the rep, stacked and cross-faded by CSS.
+ * The two photographed ends of the rep, stacked and cross-faded by CSS, with
+ * the drawn figure underneath them.
  *
  * Two frames is not a film — it is the start and the end of the rep. Fading
  * between them reads as the movement; cutting between them reads as a glitch,
  * which is why this is a fade and not a swap. No timer and no script: the
  * animation lives in the stylesheet, so nothing has to be torn down when the
  * panel closes.
- */
-function photoPair(exId, alt) {
-  const box = document.createElement('div');
-  box.className = 'fphoto';
-  for (const frame of [0, 1]) {
-    const img = document.createElement('img');
-    img.className = `fframe f${frame}`;
-    img.src = photoFrame(exId, frame);
-    // Only one of the pair is described: they are two moments of one movement,
-    // and a screen reader announcing the name twice is noise.
-    img.alt = frame === 0 ? alt : '';
-    img.loading = 'lazy';
-    img.decoding = 'async';
-    // A missing or unreachable file must not leave a torn half-image on screen.
-    img.addEventListener('error', () => box.remove(), { once: true });
-    box.appendChild(img);
-  }
-  return box;
-}
-
-/**
- * The photographed pair with the drawn figure underneath it.
  *
  * Until both frames have arrived — the first view of a movement, a weak signal,
  * the free host waking up — the box would otherwise sit empty. Here the drawing
@@ -310,15 +289,17 @@ function photoPair(exId, alt) {
  * No `loading="lazy"`: the panel was opened to see this, so there is nothing
  * to defer.
  */
-function photoOverFigure(exId, alt) {
+function photoPair(exId, alt) {
   const box = document.createElement('div');
-  box.className = 'fphoto under';
+  box.className = 'fphoto';
   const drawing = drawnFigure(exId);
   if (drawing) box.appendChild(drawing);
 
   const imgs = [0, 1].map((frame) => {
     const img = document.createElement('img');
     img.className = `fframe f${frame}`;
+    // Only one of the pair is described: they are two moments of one movement,
+    // and a screen reader announcing the name twice is noise.
     img.alt = frame === 0 ? alt : '';
     return img;
   });
@@ -332,7 +313,7 @@ function photoOverFigure(exId, alt) {
   const fail = () => {
     failed = true;
     for (const i of imgs) i.remove();
-    // Nothing to fall back on: same as before, no torn box.
+    // Nothing to fall back on: no torn half-image, no empty box.
     if (!drawing) box.remove();
   };
 
@@ -351,13 +332,9 @@ function photoOverFigure(exId, alt) {
  * What to show for a movement: the photographed pair when there is one, the
  * drawn figure otherwise, or null when there is neither — the caller renders
  * nothing rather than an empty box.
- *
- * `underlay` puts the drawing under the photographs while they load (see
- * `photoOverFigure`). It is on trial for one day of the week before it
- * replaces the plain pair everywhere.
  */
-export function exerciseFigure(exId, alt = '', { underlay = false } = {}) {
-  if (PHOTOGRAPHED.has(exId)) return underlay ? photoOverFigure(exId, alt) : photoPair(exId, alt);
+export function exerciseFigure(exId, alt = '') {
+  if (PHOTOGRAPHED.has(exId)) return photoPair(exId, alt);
   return drawnFigure(exId);
 }
 
