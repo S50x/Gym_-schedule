@@ -299,12 +299,70 @@ function photoPair(exId, alt) {
 }
 
 /**
+ * The photographed pair with the drawn figure underneath it.
+ *
+ * Until both frames have arrived — the first view of a movement, a weak signal,
+ * the free host waking up — the box would otherwise sit empty. Here the drawing
+ * moves in it instead, and gives way the moment the photographs are ready. If
+ * they never come, the drawing simply stays. Once they are shown the drawing is
+ * removed rather than hidden: a hidden <animate> still runs.
+ *
+ * No `loading="lazy"`: the panel was opened to see this, so there is nothing
+ * to defer.
+ */
+function photoOverFigure(exId, alt) {
+  const box = document.createElement('div');
+  box.className = 'fphoto under';
+  const drawing = drawnFigure(exId);
+  if (drawing) box.appendChild(drawing);
+
+  const imgs = [0, 1].map((frame) => {
+    const img = document.createElement('img');
+    img.className = `fframe f${frame}`;
+    img.alt = frame === 0 ? alt : '';
+    return img;
+  });
+
+  let failed = false;
+  const settle = () => {
+    if (failed || !imgs.every((i) => i.complete && i.naturalWidth > 0)) return;
+    box.classList.add('ready');
+    drawing?.remove();
+  };
+  const fail = () => {
+    failed = true;
+    for (const i of imgs) i.remove();
+    // Nothing to fall back on: same as before, no torn box.
+    if (!drawing) box.remove();
+  };
+
+  for (const [frame, img] of imgs.entries()) {
+    img.addEventListener('load', settle);
+    img.addEventListener('error', fail, { once: true });
+    img.src = photoFrame(exId, frame);
+    box.appendChild(img);
+  }
+  // A frame already in the cache can be complete before the listener matters.
+  settle();
+  return box;
+}
+
+/**
  * What to show for a movement: the photographed pair when there is one, the
  * drawn figure otherwise, or null when there is neither — the caller renders
  * nothing rather than an empty box.
+ *
+ * `underlay` puts the drawing under the photographs while they load (see
+ * `photoOverFigure`). It is on trial for one day of the week before it
+ * replaces the plain pair everywhere.
  */
-export function exerciseFigure(exId, alt = '') {
-  if (PHOTOGRAPHED.has(exId)) return photoPair(exId, alt);
+export function exerciseFigure(exId, alt = '', { underlay = false } = {}) {
+  if (PHOTOGRAPHED.has(exId)) return underlay ? photoOverFigure(exId, alt) : photoPair(exId, alt);
+  return drawnFigure(exId);
+}
+
+/** The looping drawn figure for a movement, or null when it has none. */
+function drawnFigure(exId) {
   const fig = FIGURES[exId];
   if (!fig) return null;
 
