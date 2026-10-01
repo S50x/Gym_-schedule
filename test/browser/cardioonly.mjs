@@ -116,9 +116,8 @@ export default async function run({ base, browser, problems, step }) {
     await page.waitForSelector('#gym.on', { state: 'hidden', timeout: 5000 });
   });
 
-  await step('a movement with no photograph falls back to the drawing', async () => {
-    // bird dog is the one movement in this programme the photo set has no
-    // entry for, so it is the case that proves the fallback is wired up.
+  await step('bird dog shows its photographs, with the drawing gone once they load', async () => {
+    // It was the one movement with no photograph; it now has a generated pair.
     await page.evaluate(() => document.querySelectorAll('.wlift:not(.ghost)')[2]?.click());
     await page.waitForSelector('#gym.on', { timeout: 5000 });
     for (let i = 0; i < 8; i++) {
@@ -127,9 +126,12 @@ export default async function run({ base, browser, problems, step }) {
       await page.locator('.arrows button').nth(1).click();
     }
     await page.locator('.glink').last().click();
-    await page.waitForSelector('.fig', { timeout: 5000 });
-    if (await page.locator('.fphoto').count()) throw new Error('bird dog claims a photograph');
-    if (!(await page.locator('.fig .fmuscle').count())) throw new Error('the drawing lost its muscle mark');
+    await page.waitForSelector('.fphoto.ready', { timeout: 10_000 });
+    const src = await page.locator('.fphoto img').first().getAttribute('src');
+    if (!src.includes('birddog')) throw new Error(`not bird dog's frames: ${src}`);
+    const loaded = await page.locator('.fphoto img').evaluateAll((imgs) => imgs.every((i) => i.naturalWidth > 0));
+    if (!loaded) throw new Error('a bird dog frame failed to load');
+    if (await page.locator('.fphoto .fig').count()) throw new Error('the drawing outlived the photographs');
     await page.locator('#gx').click();
     await page.waitForSelector('#gym.on', { state: 'hidden', timeout: 5000 });
   });

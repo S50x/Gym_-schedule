@@ -56,9 +56,9 @@ export default [
   // ── the browser journeys ───────────────────────────────────────
   // These are Node files, but the callbacks handed to page.evaluate() run in
   // the page. Without the browser globals, no-undef flags `localStorage` and
-  // friends inside them.
+  // friends inside them. The photo grader does its pixel work the same way.
   {
-    files: ['test/browser/**/*.mjs'],
+    files: ['test/browser/**/*.mjs', 'scripts/grade-photos.mjs'],
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
 ];

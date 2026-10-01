@@ -141,13 +141,16 @@ const FIGURES = {
 };
 
 /**
- * Movements with a photographed pair in `public/img/ex/` — a real person in the
- * start and the end of the rep, from the public-domain free-exercise-db set.
+ * Movements with a photographed pair in `public/img/ex/v2/` — a person in the
+ * start and the end of the rep. Thirteen come from the public-domain
+ * free-exercise-db set; `birddog`, which that set does not carry, is a pair the
+ * user generated as original images in Gamma. All of them are graded to one
+ * look by `npm run photos` (scripts/grade-photos.mjs) from the originals in
+ * scripts/photo-src/.
  *
  * A photograph beats a drawing at showing what a movement looks like and loses
- * to it at showing where the work lands, so the drawing stays the fallback for
- * anything unphotographed rather than being replaced outright. `birddog` is the
- * one movement in this programme that set does not carry.
+ * to it at showing where the work lands, so the drawing stays underneath every
+ * photograph while it loads, and in its place if it never does.
  */
 const PHOTOGRAPHED = new Set([
   'pushup',
@@ -163,11 +166,14 @@ const PHOTOGRAPHED = new Set([
   'str_calf',
   'str_chest',
   'str_back',
+  'birddog',
 ]);
 
 export const PHOTO_IDS = [...PHOTOGRAPHED];
 export const hasPhoto = (exId) => PHOTOGRAPHED.has(exId);
-export const photoFrame = (exId, frame) => `/img/ex/${exId}-${frame}.webp`;
+// The folder is the version: /img is immutable, so a regrade gets a new one
+// (see scripts/grade-photos.mjs).
+export const photoFrame = (exId, frame) => `/img/ex/v2/${exId}-${frame}.webp`;
 
 export const FIGURE_IDS = Object.keys(FIGURES);
 export const hasFigure = (exId) => Object.hasOwn(FIGURES, exId);

@@ -27,7 +27,7 @@ main:    7e239d8   (PR #23 merged — the glass redesign; the icon fix is on a n
 tests:   npm test     → 266 pass / 0 fail    (~17s, PGlite in-process)
 browser: npm run browser → 12 journeys clean (~2m30s, boots its own server)
 code:    ~9,700 lines across 29 modules; 5 runtime deps, 2 dev
-assets:  public/img/ex — 26 WebP frames, 468 KB
+assets:  public/img/ex/v2 — 28 WebP frames, 463 KB (graded; originals in scripts/photo-src)
          public/img/icon* — 140 KB (was 34: glass is gradients, and PNG
          charges for them; see §11)
 ```
@@ -201,18 +201,32 @@ like `nutrition`. **Rules that must not be broken:**
   day it appears on is. `normalize()` lifts legacy flat keys on every load and
   **never drops** an id the current goal does not programme — that is history
   belonging to a goal the user may switch back to.
-- **`public/img/ex` is the only binary asset directory the app ships**, and it
+- **`public/img/ex/v2` is the only binary asset directory the app ships**, and it
   is the reason `npm test` now checks file sizes: a 404 there fails silently on
-  screen, because the img error handler pulls its own box rather than showing a
-  torn half-image.
-- **A movement shows a photograph when there is one, a drawing when there is
-  not.** `public/img/ex/<id>-0.webp` and `-1.webp` are the start and the end of
-  the rep, cross-faded by CSS — 13 of the cardio programme's 14 movements, 407 KB
-  for all 26 frames. They came from **free-exercise-db** (`yuhonas/free-exercise-db`
-  on GitHub), which is released under the Unlicense: public domain, no purchase,
-  no attribution required. Fetched with curl and re-encoded to WebP at 640px with
-  `sharp`; the originals are 850px JPEGs about four times the size. `birddog` is
-  the one movement that set does not carry, which is why the drawn figure stays.
+  screen, because the drawing simply stays in the box.
+- **Every movement in the cardio programme has a photographed pair.**
+  `public/img/ex/v2/<id>-0.webp` and `-1.webp` are the start and the end of the
+  rep, cross-faded by CSS — 14 movements, 463 KB for all 28 frames. Thirteen
+  came from **free-exercise-db** (`yuhonas/free-exercise-db` on GitHub), released
+  under the Unlicense: public domain, no attribution required. **`birddog`** is
+  not in that set; its pair is two original images the user generated in Gamma
+  from a text description (not from anyone's footage). The user first offered
+  screenshots of a DOJO YouTube video and asked for the watermark to be removed —
+  declined, and that remains the rule: no third-party frames, no stripped marks.
+  The two Gamma images were different scenes, so they were aligned by hand: each
+  scaled so the body is the same size and placed so the supporting hand lands on
+  the same pixel, with the margins of the narrower one extended from its own
+  edge pixels. Only the arm and leg move in the fade.
+  **One grade over all of them.** `npm run photos` (`scripts/grade-photos.mjs`,
+  Chromium canvas, no image library) regrades every pair from the originals in
+  `scripts/photo-src/`: grey-world white balance, a gamma curve to one mean
+  brightness (a curve, not an offset — an offset turned the dark gyms to haze),
+  saturation ×0.72, and edges falling toward near-black. Both frames of a pair
+  share one correction so the fade cannot pulse — except `SEPARATE_SHOOTS`
+  (birddog), whose frames are corrected one at a time toward the same target.
+  **The folder is the version.** `/img` is `immutable` (§7.15), so a new grade
+  goes in a new folder (`v3/`): change `DIR` in the script and `photoFrame()` in
+  `figure.js`, and bump `VERSION` in `sw.js`. Never regrade in place.
   They are deliberately **not** in the service worker's precache list — the
   runtime cache picks them up on first view rather than making every install
   400 KB heavier.
