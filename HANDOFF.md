@@ -216,6 +216,14 @@ like `nutrition`. **Rules that must not be broken:**
   They are deliberately **not** in the service worker's precache list — the
   runtime cache picks them up on first view rather than making every install
   400 KB heavier.
+  **On trial, Thursday only:** until both frames arrive the box sat empty
+  (first view, weak signal, Render waking up). `exerciseFigure(id, alt,
+  { underlay: true })` puts the drawn figure in the box first and removes it the
+  moment both photographs have loaded; if they fail, the drawing stays. `gym.js`
+  turns it on for `plan.day === 'الخميس'` only, so the user can judge it on the
+  phone. If they approve, drop the condition (pass `underlay: true` always),
+  then retire `photoPair()`. `cardioonly.mjs` holds and aborts the image route
+  to prove both paths.
 - **The teaching figures live in `public/js/figure.js`.** A movement is two poses
   of six joints — `wrist → elbow → shoulder → hip → knee → ankle` — because the
   skeleton is one open chain, so the whole body is one `<polyline>` the browser

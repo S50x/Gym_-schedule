@@ -1088,12 +1088,35 @@ input.wedit::-webkit-inner-spin-button {
     opacity: 1;
   }
 }
+/* Thursday's trial: the drawn figure moves in the box until both frames are in,
+   then the photographs take over (figure.js `photoOverFigure`). */
+.fphoto.under .fframe {
+  opacity: 0;
+  animation: none;
+}
+.fphoto.under.ready .fframe {
+  opacity: 1;
+  animation: fswap 3.2s ease-in-out infinite;
+}
+.fphoto.under.ready .f1 {
+  animation-delay: -1.6s;
+}
+.fphoto > .fig {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  margin: 0;
+}
 /* Somebody who asked the system to stop animating gets the first frame, held. */
 @media (prefers-reduced-motion: reduce) {
-  .fphoto .fframe {
+  .fphoto .fframe,
+  .fphoto.under.ready .fframe {
     animation: none;
   }
-  .fphoto .f1 {
+  .fphoto .f1,
+  .fphoto.under.ready .f1 {
     opacity: 0;
   }
 }

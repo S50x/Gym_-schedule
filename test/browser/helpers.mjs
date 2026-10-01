@@ -148,11 +148,14 @@ export async function startApp() {
  * A phone-sized Arabic page that reports its own console errors and CSP
  * violations into `problems`. Every journey wants exactly this.
  */
-export async function newPage(browser, problems, { allowRejections = false } = {}) {
+export async function newPage(browser, problems, { allowRejections = false, serviceWorkers } = {}) {
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
     deviceScaleFactor: 2,
     locale: 'ar',
+    // 'block' when a journey intercepts asset requests: a request the service
+    // worker makes never reaches the context's route handlers.
+    ...(serviceWorkers ? { serviceWorkers } : {}),
   });
   const page = await context.newPage();
 

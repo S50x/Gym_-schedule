@@ -6,7 +6,7 @@
  * and caching authenticated responses on disk is not something to do casually.
  */
 
-const VERSION = 'hadeed-v7';
+const VERSION = 'hadeed-v8';
 const SHELL = [
   '/',
   '/css/app.css',
