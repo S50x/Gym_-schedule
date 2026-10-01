@@ -1068,11 +1068,17 @@ input.wedit::-webkit-inner-spin-button {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  /* Hidden until both frames are in; the drawn figure moves in the box until
+     then (figure.js `photoPair`). */
+  opacity: 0;
+}
+.fphoto.ready .fframe {
+  opacity: 1;
   /* Two moments of one movement. Holding each, then crossing over, reads as the
      rep; cutting between them reads as a glitch. */
   animation: fswap 3.2s ease-in-out infinite;
 }
-.fphoto .f1 {
+.fphoto.ready .f1 {
   animation-delay: -1.6s;
 }
 @keyframes fswap {
@@ -1088,19 +1094,6 @@ input.wedit::-webkit-inner-spin-button {
     opacity: 1;
   }
 }
-/* Thursday's trial: the drawn figure moves in the box until both frames are in,
-   then the photographs take over (figure.js `photoOverFigure`). */
-.fphoto.under .fframe {
-  opacity: 0;
-  animation: none;
-}
-.fphoto.under.ready .fframe {
-  opacity: 1;
-  animation: fswap 3.2s ease-in-out infinite;
-}
-.fphoto.under.ready .f1 {
-  animation-delay: -1.6s;
-}
 .fphoto > .fig {
   position: absolute;
   inset: 0;
@@ -1111,12 +1104,10 @@ input.wedit::-webkit-inner-spin-button {
 }
 /* Somebody who asked the system to stop animating gets the first frame, held. */
 @media (prefers-reduced-motion: reduce) {
-  .fphoto .fframe,
-  .fphoto.under.ready .fframe {
+  .fphoto.ready .fframe {
     animation: none;
   }
-  .fphoto .f1,
-  .fphoto.under.ready .f1 {
+  .fphoto.ready .f1 {
     opacity: 0;
   }
 }
