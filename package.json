@@ -15,6 +15,7 @@
     "lint": "eslint .",
     "fonts": "node scripts/fetch-fonts.mjs",
     "icons": "node scripts/render-icons.mjs",
+    "photos": "node scripts/grade-photos.mjs",
     "browser": "node test/browser/run.mjs"
   },
   "dependencies": {
