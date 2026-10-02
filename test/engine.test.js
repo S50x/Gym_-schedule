@@ -437,14 +437,27 @@ test('the photographed pairs', async (t) => {
     assert.ok(total < 700 * 1024, `${(total / 1024).toFixed(0)}KB of frames is too much to cache`);
   });
 
+  await t.test('every served frame has its original kept for regrading', () => {
+    // scripts/grade-photos.mjs grades from scripts/photo-src/, never from its
+    // own output. A served frame with no original could only be regraded by
+    // grading it twice.
+    for (const id of PHOTO_IDS) {
+      for (const frame of [0, 1]) {
+        const src = new URL(`../scripts/photo-src/${id}-${frame}.webp`, import.meta.url);
+        assert.ok(fs.existsSync(src), `${id} frame ${frame} has no original in scripts/photo-src`);
+      }
+    }
+  });
+
   await t.test('every photographed id is a movement the app actually programmes', () => {
     for (const id of PHOTO_IDS) assert.ok(exById(id), `photo for unknown ${id}`);
   });
 
-  await t.test('a movement with no photograph still has something to show', () => {
-    // birddog is the one this set does not carry; the drawing has to cover it.
-    assert.equal(hasPhoto('birddog'), false);
-    assert.ok(hasFigure('birddog'), 'birddog has neither a photo nor a drawing');
+  await t.test('every photograph has a drawing to show while it loads', () => {
+    // The drawing sits under the photo until both frames are in, and stays if
+    // they never arrive — so a photo with no drawing would be an empty box.
+    for (const id of PHOTO_IDS) assert.ok(hasFigure(id), `${id} has a photo but no drawing under it`);
+    assert.ok(hasPhoto('birddog'), 'birddog lost its photographs');
     for (const day of Object.values(planOf('cardio'))) {
       for (const e of day.ex) {
         assert.ok(hasPhoto(e.id) || hasFigure(e.id), `${e.id} shows nothing at all`);
