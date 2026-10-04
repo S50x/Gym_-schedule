@@ -2503,3 +2503,44 @@ button.card.malerts {
 .wprow.off {
   opacity: 0.6;
 }
+
+/* ── reading food from a picture ── */
+a.cta {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}
+.vh {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.kguide {
+  display: grid;
+  gap: 8px;
+}
+.ksteps {
+  margin: 4px 0 0;
+  padding-inline-start: 22px;
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.krow {
+  display: flex;
+  gap: 8px;
+}
+.krow .cta {
+  flex: 1;
+}
+.scan {
+  display: grid;
+  gap: 6px;
+}
+.scanbtn {
+  margin-top: 0;
+}

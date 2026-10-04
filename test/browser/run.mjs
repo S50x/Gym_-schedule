@@ -24,6 +24,7 @@ const JOURNEYS = [
   ['theme', 'theme.mjs', 'the three themes + the setting they share with the top gap'],
   ['meals', 'meals.mjs', 'meals add up, warn and delete back to not-logged'],
   ['restdays', 'restdays.mjs', 'rest days the trainee picks move the week'],
+  ['foodscan', 'foodscan.mjs', 'Gemini key guide + a scan filling the meal form'],
 ];
 
 const filter = process.argv.slice(2).filter((a) => !a.startsWith('-'));

@@ -1,0 +1,6 @@
+# Install scripts these packages ship, skipped on purpose: @google/genai's is a
+# no-op echo and protobufjs's only checks its own CLI tools. Nothing at runtime
+# needs either, and an install script is code run with full access at build time.
+ignoredBuiltDependencies:
+  - '@google/genai'
+  - protobufjs

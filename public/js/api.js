@@ -101,4 +101,8 @@ export const api = {
     request('POST', '/api/auth/change-password', { currentPassword, newPassword }),
   getState: () => request('GET', '/api/state'),
   putState: (baseVersion, doc) => request('PUT', '/api/state', { baseVersion, doc }),
+  foodKey: () => request('GET', '/api/food/key'),
+  saveFoodKey: (key) => request('PUT', '/api/food/key', { key }),
+  deleteFoodKey: () => request('DELETE', '/api/food/key', {}),
+  scanFood: (image) => request('POST', '/api/food/scan', { image, mimeType: 'image/jpeg' }),
 };

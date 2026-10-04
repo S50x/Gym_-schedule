@@ -7,6 +7,7 @@ import { lookupSession, sessionCookieName } from './auth.js';
 import { securityHeaders, issueCsrf, requireCsrf, memoryRateLimit } from './security.js';
 import { authRouter } from './routes/auth.js';
 import { stateRouter } from './routes/state.js';
+import { foodRouter } from './routes/food.js';
 import { sweep } from './db.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -80,6 +81,7 @@ export function createApp(db) {
   );
   api.use('/auth', authRouter(db));
   api.use('/state', stateRouter(db));
+  api.use('/food', foodRouter(db));
 
   api.use((req, res) => res.status(404).json({ error: 'not_found' }));
 
