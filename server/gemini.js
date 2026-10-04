@@ -9,8 +9,13 @@
 
 import { GoogleGenAI } from '@google/genai';
 
-/** Google's alias for the current Flash model; overridable without a deploy. */
-export const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest';
+/**
+ * Google's alias for the current Flash-Lite model, overridable without a
+ * deploy. Lite first because of the free tier: on a user's own key it allows
+ * about 500 requests a day where full Flash allows 20 — and reading a label or
+ * a screenshot is well within what Lite does well.
+ */
+export const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-lite-latest';
 
 const LIMITS = { kcal: 10000, protein: 1000, fat: 1000, carbs: 1500 };
 const MACROS = Object.keys(LIMITS);
@@ -132,8 +137,11 @@ export class GeminiError extends Error {
   }
 }
 
-/** A second, lighter model to try when the first one keeps failing on Google's side. */
-export const GEMINI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-flash-lite-latest';
+/**
+ * The other model, tried once when the first is busy, failing, or out of its
+ * free quota for the day — each model has a quota of its own.
+ */
+export const GEMINI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-flash-latest';
 
 /**
  * The whole scan, retries included, has to answer before the browser gives up
@@ -154,13 +162,15 @@ function describe(err) {
 }
 
 /**
- * Worth trying again: Google overloaded or erroring (5xx), our own timeout, or
- * a failure with no HTTP status at all (the connection dropped). A 4xx is the
- * request's fault and would fail the same way twice.
+ * Worth trying the other model: Google overloaded or erroring (5xx), this
+ * model's quota used up (429), our own timeout, or no HTTP status at all (the
+ * connection dropped). Any other 4xx is the request's fault and would fail the
+ * same way twice.
  */
 function retryable(err) {
   const status = Number(err?.status);
-  if (Number.isFinite(status) && status > 0) return status >= 500;
+  // 429 too: the quota is per model, so the other model may still have room.
+  if (Number.isFinite(status) && status > 0) return status >= 500 || status === 429;
   return true;
 }
 
@@ -213,8 +223,9 @@ const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 export async function readFoodImage(apiKey, image) {
   const client = makeClient(apiKey);
   const started = Date.now();
-  // Same model twice (a busy moment usually passes), then the lighter one.
-  const plan = [GEMINI_MODEL, GEMINI_MODEL, GEMINI_FALLBACK_MODEL];
+  // One try per model. Retrying the same model spends quota the free tier is
+  // short of; the other model has its own.
+  const plan = [GEMINI_MODEL, GEMINI_FALLBACK_MODEL];
   let response;
   let lastError;
 
