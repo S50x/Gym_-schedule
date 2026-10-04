@@ -153,6 +153,16 @@ test('food scanning API', async (t) => {
     assert.deepEqual((await client.get('/api/food/key')).data, { saved: false, last4: null });
   });
 
+  await t.test('accepts Google’s newer "AQ." keys, with dots in them', async () => {
+    const client = await signedIn('newkey@example.com');
+    const newer = 'AQ.Ab8RN6J8rykX7CGghE_q61Ga3y57yfMrDHz-test.Key_0123';
+    // The fake only knows GOOD_KEY, so Google "refuses" it — but it got past
+    // the shape check and reached Google, which is what is being tested.
+    const res = await client.put('/api/food/key', { key: newer });
+    assert.equal(res.data.error, 'bad_key');
+    assert.ok(calls.some((c) => c.op === 'get' && c.apiKey === newer));
+  });
+
   await t.test('a scan uses that user’s key and returns a clean reading', async () => {
     const client = await signedIn('scan@example.com');
     assert.equal((await client.post('/api/food/scan', { image: IMAGE })).data.error, 'no_key');
