@@ -345,3 +345,42 @@ test('state sync API', async (t) => {
     assert.equal(after.data.version, 1);
   });
 });
+
+test('meals in a week', async (t) => {
+  const meal = (over = {}) => ({ id: 'a1', n: 'شوفان', s: 0, k: 350, p: 12.5, f: 6, c: 55, src: 'manual', t: 1, ...over });
+
+  await t.test('a valid day keeps its meals, and old weeks need none', () => {
+    const res = validateState(docWith({ 1: { meals: { 0: [meal()], 3: [] } } }));
+    assert.equal(res.ok, true);
+    assert.deepEqual(res.doc.weeks['1'].meals, { 0: [meal()] });
+    assert.deepEqual(validateState(docWith({ 1: {} })).doc.weeks['1'].meals, {});
+  });
+
+  await t.test('fat and carb totals are optional', () => {
+    const res = validateState(docWith({ 1: { cal: { d: [2000], p: [150], f: [70], c: [210] } } }));
+    assert.deepEqual(res.doc.weeks['1'].cal, { d: [2000], p: [150], f: [70], c: [210] });
+    assert.deepEqual(validateState(docWith({ 1: { cal: { d: [1] } } })).doc.weeks['1'].cal, { d: [1], p: [] });
+  });
+
+  await t.test('names are trimmed and cleaned, never rejected for their text', () => {
+    const res = validateState(docWith({ 1: { meals: { 0: [meal({ n: '  <b>رز</b>\u0007 ' + 'x'.repeat(200) })] } } }));
+    const name = res.doc.weeks['1'].meals['0'][0].n;
+    assert.equal(name.length, 80);
+    assert.ok(!name.includes('\u0007'));
+  });
+
+  await t.test('rejects bad meals', () => {
+    const bad = [
+      { 7: [meal()] },
+      { 0: [meal({ id: 'BAD ID' })] },
+      { 0: [meal({ k: -1 })] },
+      { 0: [meal({ s: 4 })] },
+      { 0: [meal({ src: 'hack' })] },
+      { 0: [meal({ n: 42 })] },
+      { 0: Array.from({ length: 21 }, (_, i) => meal({ id: `m${i}` })) },
+    ];
+    for (const meals of bad) {
+      assert.equal(validateState(docWith({ 1: { meals } })).ok, false, JSON.stringify(meals).slice(0, 80));
+    }
+  });
+});

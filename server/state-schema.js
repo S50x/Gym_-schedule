@@ -179,7 +179,60 @@ function calOf(raw, path) {
         : num(x, `${path}.${key}[${i}]`, { min: 0, max, integer: true })
     );
   };
-  return { d: arr(raw.d, 'd', 20000), p: arr(raw.p, 'p', 1000) };
+  const out = { d: arr(raw.d, 'd', 20000), p: arr(raw.p, 'p', 1000) };
+  // Fat and carbs arrived with meal logging; older documents have neither.
+  if (raw.f !== undefined) out.f = arr(raw.f, 'f', 2000);
+  if (raw.c !== undefined) out.c = arr(raw.c, 'c', 3000);
+  return out;
+}
+
+export const MAX_MEALS_PER_DAY = 20;
+const MEAL_SOURCES = new Set(['manual', 'label', 'screen', 'photo', 'library']);
+const MEAL_ID = /^[a-z0-9]{1,16}$/;
+
+/**
+ * A meal's name is free text the user (or an image reader) typed. It is
+ * rendered with textContent only, never as HTML, but it is still trimmed to a
+ * sane length and stripped of control characters so nothing odd is stored.
+ */
+function mealName(raw, path) {
+  if (raw === undefined || raw === null) return '';
+  if (typeof raw !== 'string') throw new Invalid(path, 'ليس نصاً');
+  let out = '';
+  for (const ch of raw) out += ch.charCodeAt(0) < 32 || ch === '\u007f' ? ' ' : ch;
+  return out.trim().slice(0, 80);
+}
+
+/** `{ "0": [meal, …], … }` — keyed by weekday like cardio, every meal optional. */
+function mealsOf(raw, path) {
+  if (!isPlainObject(raw)) return {};
+  const out = {};
+  for (const [day, list] of Object.entries(raw)) {
+    if (!DAY_KEYS.has(day)) throw new Invalid(`${path}.${day}`, 'يوم غير معروف');
+    if (!Array.isArray(list)) throw new Invalid(`${path}.${day}`, 'شكل غير صحيح');
+    if (list.length > MAX_MEALS_PER_DAY) throw new Invalid(`${path}.${day}`, 'وجبات كثيرة');
+    if (!list.length) continue;
+    out[day] = list.map((m, i) => {
+      const at = `${path}.${day}[${i}]`;
+      if (!isPlainObject(m)) throw new Invalid(at, 'شكل غير صحيح');
+      if (typeof m.id !== 'string' || !MEAL_ID.test(m.id)) throw new Invalid(`${at}.id`, 'معرّف غير صالح');
+      const slot = m.s === undefined || m.s === null ? null : num(m.s, `${at}.s`, { min: 0, max: 3, integer: true });
+      const src = m.src === undefined ? 'manual' : m.src;
+      if (!MEAL_SOURCES.has(src)) throw new Invalid(`${at}.src`, 'مصدر غير معروف');
+      return {
+        id: m.id,
+        n: mealName(m.n, `${at}.n`),
+        s: slot,
+        k: num(m.k ?? 0, `${at}.k`, { min: 0, max: 10000 }),
+        p: num(m.p ?? 0, `${at}.p`, { min: 0, max: 1000 }),
+        f: num(m.f ?? 0, `${at}.f`, { min: 0, max: 1000 }),
+        c: num(m.c ?? 0, `${at}.c`, { min: 0, max: 1500 }),
+        src,
+        t: num(m.t ?? 0, `${at}.t`, { min: 0, max: 4102444800000, integer: true }),
+      };
+    });
+  }
+  return out;
 }
 
 function weekOf(raw, path) {
@@ -193,6 +246,7 @@ function weekOf(raw, path) {
     cmach: machinesOf(raw.cmach, `${path}.cmach`),
     body: bodyOf(raw.body, `${path}.body`),
     cal: calOf(raw.cal, `${path}.cal`),
+    meals: mealsOf(raw.meals, `${path}.meals`),
   };
 }
 

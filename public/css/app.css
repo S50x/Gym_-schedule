@@ -2333,6 +2333,154 @@ small.en {
   }
 }
 
+/* ── meals: the open day under its row ── */
+.nday {
+  border-bottom: 1px solid var(--line);
+}
+.nday:last-child {
+  border: 0;
+}
+.nday .nrow {
+  border: 0;
+}
+.ni:disabled {
+  opacity: 0.75;
+}
+.mopen {
+  flex: 0 0 auto;
+  min-width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  border: 1px solid var(--line-2);
+  background: var(--ink-2);
+  color: var(--txt);
+  font-size: 13px;
+}
+.mopen.on {
+  border-color: var(--orange);
+}
+.mpanel {
+  display: grid;
+  gap: 12px;
+  padding: 4px 0 14px;
+}
+.mbars {
+  display: grid;
+  gap: 8px;
+}
+.mhead {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--mut);
+}
+.mtrack {
+  height: 6px;
+  border-radius: 6px;
+  background: var(--surf-2);
+  overflow: hidden;
+}
+.mtrack i {
+  display: block;
+  height: 100%;
+  background: var(--mint);
+}
+.mtrack i.over {
+  background: var(--orange);
+}
+.mtrack i.hi {
+  background: var(--coral);
+}
+.malerts {
+  display: grid;
+  gap: 6px;
+}
+.malert {
+  font-size: 12.5px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line-2);
+}
+.malert.over {
+  border-color: var(--coral);
+}
+.malert.short {
+  border-color: var(--orange);
+}
+.mlist {
+  display: grid;
+  gap: 6px;
+}
+.meal {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--surf-2);
+}
+.mname {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+.mname b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mtag {
+  font-size: 11px;
+  color: var(--mut);
+}
+.mmac {
+  grid-column: 1;
+  font-size: 12px;
+  color: var(--mut);
+}
+.mdel {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--mut);
+  font-size: 18px;
+}
+.madd {
+  display: grid;
+  gap: 8px;
+}
+.mi {
+  width: 100%;
+  min-width: 0;
+  background: var(--ink-2);
+  border: 1px solid var(--line-2);
+  border-radius: 11px;
+  padding: 10px;
+  color: var(--txt);
+  font-size: 15px;
+}
+.mi.missing {
+  border-color: var(--orange);
+}
+.mgrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.mgrid .mi {
+  text-align: center;
+  direction: ltr;
+}
+button.card.malerts {
+  width: 100%;
+  text-align: start;
+  color: var(--txt);
+  font: inherit;
 /* ── rest-day picker: the week it produces ── */
 .wprev {
   margin-top: 12px;

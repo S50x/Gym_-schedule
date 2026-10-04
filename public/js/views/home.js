@@ -16,6 +16,7 @@ import {
 } from '../program.js';
 import { MAX_WEEK, goalReview } from '../engine.js';
 import { SYNC } from '../store.js';
+import { todayMealAlerts } from './nutri.js';
 
 /** How many lifts the progress cards show, most-used first. */
 const RAIL_LIMIT = 6;
@@ -331,6 +332,7 @@ export function renderHome(ctx) {
     header,
     hero,
     reviewCard,
+    mealAlertCard(ctx),
     el('h3', { text: hasLoads ? 'أوزانك وهي تطلع' : 'تقدّمك' }),
     rail,
     el('h3', { text: 'الأسبوع كامل' }),
@@ -339,5 +341,16 @@ export function renderHome(ctx) {
       class: 'hint',
       text: 'الدائرة = علّم الكارديو لما تخلّصه · الرقم = تمارين الحديد المكتملة',
     })
+  );
+}
+
+/** Same-day food alerts, tapping through to the day on the nutrition page. */
+function mealAlertCard(ctx) {
+  const alerts = todayMealAlerts(ctx.store);
+  if (!alerts.length) return null;
+  return el(
+    'button',
+    { class: 'card malerts', on: { click: () => ctx.navigate('nutri') } },
+    alerts.map((a) => el('div', { class: ['malert', a.level], text: a.text }))
   );
 }
