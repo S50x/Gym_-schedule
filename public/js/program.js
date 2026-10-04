@@ -178,7 +178,7 @@ export const EXERCISES = {
       { b: 'شد بطنك ومؤخرتك' },
       ' وانزل لين صدرك يقارب الأرض. لو صعب عليك، سوّه على ركبتك أو على سطح مرتفع.',
     ],
-    v: 'https://www.youtube.com/watch?v=la1o8milb8c',
+    v: 'https://www.youtube.com/watch?v=IrFe6GGO8Pw',
     vlbl: 'مقطع يوتيوب (عربي)',
   },
   pushup_inc: {
@@ -681,7 +681,7 @@ export const EXERCISES = {
       { b: 'اعصر مؤخرتك فوق ثانية كاملة' },
       ' ولا تقوّس ظهرك عشان ترتفع أكثر. أرحم تمرين على ركبتك بالكامل.',
     ],
-    v: 'https://www.youtube.com/watch?v=IW-T7sfdiFQ',
+    v: 'https://www.youtube.com/watch?v=n6JiF2jp2Ns',
     vlbl: 'مقطع يوتيوب',
   },
   superman: {
@@ -700,7 +700,7 @@ export const EXERCISES = {
       { b: 'وعينك على الأرض مو للأمام' },
       ' عشان رقبتك تبقى امتداد لظهرك. ارتفاع بسيط يكفي — هذا تمرين تحمّل مو قوة.',
     ],
-    v: 'https://www.youtube.com/watch?v=aVzSwIgOhtI',
+    v: 'https://www.youtube.com/watch?v=z6PJMT2y8GQ',
     vlbl: 'مقطع يوتيوب',
   },
 
