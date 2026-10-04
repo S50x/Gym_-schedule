@@ -1,13 +1,13 @@
 import { el, richText } from '../dom.js';
-import { fmt, bulletList, toast } from '../ui.js';
+import { fmt, bulletList } from '../ui.js';
 import { DAY_NAMES, goalOf } from '../program.js';
 import {
-  safeTarget,
   avgCal,
   avgPro,
   measuredTDEE,
   proteinTarget,
   effectiveTdee,
+  formulaTdee,
   dailyTarget,
 } from '../engine.js';
 
@@ -43,17 +43,14 @@ export function renderNutri(ctx) {
     );
   }
 
-  const nut = store.doc.nutrition;
-  // Recomputed from today's weight every time this page opens, so the target
-  // follows the body instead of the number it had on day one.
-  const tdee = effectiveTdee(nut, bodyWeight);
-  const target = dailyTarget(nut, bodyWeight, goalKey);
-  const protein = proteinTarget(bodyWeight, goalKey);
+  // Recomputed from today's weight and the whole log every time this page
+  // opens, so the target follows the body instead of the number it had on day one.
+  const { tdee, target, protein } = numbers(store, bodyWeight, goalKey);
 
   /* ── day rows ── */
   const summaryBox = el('div', {});
   const paint = () =>
-    summaryBox.replaceChildren(summaryCard(store, wk, bodyWeight, ctx, goalKey));
+    summaryBox.replaceChildren(summaryCard(store, wk, bodyWeight, goalKey));
 
   const commit = (index, field, raw, input) => {
     const max = field === 'd' ? 20000 : 1000;
@@ -166,11 +163,26 @@ export function renderNutri(ctx) {
  * The original file carried this block twice — once in the page and once in a
  * "summary" helper — and the two copies had already drifted. One copy now.
  */
-function summaryCard(store, wk, bodyWeight, ctx, goalKey) {
+/**
+ * Maintenance, target and protein for today. Maintenance starts at the formula
+ * and is re-learned from the whole log on every call, so a new week of data
+ * moves it without anyone pressing a button.
+ */
+function numbers(store, bodyWeight, goalKey) {
   const nut = store.doc.nutrition;
-  const tdee = effectiveTdee(nut, bodyWeight);
-  const target = dailyTarget(nut, bodyWeight, goalKey);
-  const protein = proteinTarget(bodyWeight, goalKey);
+  const formula = formulaTdee(nut, bodyWeight);
+  const learned = measuredTDEE(store.calHist(), store.bodyHist(), formula);
+  return {
+    formula,
+    learned,
+    tdee: effectiveTdee(nut, bodyWeight, learned?.val),
+    target: dailyTarget(nut, bodyWeight, goalKey, learned?.val),
+    protein: proteinTarget(bodyWeight, goalKey),
+  };
+}
+
+function summaryCard(store, wk, bodyWeight, goalKey) {
+  const { tdee, target, protein, formula, learned: measured } = numbers(store, bodyWeight, goalKey);
   const cal = store.week(wk).cal || { d: [], p: [] };
   const avg = avgCal(cal);
   const pro = avgPro(cal);
@@ -255,52 +267,38 @@ function summaryCard(store, wk, bodyWeight, ctx, goalKey) {
     }
   }
 
-  /* measured maintenance */
-  const measured = measuredTDEE(store.calHist(), store.bodyHist());
+  /* learned maintenance */
   if (measured) {
-    const diff = measured.val - tdee;
+    const diff = measured.val - formula;
     const close = Math.abs(diff) < 150;
     const explanation = close
-      ? 'قريب من التقدير، يعني المعادلة كانت مضبوطة عليك.'
+      ? 'قريب من تقدير المعادلة، يعني المعادلة مضبوطة عليك.'
       : diff < 0
-        ? `أقل من التقدير بـ ${fmt(Math.abs(diff))} سعرة. جسمك يحرق أقل مما توقعنا، فهدفك لازم يتعدّل.`
-        : `أعلى من التقدير بـ ${fmt(diff)} سعرة. جسمك يحرق أكثر مما توقعنا.`;
+        ? `أقل من المعادلة بـ ${fmt(Math.abs(diff))} سعرة — جسمك يحرق أقل مما توقعنا.`
+        : `أعلى من المعادلة بـ ${fmt(diff)} سعرة — جسمك يحرق أكثر مما توقعنا.`;
 
-    const card = el(
-      'div',
-      { class: ['verdict', close ? 'go' : 'hold'] },
-      el('h4', {}, 'سعراتك الحقيقية: ', el('span', { class: 'n', text: fmt(measured.val) })),
+    parts.push(
       el(
-        'p',
-        {},
-        ...richText([
-          'هذا محسوب من ',
-          { b: 'أكلك الفعلي مقابل تغير وزنك' },
-          ` عبر ${measured.weeks} أسبوع — مو من معادلة. ${explanation}`,
-        ])
+        'div',
+        { class: ['verdict', close ? 'go' : 'hold'] },
+        el('h4', {}, 'سعراتك الحقيقية: ', el('span', { class: 'n', text: fmt(measured.val) })),
+        el(
+          'p',
+          {},
+          ...richText([
+            `بدأنا من المعادلة (${fmt(formula)}) وكل أسبوع نقارن `,
+            { b: 'أكلك الفعلي مقابل اتجاه وزنك' },
+            ` ونعدّل خطوة صغيرة — ${measured.weeks} أسبوع لين الحين. ${explanation} هدفك يتحدّث تلقائياً.`,
+          ])
+        ),
+        ...measured.samples.map((s) =>
+          el('div', {
+            class: 'mut',
+            text: `أسبوع ${s.week}: أكلك ${fmt(s.avg)} · وزنك ${s.trendKg > 0 ? '+' : ''}${s.trendKg} كجم → ${fmt(s.est)}`,
+          })
+        )
       )
     );
-
-    if (!close) {
-      card.appendChild(
-        el('button', {
-          class: 'cta',
-          text: `حدّث هدفي إلى ${fmt(safeTarget(measured.val, goalKey))}`,
-          on: {
-            click: () => {
-              // Stored as an override: it came from real data, so it beats the
-              // formula from here on — but the target still tracks the goal.
-              store.updateNutrition((n) => {
-                n.measuredTdee = measured.val;
-              });
-              toast('انحدّث هدفك');
-              ctx.refresh();
-            },
-          },
-        })
-      );
-    }
-    parts.push(card);
   }
 
   const box = document.createDocumentFragment();
