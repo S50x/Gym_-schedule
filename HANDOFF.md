@@ -364,7 +364,13 @@ like `nutrition`. **Rules that must not be broken:**
    `pushup` (la1o8milb8c), `glute_bridge` (IW-T7sfdiFQ), `superman` (aVzSwIgOhtI).
 6. **Gemini needs nothing from the owner** — each user pastes their own free key
    in Account → «قراءة الأكل بالصور». Optional env: `GEMINI_MODEL` (default
-   `gemini-flash-latest`), `FOOD_SCANS_PER_DAY` (default 30).
+   `gemini-flash-lite-latest` — ~500 free requests/day per key, where full
+   Flash allows 20), then `gemini-3.1-flash-lite` (another 500/day on its own
+   quota), then `GEMINI_FALLBACK_MODEL` (default `gemini-flash-latest`). Each is
+   tried once, moving on for 5xx/429/404/timeout (quotas are per model; a 404
+   means the id is wrong — the `gemini` warning in the Render log names it).
+   `GEMINI_MODELS` (comma-separated) replaces the whole list.
+   `FOOD_SCANS_PER_DAY` (default 30).
 
 Render service `hadeed-saad` (Oregon, same region as Neon) is set by hand, so
 `render.yaml` is documentation, not config. Its dashboard now has
