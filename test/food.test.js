@@ -228,22 +228,20 @@ test('food scanning API', async (t) => {
     const warn = console.warn;
     console.warn = (...args) => logged.push(JSON.stringify(args));
     try {
-      // Busy once: the second try answers.
+      // Busy once: the other model answers — Lite first, then full Flash.
       calls = [];
       failWith = [overloaded()];
       res = await client.post('/api/food/scan', { image: IMAGE });
       assert.equal(res.status, 200);
-      assert.equal(calls.filter((c) => c.op === 'generate').length, 2);
+      const models = calls.filter((c) => c.op === 'generate').map((c) => c.req.model);
+      assert.deepEqual(models, ['gemini-flash-lite-latest', 'gemini-flash-latest']);
 
-      // Busy twice: the lighter model gets the third try.
+      // One model's free quota used up: the other model has its own.
       calls = [];
-      failWith = [overloaded(), overloaded()];
+      failWith = [Object.assign(new Error('Resource exhausted'), { status: 429 })];
       res = await client.post('/api/food/scan', { image: IMAGE });
       assert.equal(res.status, 200);
-      const models = calls.filter((c) => c.op === 'generate').map((c) => c.req.model);
-      assert.equal(models.length, 3);
-      assert.equal(models[0], models[1]);
-      assert.notEqual(models[2], models[0]);
+      assert.equal(calls.filter((c) => c.op === 'generate').length, 2);
 
       // Busy every time: the user gets the code to report back.
       failWith = overloaded();
