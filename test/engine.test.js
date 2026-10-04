@@ -16,6 +16,10 @@ import {
   avgCal,
   todayKey,
   formatRest,
+  macroTargets,
+  mealTotals,
+  mealAlerts,
+  slotForHour,
 } from '../public/js/engine.js';
 import fs from 'node:fs';
 import { FIGURE_IDS, figureOf, hasFigure, hasPhoto, PHOTO_IDS, photoFrame } from '../public/js/figure.js';
@@ -922,5 +926,53 @@ test('program data integrity', async (t) => {
       assert.equal(typeof rest, 'number');
       assert.ok(rest > 0 && rest <= 600, `${id} rest = ${rest}`);
     }
+  });
+});
+
+test('meals and macros', async (t) => {
+  await t.test('targets add back up to the calories', () => {
+    const tg = macroTargets(2200, 90, 'cut');
+    assert.equal(tg.protein, 180);
+    assert.ok(tg.fat >= 54, 'fat never under 0.6 g/kg');
+    const kcal = tg.protein * 4 + tg.fat * 9 + tg.carbs * 4;
+    assert.ok(Math.abs(kcal - 2200) <= 6, `macros add to ${kcal}`);
+  });
+
+  await t.test('carbs never go negative on a very low target', () => {
+    assert.equal(macroTargets(900, 120, 'cut').carbs, 0);
+  });
+
+  await t.test('no meals is not logged, not zero', () => {
+    assert.equal(mealTotals([]), null);
+    assert.equal(mealTotals(undefined), null);
+    assert.deepEqual(mealTotals([{ k: 500, p: 30.5, f: 10, c: 60 }, { k: 250, p: 20 }]), {
+      kcal: 750,
+      protein: 51,
+      fat: 10,
+      carbs: 60,
+    });
+  });
+
+  await t.test('alerts: over now, protein short only late on the day itself', () => {
+    const targets = { kcal: 2000, protein: 160, fat: 60, carbs: 200 };
+    assert.deepEqual(mealAlerts(null, targets), []);
+    const over = mealAlerts({ kcal: 2300, protein: 170, fat: 80, carbs: 210 }, targets);
+    assert.deepEqual(over.map((a) => a.key), ['kcal', 'fat']);
+    const lunch = { kcal: 900, protein: 50, fat: 30, carbs: 100 };
+    assert.deepEqual(mealAlerts(lunch, targets, { isToday: true, hour: 13 }), []);
+    assert.deepEqual(
+      mealAlerts(lunch, targets, { isToday: true, hour: 21 }).map((a) => a.key),
+      ['protein']
+    );
+    // A past day is finished, so a short day shows straight away.
+    assert.deepEqual(mealAlerts(lunch, targets).map((a) => a.key), ['protein']);
+  });
+
+  await t.test('the tag follows the clock', () => {
+    assert.equal(slotForHour(8), 0);
+    assert.equal(slotForHour(13), 1);
+    assert.equal(slotForHour(20), 2);
+    assert.equal(slotForHour(16), 3);
+    assert.equal(slotForHour(2), 3);
   });
 });

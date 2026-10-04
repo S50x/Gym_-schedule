@@ -380,6 +380,93 @@ export function proteinTarget(kg, goalKey = DEFAULT_GOAL) {
   return Math.round(kg * goalOf(goalKey).nutrition.proteinPerKg);
 }
 
+/* ────────────────────────── meals and macros ────────────────────────── */
+
+/** Calories per gram. */
+const KCAL_PER_G = { p: 4, f: 9, c: 4 };
+
+/**
+ * The day's four targets. Protein comes from the goal; fat is about a quarter
+ * of the calories but never under 0.6 g/kg (hormones need it); carbs fill
+ * whatever is left. Carbs are the flexible part — cutting them is how the
+ * deficit is made, so they absorb the difference rather than protein or fat.
+ */
+export function macroTargets(kcal, kg, goalKey = DEFAULT_GOAL) {
+  const protein = proteinTarget(kg, goalKey);
+  const fat = Math.max(Math.round(kg * 0.6), Math.round((kcal * 0.27) / KCAL_PER_G.f));
+  const carbs = Math.max(0, Math.round((kcal - protein * KCAL_PER_G.p - fat * KCAL_PER_G.f) / KCAL_PER_G.c));
+  return { kcal: Math.round(kcal), protein, fat, carbs };
+}
+
+/** Sum of a day's meals. An empty or missing list is "not logged": null, not zeros. */
+export function mealTotals(meals) {
+  if (!Array.isArray(meals) || !meals.length) return null;
+  const sum = { kcal: 0, protein: 0, fat: 0, carbs: 0 };
+  for (const m of meals) {
+    sum.kcal += Number(m.k) || 0;
+    sum.protein += Number(m.p) || 0;
+    sum.fat += Number(m.f) || 0;
+    sum.carbs += Number(m.c) || 0;
+  }
+  return {
+    kcal: Math.round(sum.kcal),
+    protein: Math.round(sum.protein),
+    fat: Math.round(sum.fat),
+    carbs: Math.round(sum.carbs),
+  };
+}
+
+/**
+ * Same-day alerts, most important first. Going over shows the moment it
+ * happens; protein short is only raised late in the evening of the day itself,
+ * because at lunch half of it simply has not been eaten yet. A day with nothing
+ * logged raises nothing — skipping a meal is a choice, not a mistake.
+ *
+ * @param {{kcal,protein,fat,carbs}|null} totals
+ * @param {{kcal,protein,fat,carbs}} targets
+ * @param {{ isToday?: boolean, hour?: number }} [when]
+ * @returns {{ key: string, level: 'over'|'short', text: string }[]}
+ */
+export function mealAlerts(totals, targets, { isToday = false, hour = 12 } = {}) {
+  if (!totals || !targets) return [];
+  const out = [];
+  const over = (key, limit, label) => {
+    if (targets[key] > 0 && totals[key] > targets[key] * limit) {
+      out.push({
+        key,
+        level: 'over',
+        text: `${label} ${totals[key]} من ${targets[key]} — فوق هدفك بـ ${totals[key] - targets[key]}`,
+      });
+    }
+  };
+  over('kcal', 1.1, 'السعرات');
+  over('fat', 1.2, 'الدهون');
+  over('carbs', 1.25, 'الكارب');
+  const dayDone = !isToday || hour >= 20;
+  if (dayDone && targets.protein > 0 && totals.protein < targets.protein * 0.7) {
+    out.push({
+      key: 'protein',
+      level: 'short',
+      text: `البروتين ${totals.protein} من ${targets.protein} — ناقص ${targets.protein - totals.protein} جرام`,
+    });
+  }
+  return out;
+}
+
+/** فطور / غدا / عشا / سناك — an optional tag on a meal, not a slot to fill. */
+export const MEAL_SLOTS = ['فطور', 'غدا', 'عشا', 'سناك'];
+
+/** A sensible default tag from the time of day; the user can change or clear it. */
+export function slotForHour(hour) {
+  if (hour >= 4 && hour < 11) return 0;
+  if (hour >= 11 && hour < 16) return 1;
+  if (hour >= 18 && hour < 23) return 2;
+  return 3;
+}
+
+/** Weeks of meal detail kept; older weeks keep their daily totals only. */
+export const MEAL_WEEKS_KEPT = 26;
+
 /** Maintenance calories from the formula alone, at today's weight. */
 export function formulaTdee(nutrition, weight) {
   if (!nutrition) return null;
