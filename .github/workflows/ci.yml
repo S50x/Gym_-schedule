@@ -29,7 +29,7 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:
-          node-version: '22'
+          node-version: '24'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run lint
@@ -49,8 +49,8 @@ jobs:
       matrix:
         # The exact floor from package.json engines — pinned, because '20'
         # resolves to the latest 20.x and would never test the floor itself —
-        # and the version the Dockerfile actually ships.
-        node: ['20.19', '22']
+        # and the version production runs (Dockerfile, and Render via .node-version).
+        node: ['20.19', '24']
     steps:
       - uses: actions/checkout@v5
       # Reads the pnpm version from package.json's packageManager field.
@@ -87,7 +87,7 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:
-          node-version: '22'
+          node-version: '24'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # PGlite is a WASM build of Postgres and never touches the `pg` driver,
@@ -109,7 +109,7 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:
-          node-version: '22'
+          node-version: '24'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
 
