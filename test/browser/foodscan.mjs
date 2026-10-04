@@ -82,6 +82,11 @@ export default async function run({ base, browser, problems, step }) {
   await step('a scan fills the meal and marks what it could not read', async () => {
     await tab(page, 'nutri');
     await page.waitForSelector('.scanbtn', { timeout: 5000 });
+    // Only the big button shows; the native "Choose File" control once
+    // appeared under it on iPhone.
+    if (await page.locator('.mpanel input[type=file]').isVisible()) {
+      throw new Error('the file input is visible');
+    }
     await page.locator('.mpanel input[type=file]').setInputFiles({
       name: 'label.png',
       mimeType: 'image/png',

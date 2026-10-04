@@ -195,10 +195,12 @@ export function scanActions(ctx, form) {
     return box;
   }
 
+  // `hidden`, not a visually-hidden class: iPhone Safari still drew the native
+  // "Choose File" control with the class on, and .click() opens it either way.
   const fileInput = el('input', {
     type: 'file',
     accept: 'image/*',
-    class: 'vh',
+    hidden: true,
     attrs: { 'aria-label': 'اختر صورة' },
   });
   const info = el('div', {});
@@ -263,9 +265,13 @@ export function scanActions(ctx, form) {
         keyState = null;
         return showGuide();
       }
+      const detail = err instanceof ApiError ? err.body?.detail : null;
       info.replaceChildren(
         el('div', { class: 'formerr', text: err.message === 'too big' ? 'الصورة كبيرة زيادة. جرّب صورة ثانية.' : message(err) })
       );
+      // A code the user can read back ("503", "timeout") turns the next report
+      // into something that can be looked up.
+      if (detail) info.appendChild(el('div', { class: 'mut ecode', text: `رمز: ${detail}` }));
     } finally {
       button.disabled = false;
     }
