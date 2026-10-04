@@ -228,20 +228,29 @@ test('food scanning API', async (t) => {
     const warn = console.warn;
     console.warn = (...args) => logged.push(JSON.stringify(args));
     try {
-      // Busy once: the other model answers — Lite first, then full Flash.
+      const tried = () => calls.filter((c) => c.op === 'generate').map((c) => c.req.model);
+
+      // Busy once: the next model answers — Lite, then 3.1 Lite, then Flash.
       calls = [];
       failWith = [overloaded()];
       res = await client.post('/api/food/scan', { image: IMAGE });
       assert.equal(res.status, 200);
-      const models = calls.filter((c) => c.op === 'generate').map((c) => c.req.model);
-      assert.deepEqual(models, ['gemini-flash-lite-latest', 'gemini-flash-latest']);
+      assert.deepEqual(tried(), ['gemini-flash-lite-latest', 'gemini-3.1-flash-lite']);
 
-      // One model's free quota used up: the other model has its own.
+      // Both Lites out of their free quota: full Flash has its own.
       calls = [];
-      failWith = [Object.assign(new Error('Resource exhausted'), { status: 429 })];
+      const exhausted = () => Object.assign(new Error('Resource exhausted'), { status: 429 });
+      failWith = [exhausted(), exhausted()];
       res = await client.post('/api/food/scan', { image: IMAGE });
       assert.equal(res.status, 200);
-      assert.equal(calls.filter((c) => c.op === 'generate').length, 2);
+      assert.deepEqual(tried(), ['gemini-flash-lite-latest', 'gemini-3.1-flash-lite', 'gemini-flash-latest']);
+
+      // A model id Google does not know is skipped, not fatal.
+      calls = [];
+      failWith = [Object.assign(new Error('models/x is not found'), { status: 404 })];
+      res = await client.post('/api/food/scan', { image: IMAGE });
+      assert.equal(res.status, 200);
+      assert.equal(tried().length, 2);
 
       // Busy every time: the user gets the code to report back.
       failWith = overloaded();
