@@ -28,7 +28,7 @@
 
 ## شغّله على جهازك
 
-يحتاج Node.js نسخة 20 أو أحدث، و pnpm (فعّله مرة وحدة بـ `corepack enable`).
+يحتاج Node.js نسخة 20 أو أحدث، و pnpm (`npm i -g pnpm@10.28.0`، أو `corepack enable` على Node 24 وأقدم).
 
 ```bash
 pnpm install
@@ -107,8 +107,8 @@ Render يقرأ الملف، وينشئ **الخدمة وقاعدة البيان
 
 | الإعداد | القيمة |
 |---|---|
-| Build Command | `corepack enable && pnpm install --frozen-lockfile` |
-| Start Command | `pnpm start` |
+| Build Command | `npx --yes pnpm@10.28.0 install --frozen-lockfile` |
+| Start Command | `node server/index.js` |
 | Health Check Path | `/api/health` |
 
 ومتغيرات البيئة:

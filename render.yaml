@@ -28,9 +28,11 @@ services:
     plan: free
     region: frankfurt
     branch: main
-    # Corepack ships with Node and installs the pnpm version package.json pins.
-    buildCommand: corepack enable && pnpm install --frozen-lockfile
-    startCommand: pnpm start
+    # Not Corepack: Render picks the newest Node that satisfies engines, and
+    # Node 25+ no longer ships Corepack. npx fetches the same pnpm version
+    # package.json pins. Start with node directly so the runtime needs no pnpm.
+    buildCommand: npx --yes pnpm@10.28.0 install --frozen-lockfile
+    startCommand: node server/index.js
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
