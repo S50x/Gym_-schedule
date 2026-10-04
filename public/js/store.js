@@ -22,7 +22,7 @@ import {
   migrateSetsKeys,
   setsByExercise,
 } from './program.js';
-import { progress, verdict, MAX_WEEK } from './engine.js';
+import { progress, verdict, MAX_WEEK, mealTotals, MEAL_WEEKS_KEPT } from './engine.js';
 
 const KEY = 'hadeed:doc';
 const META_KEY = 'hadeed:sync';
@@ -42,7 +42,17 @@ export function emptyDoc() {
 }
 
 export function emptyWeek() {
-  return { ts: 0, weights: {}, sets: {}, fb: {}, cardio: {}, cmach: {}, body: null, cal: { d: [], p: [] } };
+  return {
+    ts: 0,
+    weights: {},
+    sets: {},
+    fb: {},
+    cardio: {},
+    cmach: {},
+    body: null,
+    cal: { d: [], p: [] },
+    meals: {},
+  };
 }
 
 class Store extends EventTarget {
@@ -299,6 +309,55 @@ class Store extends EventTarget {
       if (Number.isFinite(weight)) return weight;
     }
     return null;
+  }
+
+  /**
+   * Add, change or remove one meal, then rewrite that day's totals in
+   * `week.cal` from the meals — the totals are what the calorie learning and
+   * the averages read, so they must never disagree with the list.
+   *
+   * @param {number} weekNumber
+   * @param {number} day  weekday index, Sat=0 … Fri=6
+   * @param {(meals: object[]) => object[]} change  returns the new list
+   */
+  updateMeals(weekNumber, day, change) {
+    // Before the update, so the write that follows persists the pruning too.
+    this.pruneMeals();
+    this.update(weekNumber, (w) => {
+      const meals = { ...(w.meals || {}) };
+      const next = change([...(meals[day] || [])]);
+      if (next.length) meals[day] = next;
+      else delete meals[day];
+      w.meals = meals;
+
+      const cal = {
+        d: [...(w.cal?.d || [])],
+        p: [...(w.cal?.p || [])],
+        f: [...(w.cal?.f || [])],
+        c: [...(w.cal?.c || [])],
+      };
+      for (const key of ['d', 'p', 'f', 'c']) while (cal[key].length < 7) cal[key].push(0);
+      const sum = mealTotals(next);
+      cal.d[day] = sum ? Math.min(20000, sum.kcal) : 0;
+      cal.p[day] = sum ? Math.min(1000, sum.protein) : 0;
+      cal.f[day] = sum ? Math.min(2000, sum.fat) : 0;
+      cal.c[day] = sum ? Math.min(3000, sum.carbs) : 0;
+      w.cal = cal;
+    });
+  }
+
+  /**
+   * Meal detail is kept for the last MEAL_WEEKS_KEPT weeks; older weeks keep
+   * only their daily totals. That is what keeps the synced document far under
+   * its size cap however long someone logs.
+   */
+  pruneMeals() {
+    const oldest = this.currentWeek - MEAL_WEEKS_KEPT;
+    for (const [key, week] of Object.entries(this.doc.weeks)) {
+      if (Number(key) <= oldest && week.meals && Object.keys(week.meals).length) {
+        this.doc.weeks[key] = { ...week, meals: {} };
+      }
+    }
   }
 
   updateNutrition(mutator) {
