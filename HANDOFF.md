@@ -360,8 +360,9 @@ like `nutrition`. **Rules that must not be broken:**
    clear the old service-worker cache.
 4. **The persistence check:** create account → log a workout → redeploy → confirm
    both survive. This is the exact scenario that lost data on SQLite.
-5. **Three videos are private** and need replacements the user picks:
-   `pushup` (la1o8milb8c), `glute_bridge` (IW-T7sfdiFQ), `superman` (aVzSwIgOhtI).
+5. **Videos:** the three that went private were replaced — `pushup` →
+   IrFe6GGO8Pw (Arabic, beginner form), `glute_bridge` → n6JiF2jp2Ns,
+   `superman` → z6PJMT2y8GQ. The weekly «Video links» workflow flags the next one.
 6. **Gemini needs nothing from the owner** — each user pastes their own free key
    in Account → «قراءة الأكل بالصور». Optional env: `GEMINI_MODEL` (default
    `gemini-flash-lite-latest` — ~500 free requests/day per key, where full
