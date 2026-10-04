@@ -22,7 +22,7 @@ import {
   migrateSetsKeys,
   setsByExercise,
 } from './program.js';
-import { progress, verdict, MAX_WEEK, mealTotals, MEAL_WEEKS_KEPT } from './engine.js';
+import { progress, verdict, MAX_WEEK, mealTotals, MEAL_WEEKS_KEPT, rememberFood } from './engine.js';
 
 const KEY = 'hadeed:doc';
 const META_KEY = 'hadeed:sync';
@@ -38,7 +38,7 @@ export const SYNC = {
 };
 
 export function emptyDoc() {
-  return { schema: 1, meta: { week: 1 }, weeks: {}, nutrition: null, profile: null };
+  return { schema: 1, meta: { week: 1 }, weeks: {}, nutrition: null, profile: null, foods: [] };
 }
 
 export function emptyWeek() {
@@ -356,6 +356,14 @@ class Store extends EventTarget {
     });
   }
 
+  /** Remember a saved meal's name and numbers for next time. */
+  rememberFood(meal) {
+    const next = rememberFood(this.doc.foods, meal);
+    if (next === this.doc.foods) return;
+    this.doc.foods = next;
+    this.persist();
+  }
+
   /**
    * Meal detail is kept for the last MEAL_WEEKS_KEPT weeks; older weeks keep
    * only their daily totals. That is what keeps the synced document far under
@@ -558,6 +566,7 @@ function normalize(doc) {
   out.meta.week = clampWeek(doc.meta?.week || 1);
   out.nutrition = doc.nutrition || null;
   out.profile = doc.profile || null;
+  out.foods = Array.isArray(doc.foods) ? doc.foods : [];
   // Set logs used to be keyed by exercise id alone. Every load lifts whatever
   // is still on the old shape onto day-scoped keys, so a document written by an
   // older version — or logged under a goal the user has since left and come

@@ -2544,3 +2544,16 @@ a.cta {
 .scanbtn {
   margin-top: 0;
 }
+.fpicks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+}
+.fpick {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

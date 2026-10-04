@@ -20,6 +20,12 @@ import {
   mealTotals,
   mealAlerts,
   slotForHour,
+  foodKey,
+  rememberFood,
+  suggestFoods,
+  knownFood,
+  mealHabits,
+  MAX_FOODS,
 } from '../public/js/engine.js';
 import fs from 'node:fs';
 import { FIGURE_IDS, figureOf, hasFigure, hasPhoto, PHOTO_IDS, photoFrame } from '../public/js/figure.js';
@@ -1038,5 +1044,73 @@ test('rest days chosen by the trainee', async (t) => {
     const week = weekOf('cut', [0]);
     assert.equal(week[0].rest, 1);
     assert.equal(week.filter((d) => d.lift).length, daysOf('cut').length);
+  });
+});
+
+test('learning from what was eaten', async (t) => {
+  const meal = (n, k = 100, extra = {}) => ({ id: `m${n.length}${k}`, n, k, p: 5, f: 2, c: 10, ...extra });
+
+  await t.test('one spelling per food', () => {
+    assert.equal(foodKey('  أرزّ  بالدجاج '), foodKey('ارز بالدجاج'));
+    assert.equal(foodKey('سلطة'), foodKey('سلطه'));
+    assert.equal(foodKey('Greek Yogurt'), foodKey('greek  yogurt'));
+  });
+
+  await t.test('the last saved numbers win — the user’s correction sticks', () => {
+    let foods = rememberFood([], meal('شوفان', 350), 1);
+    foods = rememberFood(foods, meal('شوفان', 300), 2);
+    assert.equal(foods.length, 1);
+    assert.equal(foods[0].k, 300);
+    assert.equal(foods[0].u, 2);
+    assert.equal(knownFood(foods, 'شوفان ').k, 300);
+    assert.equal(rememberFood(foods, meal('', 50)), foods, 'no name, nothing remembered');
+  });
+
+  await t.test('the list never grows past its cap, dropping the stalest', () => {
+    let foods = [];
+    for (let i = 0; i < MAX_FOODS + 5; i++) foods = rememberFood(foods, meal(`أكل ${i}`), i);
+    assert.equal(foods.length, MAX_FOODS);
+    assert.ok(!knownFood(foods, 'أكل 0'));
+    assert.ok(knownFood(foods, `أكل ${MAX_FOODS + 4}`));
+  });
+
+  await t.test('suggestions: usual foods when empty, starts-with first while typing', () => {
+    const now = 10 * 24 * 3600 * 1000;
+    let foods = [];
+    foods = rememberFood(foods, meal('بيض مسلوق'), now);
+    foods = rememberFood(foods, meal('لبن'), now);
+    foods = rememberFood(foods, meal('لبن'), now);
+    foods = rememberFood(foods, meal('خبز بيض'), now);
+    assert.equal(suggestFoods(foods, '', 6, now)[0].n, 'لبن');
+    assert.deepEqual(suggestFoods(foods, 'بيض', 5, now).map((f) => f.n), ['بيض مسلوق', 'خبز بيض']);
+    assert.deepEqual(suggestFoods(foods, 'لبن', 5, now), [], 'an exact match is not suggested back');
+  });
+
+  await t.test('habits: a weekday over again and again, protein short, heavy snacks', () => {
+    const targets = { kcal: 2000, protein: 160, fat: 60, carbs: 200 };
+    const day = (k, p, f, s = 1) => [{ id: 'a', n: 'x', s, k, p, f, c: 0 }];
+    const weeks = {};
+    for (let w = 1; w <= 4; w++) {
+      weeks[String(w)] = {
+        meals: {
+          0: day(1800, 100, 50),
+          1: day(1900, 100, 50),
+          // Thursday, every week: over, mostly snacks.
+          5: [...day(1200, 50, 40), ...day(1400, 20, 40, 3)],
+        },
+      };
+    }
+    const tips = mealHabits(weeks, 5, targets);
+    assert.equal(tips.length, 2);
+    assert.equal(tips[0].key, 'weekday');
+    assert.ok(tips[0].text.includes('الخميس'));
+    assert.equal(tips[1].key, 'protein');
+  });
+
+  await t.test('habits stay quiet without enough history, and ignore unlogged days', () => {
+    const targets = { kcal: 2000, protein: 160, fat: 60, carbs: 200 };
+    assert.deepEqual(mealHabits({ 1: { meals: {} }, 2: {} }, 3, targets), []);
+    const empty = { 1: { meals: {} }, 2: { meals: {} }, 3: { meals: {} }, 4: { meals: {} } };
+    assert.deepEqual(mealHabits(empty, 5, targets), []);
   });
 });

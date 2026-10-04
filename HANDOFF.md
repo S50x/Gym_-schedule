@@ -11,7 +11,9 @@
 
 A single 1124-line Arabic localStorage HTML file became a deployed, tested,
 hardened Node app: accounts, Postgres, cross-device sync, optional 2FA, strict
-CSP, and six training goals that reshape the whole programme.
+CSP, and six training goals that reshape the whole programme — plus rest days
+the trainee picks, meal logging with all four macros, reading a meal from a
+photo on the user's own free Gemini key, and a food memory that learns.
 
 **The code is complete and green. The remaining work is on the user's side, in
 the Render and Neon dashboards.** Do not rewrite what already works.
@@ -23,10 +25,12 @@ the Render and Neon dashboards.** Do not rewrite what already works.
 ## 1. Current state (verified)
 
 ```
-main:    7e239d8   (PR #23 merged — the glass redesign; the icon fix is on a new branch)
-tests:   pnpm test     → 266 pass / 0 fail    (~17s, PGlite in-process)
-browser: pnpm run browser → 12 journeys clean (~2m30s, boots its own server)
-code:    ~9,700 lines across 29 modules; 5 runtime deps, 2 dev
+main:    231c798   (PR #34 merged — meals). Open when written: #35 Gemini scan,
+         #36 null hotfix, and the food-learning branch (this file's update).
+tests:   pnpm test     → 314 pass / 0 fail    (~20s, PGlite in-process)
+browser: pnpm run browser → 15 journeys clean (~3m, boots its own server)
+code:    ~11,700 lines across 35 modules; 6 runtime deps, 5 dev
+tooling: pnpm 10.28 (pinned via packageManager), Node 24 LTS everywhere
 assets:  public/img/ex/v2 — 28 WebP frames, 463 KB (graded; originals in scripts/photo-src)
          public/img/icon* — 140 KB (was 34: glass is gradients, and PNG
          charges for them; see §11)
@@ -51,10 +55,12 @@ the way you treat this file: **re-derive it from the code before trusting it**
 if the code has moved since.
 
 CI runs on every PR and every push to `main` (`.github/workflows/ci.yml`): five
-jobs in parallel — `lint`, `test` (Node 20 and 22 on PGlite), `test-postgres`
+jobs in parallel — `lint`, `test` (Node 20.19 and 24 on PGlite), `test-postgres`
 (the same suite against a real postgres:17 service), `browser`, and `docker`
-(builds the image and proves it answers `/api/health`). There is no scheduled
-watcher running. **Run `pnpm run lint` before you push** — it is a merge gate
+(builds the image and proves it answers `/api/health`). A second workflow,
+`.github/workflows/videos.yml`, checks every YouTube link through YouTube's
+oEmbed endpoint every Monday and on PRs touching `program.js` — kept separate so
+a video vanishing upstream never blocks an unrelated merge. **Run `pnpm run lint` before you push** — it is a merge gate
 now, not a suggestion.
 
 Shipped in order: cross-device sync + 25 bug fixes → 2FA → Postgres → TLS and
@@ -69,7 +75,24 @@ them (#15) → set logs keyed by day, not by exercise alone (#16) → a drawn fi
 per movement, then a photographed one where the public-domain set has it →
 per-route rate limits on the three endpoints the global ceiling was too loose
 for, plus the email check the login forms were missing (see §4) → the liquid-glass
-redesign: three themes, new tab icons, a glass app icon (see §11).
+redesign: three themes, new tab icons, a glass app icon (see §11) → "real
+calories" learned week by week instead of frozen (#28) → npm → pnpm (#29), Render
+build fixed for Node 26 (#30), then Node 24 pinned everywhere (#31) → weekly
+YouTube link check (#32) → rest days the trainee picks (#33) → meals with
+kcal/protein/fat/carbs (#34) → reading a meal from a photo with Gemini (#35) →
+a food memory and habit tips (food-learning branch).
+
+**Today's model of the newer pieces** (all in the synced document unless noted):
+- `profile.restDays` — weekday indexes, Sat=0…Fri=6. `arrangeWeek()` in
+  `program.js` lays the goal out around them; `null` = the goal's own week,
+  byte-identical to before. Storage keys never move (lift ids, cardio by weekday).
+- `weeks[n].meals[day]` — optional meals `{id,n,s,k,p,f,c,src,t}`; `weeks[n].cal`
+  now also carries `f` and `c`, rewritten from the meals on every change so
+  `measuredTDEE` keeps reading the same totals. Meal detail kept 26 weeks.
+- `foods` — up to 300 remembered foods with the user's last-saved numbers;
+  merged food-by-food across devices (newest use wins).
+- `user_secrets` (server table, migration 4) — the user's own Gemini key,
+  AES-256-GCM, never returned. Not in the synced document.
 
 ## 2. What the app is
 
@@ -319,6 +342,16 @@ like `nutrition`. **Rules that must not be broken:**
   and deliberately does **not** sign the user in: if 2FA is on, they still clear
   the second factor at the next login, so a reset can never bypass it.
 
+- **Users' Gemini keys:** each user's key is checked with Google (a free model
+  lookup), sealed with AES-256-GCM under a key HKDF-derived from
+  `SESSION_SECRET`, and only its last four characters ever leave the server.
+  Rotating `SESSION_SECRET` makes stored keys unreadable — the app then shows
+  "no key" and the user pastes theirs again. Scans: 30/day/user
+  (`FOOD_SCANS_PER_DAY`), key saves 10/hour, image ≤ ~560 KB base64 checked
+  before any call, and the model's JSON is clamped and cleaned as untrusted
+  (it is reading text a stranger printed). No image is stored. Tests use a fake
+  client (`setGeminiClientFactory`) — the suite never calls Google.
+
 ## 5. What the USER still has to do
 
 1. **Redeploy on Render** to pick up whatever has merged since the last deploy.
@@ -327,6 +360,17 @@ like `nutrition`. **Rules that must not be broken:**
    clear the old service-worker cache.
 4. **The persistence check:** create account → log a workout → redeploy → confirm
    both survive. This is the exact scenario that lost data on SQLite.
+5. **Three videos are private** and need replacements the user picks:
+   `pushup` (la1o8milb8c), `glute_bridge` (IW-T7sfdiFQ), `superman` (aVzSwIgOhtI).
+6. **Gemini needs nothing from the owner** — each user pastes their own free key
+   in Account → «قراءة الأكل بالصور». Optional env: `GEMINI_MODEL` (default
+   `gemini-flash-latest`), `FOOD_SCANS_PER_DAY` (default 30).
+
+Render service `hadeed-saad` (Oregon, same region as Neon) is set by hand, so
+`render.yaml` is documentation, not config. Its dashboard now has
+Build `npx --yes pnpm@10.28.0 install --frozen-lockfile` and Start
+`node server/index.js` (confirmed live). Node comes from `.node-version` (24).
+Restore point from before pnpm: branch `backup/before-pnpm`.
 
 Render env vars: `DATABASE_URL` (Neon), `SESSION_SECRET` (Render's Generate
 button), `ORIGIN` (exact domain, **no trailing slash** — a trailing `/` makes CSRF
@@ -458,11 +502,11 @@ that breaks one, no existing test notices.
 ```bash
 pnpm install
 pnpm run lint              # ESLint — error-catching rules only, no formatting
-pnpm test                  # 258 unit tests on PGlite — no database to install
+pnpm test                  # 314 unit tests on PGlite — no database to install
 pnpm start                 # http://localhost:3000 (PGlite in ./data if no DATABASE_URL)
 pnpm run dev               # auto-restart
 
-pnpm run browser           # all 11 browser journeys
+pnpm run browser           # all 15 browser journeys
 pnpm run browser -- goals  # just the ones whose name matches
 node test/browser/mfa.mjs # or run one directly
 ```
@@ -504,11 +548,22 @@ Chromium binary: it looks under `PLAYWRIGHT_BROWSERS_PATH` (default
 | `reset` | the forgot-password form + the reset screen (generic reply, client validation, a dead link fails gracefully) |
 | `groups` | per-muscle-group levels: collapsed by default, the tag follows the overall level, one group moves only its own weights on screen |
 | `theme` | the three themes each paint a different screen, survive a reload, and do not overwrite the top gap in the storage key they share |
+| `meals` | today's day opens by itself; meals add up and lock the row; an over-target alert; delete back to not-logged; reload; a saved food comes back as a one-tap chip |
+| `restdays` | Sat + Tue off moves the fat-loss week (3 lifting days, Friday trains) and survives a reload |
+| `foodscan` | Gemini mocked at the network layer: the guide and its link to Google, saving a key (only last 4 shown), a scan filling the meal with the unread field highlighted |
 
 **Run these after any server-side or view change.** Every defect in §7 would have
 been caught by one of them.
 
 ## 9. Known gaps
+
+- **Three video links are private** (see §5.5); the weekly check stays red until
+  they are replaced. Do not guess replacement ids — the user chooses.
+- **Gemini quality is unverified end to end from the dev environment** — Google's
+  hosts are blocked there, so the real call has only been exercised by the user.
+  If readings look wrong, start with the prompt and schema in `server/gemini.js`.
+- **Meals are local-first like everything else**, but scanning needs an account
+  (the key lives on the server). Signed-out users see how to unlock it.
 
 - **11 of the 42 exercises have no video link:** `bench_bb` `ohp_bb` `fly_cable`
   `row_bb` `squat_bb` `goblet` `dead_bb` `hip_thrust` `lunge_db` `stepup`
@@ -571,10 +626,11 @@ been caught by one of them.
 
 ## 10. Next step for you
 
-Check `git log origin/main` first: `main` was at **3daf45e** (PR #17 merged) when
-this was written, and the branch `claude/feature-check-implement-53bbpr` — the
-rate-limit and email-validation work in §4 and §9 — was pushed but not yet
-merged. Concretely:
+Check `git log origin/main` first: `main` was at **231c798** (PR #34 merged) when
+this was written. Open then: **#35** (Gemini scan, built on #34), **#36** (a
+one-commit hotfix — an empty meal panel printed "null"; #34 merged before it
+landed), and the **food-learning** branch built on #35, which also carries this
+file. Merge in that order. Concretely:
 
 - Answer the user's questions in Arabic, one concrete step at a time.
 - **CI gates the merge now.** `pnpm run lint`, `pnpm test` and `pnpm run browser`
