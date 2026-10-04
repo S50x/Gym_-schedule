@@ -25,8 +25,8 @@ the Render and Neon dashboards.** Do not rewrite what already works.
 ## 1. Current state (verified)
 
 ```
-main:    231c798   (PR #34 merged — meals). Open when written: #35 Gemini scan,
-         #36 null hotfix, and the food-learning branch (this file's update).
+main:    92a0717   (#35 Gemini scan and #36 null hotfix merged). Open when
+         written: #37, the food-learning branch that carries this update.
 tests:   pnpm test     → 314 pass / 0 fail    (~20s, PGlite in-process)
 browser: pnpm run browser → 15 journeys clean (~3m, boots its own server)
 code:    ~11,700 lines across 35 modules; 6 runtime deps, 5 dev
@@ -626,11 +626,10 @@ been caught by one of them.
 
 ## 10. Next step for you
 
-Check `git log origin/main` first: `main` was at **231c798** (PR #34 merged) when
-this was written. Open then: **#35** (Gemini scan, built on #34), **#36** (a
-one-commit hotfix — an empty meal panel printed "null"; #34 merged before it
-landed), and the **food-learning** branch built on #35, which also carries this
-file. Merge in that order. Concretely:
+Check `git log origin/main` first: `main` was at **92a0717** (#35 and #36
+merged) when this was written, with **#37** (food memory + habits + this file)
+open. #36 was a one-commit hotfix: #34 merged one push early and an empty meal
+panel printed "null". Concretely:
 
 - Answer the user's questions in Arabic, one concrete step at a time.
 - **CI gates the merge now.** `pnpm run lint`, `pnpm test` and `pnpm run browser`
