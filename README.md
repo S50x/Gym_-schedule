@@ -28,42 +28,42 @@
 
 ## شغّله على جهازك
 
-يحتاج Node.js نسخة 20 أو أحدث.
+يحتاج Node.js نسخة 20 أو أحدث، و pnpm (فعّله مرة وحدة بـ `corepack enable`).
 
 ```bash
-npm install
+pnpm install
 cp .env.example .env
 node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"   # ← حط الناتج في SESSION_SECRET
-npm start
+pnpm start
 ```
 
 افتح <http://localhost:3000>.
 
 ما تحتاج تركّب قاعدة بيانات. لو `DATABASE_URL` فاضي، التطبيق يشغّل **Postgres مدمج داخل العملية نفسها** (PGlite) ويحفظ في مجلد `data/`. نفس لهجة SQL اللي تشتغل بالإنتاج بالضبط.
 
-للتطوير مع إعادة تشغيل تلقائية: `npm run dev`
+للتطوير مع إعادة تشغيل تلقائية: `pnpm run dev`
 
 ### قبل ما تفتح Pull Request
 
 نفس الثلاثة اللي يشغّلها CI على كل PR — شغّلها محلياً أول:
 
 ```bash
-npm run lint      # ESLint — قواعد تمسك الأخطاء، ما فيه جدال تنسيق
-npm test          # 258 اختبار وحدة (PGlite داخل العملية)
+pnpm run lint      # ESLint — قواعد تمسك الأخطاء، ما فيه جدال تنسيق
+pnpm test          # 258 اختبار وحدة (PGlite داخل العملية)
                   # ملاحظة: النمط بمستوى واحد (test/*.test.js) عشان يشتغل على Node 20 —
                   # لو أضفت مجلداً فرعياً للاختبارات عدّل السكربت في package.json
-npm run browser   # 11 رحلة بمتصفح حقيقي — يشغّل السيرفر بنفسه
+pnpm run browser   # 11 رحلة بمتصفح حقيقي — يشغّل السيرفر بنفسه
 ```
 
 `main` محمية: ما يُدمج PR إلا والفحوصات كلها خضراء.
 
-**اختبار على Postgres حقيقي** — `npm test` لحاله يستخدم PGlite، وهي نسخة WASM ما تمرّ على درايفر `pg` أصلاً. CI يشغّل الـ suite مرة ثانية على Postgres حقيقي، وتقدر تسوي نفس الشي:
+**اختبار على Postgres حقيقي** — `pnpm test` لحاله يستخدم PGlite، وهي نسخة WASM ما تمرّ على درايفر `pg` أصلاً. CI يشغّل الـ suite مرة ثانية على Postgres حقيقي، وتقدر تسوي نفس الشي:
 
 ```bash
 docker run -d --rm --name hadeed-test-db -p 5432:5432 \
   -e POSTGRES_USER=ci -e POSTGRES_PASSWORD=ci -e POSTGRES_DB=ci postgres:17-alpine
 
-TEST_DATABASE_URL='postgres://ci:ci@127.0.0.1:5432/ci' npm test
+TEST_DATABASE_URL='postgres://ci:ci@127.0.0.1:5432/ci' pnpm test
 
 docker stop hadeed-test-db
 ```
@@ -107,8 +107,8 @@ Render يقرأ الملف، وينشئ **الخدمة وقاعدة البيان
 
 | الإعداد | القيمة |
 |---|---|
-| Build Command | `npm install` |
-| Start Command | `npm start` |
+| Build Command | `corepack enable && pnpm install --frozen-lockfile` |
+| Start Command | `pnpm start` |
 | Health Check Path | `/api/health` |
 
 ومتغيرات البيئة:
@@ -191,7 +191,7 @@ public/
   fonts/            خطوط محليّة (بدون طرف ثالث)
 
 test/               173 اختبار: auth · security · state · engine · totp · qr · mfa · postgres
-test/browser/       ٧ رحلات فحص بمتصفح حقيقي (npm run browser)
+test/browser/       ٧ رحلات فحص بمتصفح حقيقي (pnpm run browser)
 docs/               BUGS.md · SECURITY.md
 render.yaml         مخطط Render — ينشئ الخدمة وقاعدة البيانات ويربطهم
 scripts/            fetch-fonts.mjs

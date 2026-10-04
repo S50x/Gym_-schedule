@@ -24,8 +24,8 @@ the Render and Neon dashboards.** Do not rewrite what already works.
 
 ```
 main:    7e239d8   (PR #23 merged — the glass redesign; the icon fix is on a new branch)
-tests:   npm test     → 266 pass / 0 fail    (~17s, PGlite in-process)
-browser: npm run browser → 12 journeys clean (~2m30s, boots its own server)
+tests:   pnpm test     → 266 pass / 0 fail    (~17s, PGlite in-process)
+browser: pnpm run browser → 12 journeys clean (~2m30s, boots its own server)
 code:    ~9,700 lines across 29 modules; 5 runtime deps, 2 dev
 assets:  public/img/ex/v2 — 28 WebP frames, 463 KB (graded; originals in scripts/photo-src)
          public/img/icon* — 140 KB (was 34: glass is gradients, and PNG
@@ -54,14 +54,14 @@ CI runs on every PR and every push to `main` (`.github/workflows/ci.yml`): five
 jobs in parallel — `lint`, `test` (Node 20 and 22 on PGlite), `test-postgres`
 (the same suite against a real postgres:17 service), `browser`, and `docker`
 (builds the image and proves it answers `/api/health`). There is no scheduled
-watcher running. **Run `npm run lint` before you push** — it is a merge gate
+watcher running. **Run `pnpm run lint` before you push** — it is a merge gate
 now, not a suggestion.
 
 Shipped in order: cross-device sync + 25 bug fixes → 2FA → Postgres → TLS and
 scale-to-zero hardening → honest network errors → safe-area fix → Volt redesign +
 height → bilingual names, cardio splitting, plank timer → progress cards →
 five goals + onboarding → live calorie target + goal review → browser journeys
-moved into the repo (`npm run browser`) → email password reset → a stringified
+moved into the repo (`pnpm run browser`) → email password reset → a stringified
 null on screen → per-muscle-group strength levels → a typed exact load and the
 weight cache that swallowed it (#13) → `fine`, so the buttons move by the rack
 and not by the weekly jump (#14) → the `cardio` goal, six days with no iron in
@@ -202,7 +202,7 @@ like `nutrition`. **Rules that must not be broken:**
   **never drops** an id the current goal does not programme — that is history
   belonging to a goal the user may switch back to.
 - **`public/img/ex/v2` is the only binary asset directory the app ships**, and it
-  is the reason `npm test` now checks file sizes: a 404 there fails silently on
+  is the reason `pnpm test` now checks file sizes: a 404 there fails silently on
   screen, because the drawing simply stays in the box.
 - **Every movement in the cardio programme has a photographed pair.**
   `public/img/ex/v2/<id>-0.webp` and `-1.webp` are the start and the end of the
@@ -217,7 +217,7 @@ like `nutrition`. **Rules that must not be broken:**
   scaled so the body is the same size and placed so the supporting hand lands on
   the same pixel, with the margins of the narrower one extended from its own
   edge pixels. Only the arm and leg move in the fade.
-  **One grade over all of them.** `npm run photos` (`scripts/grade-photos.mjs`,
+  **One grade over all of them.** `pnpm run photos` (`scripts/grade-photos.mjs`,
   Chromium canvas, no image library) regrades every pair from the originals in
   `scripts/photo-src/`: grey-world white balance, a gamma curve to one mean
   brightness (a curve, not an offset — an offset turned the dark gyms to haze),
@@ -456,18 +456,18 @@ that breaks one, no existing test notices.
 ## 8. How to run
 
 ```bash
-npm install
-npm run lint              # ESLint — error-catching rules only, no formatting
-npm test                  # 258 unit tests on PGlite — no database to install
-npm start                 # http://localhost:3000 (PGlite in ./data if no DATABASE_URL)
-npm run dev               # auto-restart
+pnpm install
+pnpm run lint              # ESLint — error-catching rules only, no formatting
+pnpm test                  # 258 unit tests on PGlite — no database to install
+pnpm start                 # http://localhost:3000 (PGlite in ./data if no DATABASE_URL)
+pnpm run dev               # auto-restart
 
-npm run browser           # all 11 browser journeys
-npm run browser -- goals  # just the ones whose name matches
+pnpm run browser           # all 11 browser journeys
+pnpm run browser -- goals  # just the ones whose name matches
 node test/browser/mfa.mjs # or run one directly
 ```
 
-**Against a real Postgres.** `npm test` alone runs on PGlite, a WASM build that
+**Against a real Postgres.** `pnpm test` alone runs on PGlite, a WASM build that
 never touches the `pg` driver — so `test/postgres.test.js`, which exists to
 guard that driver's behaviour (BIGINT parsing, SQLSTATE 23505), was not
 actually testing it. Set `TEST_DATABASE_URL` and the whole suite runs against
@@ -476,7 +476,7 @@ real Postgres, which is what the `test-postgres` CI job does:
 ```bash
 docker run -d --rm --name hadeed-test-db -p 5432:5432 \
   -e POSTGRES_USER=ci -e POSTGRES_PASSWORD=ci -e POSTGRES_DB=ci postgres:17-alpine
-TEST_DATABASE_URL='postgres://ci:ci@127.0.0.1:5432/ci' npm test
+TEST_DATABASE_URL='postgres://ci:ci@127.0.0.1:5432/ci' pnpm test
 docker stop hadeed-test-db
 ```
 
@@ -485,7 +485,7 @@ database collides — auth.test.js and reset.test.js both register the default
 address and the loser gets a 409. `startServer()` in `test/helpers.js` therefore
 cuts each call its own database and drops it on close. Leave that in place.
 
-`npm run browser` **starts its own server** on a free port against a throwaway
+`pnpm run browser` **starts its own server** on a free port against a throwaway
 database, so it works from a clean checkout with nothing set up. It needs a
 Chromium binary: it looks under `PLAYWRIGHT_BROWSERS_PATH` (default
 `/opt/pw-browsers`), or set `CHROME_PATH`. It exits non-zero when a journey fails.
@@ -577,14 +577,14 @@ rate-limit and email-validation work in §4 and §9 — was pushed but not yet
 merged. Concretely:
 
 - Answer the user's questions in Arabic, one concrete step at a time.
-- **CI gates the merge now.** `npm run lint`, `npm test` and `npm run browser`
+- **CI gates the merge now.** `pnpm run lint`, `pnpm test` and `pnpm run browser`
   all run on every PR, plus the suite against real Postgres and a Docker build.
   Run them locally before pushing rather than discovering it on GitHub.
 - If they report a bug: **reproduce it in a real browser first** (§7), then fix on
   the branch above and push.
 - If the branch's PR is already merged when you arrive, start fresh from `main`
   (`git checkout -B <branch> origin/main`); never stack on merged history.
-- When you change behaviour, run `npm test` **and** `npm run browser`, and update
+- When you change behaviour, run `pnpm test` **and** `pnpm run browser`, and update
   §1 of this file with the real numbers.
 - **This user merges early.** Twice in one session a PR was merged while work was
   still being pushed to its branch, stranding a commit on a branch whose PR was
@@ -633,7 +633,7 @@ rule of its own is a theme done wrong; fold the difference into a token.
 - **`prefers-reduced-transparency`** flattens every pane. It is a setting people
   turn on for a reason; nothing moves, only the depth goes.
 - **The app icon is `public/img/icon-v2.svg`, and the PNGs are generated** —
-  `npm run icons` (`scripts/render-icons.mjs`, Chromium, no image library
+  `pnpm run icons` (`scripts/render-icons.mjs`, Chromium, no image library
   added). **Change the SVG without running it and nothing changes on a phone:**
   iOS puts `icon-v2-180.png` on the home screen, not the SVG. **And change it
   without a new name and nothing changes either** — `/img` is `immutable`
