@@ -1,0 +1,28 @@
+name: Video links
+
+# Every YouTube link in the programme still points at a live video. Separate
+# from CI: it needs the network, and a video vanishing on YouTube's side should
+# not block an unrelated merge — it shows up here as a red run instead.
+on:
+  pull_request:
+    paths:
+      - public/js/program.js
+      - scripts/check-videos.mjs
+  schedule:
+    # Mondays 06:17 UTC.
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      # No install: the script uses only Node built-ins and program.js.
+      - run: node scripts/check-videos.mjs
