@@ -28,8 +28,9 @@ services:
     plan: free
     region: frankfurt
     branch: main
-    buildCommand: npm install
-    startCommand: npm start
+    # Corepack ships with Node and installs the pnpm version package.json pins.
+    buildCommand: corepack enable && pnpm install --frozen-lockfile
+    startCommand: pnpm start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
