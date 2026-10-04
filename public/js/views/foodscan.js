@@ -11,7 +11,7 @@ import { toast } from '../ui.js';
 import { api, ApiError, NetworkError } from '../api.js';
 import { knownFood } from '../engine.js';
 
-const GOOGLE_KEY_PAGE = 'https://aistudio.google.com/app/apikey';
+const GOOGLE_KEY_PAGE = 'https://aistudio.google.com/api-keys';
 
 /** What the server said about the key, fetched once and refreshed on change. */
 let keyState = null;
