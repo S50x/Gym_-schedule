@@ -117,6 +117,23 @@ const SCHEMA = [
   CREATE INDEX password_resets_user_idx ON password_resets(user_id);
   CREATE INDEX password_resets_expiry_idx ON password_resets(expires_at);
   `,
+
+  // 4 — keys the user brings for other services (their own Gemini API key)
+  //
+  // Encrypted with AES-256-GCM (server/secrets.js); the plain key never reaches
+  // the database or goes back to the browser. last4 is all the UI ever shows.
+  `
+  CREATE TABLE user_secrets (
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind       TEXT    NOT NULL,
+    ciphertext TEXT    NOT NULL,
+    iv         TEXT    NOT NULL,
+    tag        TEXT    NOT NULL,
+    last4      TEXT    NOT NULL,
+    updated_at BIGINT  NOT NULL,
+    PRIMARY KEY (user_id, kind)
+  );
+  `,
 ];
 
 /* ────────────────────────── drivers ────────────────────────── */

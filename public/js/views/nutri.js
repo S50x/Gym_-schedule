@@ -14,6 +14,7 @@ import {
   mealAlerts,
 } from '../engine.js';
 import { mealPanel } from './meals.js';
+import { scanActions } from './foodscan.js';
 
 export function renderNutri(ctx) {
   const { store } = ctx;
@@ -137,7 +138,15 @@ export function renderNutri(ctx) {
     };
     panelSlot.open = () =>
       panelSlot.replaceChildren(
-        mealPanel({ store, wk, day: i, targets, isToday: i === todayIndex, onChange })
+        mealPanel({
+          store,
+          wk,
+          day: i,
+          targets,
+          isToday: i === todayIndex,
+          onChange,
+          extraActions: (form) => scanActions(ctx, form),
+        })
       );
 
     return el(

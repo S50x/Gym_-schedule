@@ -7,7 +7,7 @@ WORKDIR /app
 # pnpm comes from Corepack, at the exact version package.json pins. The store is
 # dropped afterwards: node_modules keeps its own copy, so it is dead weight.
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN corepack enable \
   && pnpm install --frozen-lockfile --prod \
   && rm -rf "$(pnpm store path)" /root/.cache
