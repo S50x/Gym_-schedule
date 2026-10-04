@@ -9,7 +9,7 @@
 
 import { el, append } from '../dom.js';
 import { fmt, toast } from '../ui.js';
-import { mealTotals, mealAlerts, MEAL_SLOTS, slotForHour } from '../engine.js';
+import { mealTotals, mealAlerts, MEAL_SLOTS, slotForHour, suggestFoods } from '../engine.js';
 
 const FIELDS = [
   { key: 'k', label: 'سعرات', max: 10000, unit: '' },
@@ -184,6 +184,31 @@ export function mealPanel({ store, wk, day, targets, isToday, onChange, extraAct
       })
     );
 
+    // Foods eaten before: the usual ones with nothing typed, matches while typing.
+    const picks = el('div', { class: 'fpicks' });
+    const paintPicks = () => {
+      const typed = name.value.trim();
+      const list = suggestFoods(store.doc.foods, typed, typed ? 5 : 6);
+      picks.replaceChildren();
+      append(picks, [
+        list.length && !typed ? el('span', { class: 'mut', text: 'أكلاتك المعتادة:' }) : null,
+        list.map((food) =>
+          el('button', {
+            class: 'mchip fpick',
+            text: food.n,
+            attrs: { type: 'button', title: `${fmt(food.k)} سعرة` },
+            on: {
+              click: () => {
+                form.fill({ n: food.n, k: food.k, p: food.p, f: food.f, c: food.c, src: 'library' });
+                paintPicks();
+              },
+            },
+          })
+        ),
+      ]);
+    };
+    name.addEventListener('input', paintPicks);
+
     const form = {
       name,
       inputs,
@@ -216,17 +241,21 @@ export function mealPanel({ store, wk, day, targets, isToday, onChange, extraAct
       const count = store.week(wk).meals?.[day]?.length || 0;
       if (count >= 20) return toast('وصلت حد ٢٠ وجبة لهاليوم');
       store.updateMeals(wk, day, (list) => [...list, meal]);
+      // Next time this name comes up it fills with these numbers — the user's own.
+      store.rememberFood(meal);
       toast('انحفظت الوجبة');
       paint();
       onChange();
     };
 
+    paintPicks();
     return el(
       'div',
       { class: 'madd' },
       el('div', { class: 'mut', text: 'أضف وجبة' }),
       extraActions ? extraActions(form) : null,
       name,
+      picks,
       el('div', { class: 'mchips' }, chips),
       el('div', { class: 'mgrid' }, FIELDS.map((f) => inputs[f.key])),
       el('button', { class: 'cta', text: 'حفظ الوجبة', on: { click: save } })

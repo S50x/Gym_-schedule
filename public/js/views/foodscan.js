@@ -9,8 +9,9 @@
 import { el } from '../dom.js';
 import { toast } from '../ui.js';
 import { api, ApiError, NetworkError } from '../api.js';
+import { knownFood } from '../engine.js';
 
-const GOOGLE_KEY_PAGE = 'https://aistudio.google.com/app/apikey';
+const GOOGLE_KEY_PAGE = 'https://aistudio.google.com/api-keys';
 
 /** What the server said about the key, fetched once and refreshed on change. */
 let keyState = null;
@@ -41,7 +42,7 @@ export function keyGuide() {
       { class: 'ksteps' },
       el('li', { text: 'سجّل دخول بحساب Gmail حقك.' }),
       el('li', {}, 'اضغط الزر الأزرق ', el('b', { text: 'Create API key' }), '.'),
-      el('li', { text: 'انسخ المفتاح اللي يطلع لك (يبدأ غالباً بـ AIza).' }),
+      el('li', {}, 'اضغط على المفتاح، وبعدين زر النسخ ', el('b', { text: '⧉' }), ' اللي جنب API Key (يبدأ بـ AQ. أو AIza).'),
       el('li', { text: 'ارجع هنا، اضغط «لصق»، وبعدين «حفظ».' })
     ),
     el('div', {
@@ -237,8 +238,17 @@ export function scanActions(ctx, form) {
     try {
       const image = await toJpegBase64(file);
       const { data: r } = await api.scanFood(image);
-      form.fill({ n: r.name, k: r.kcal, p: r.protein, f: r.fat, c: r.carbs, src: SOURCE[r.kind] || 'photo' });
       const lines = [];
+      // A food the trainee has saved before fills with their own numbers —
+      // the ones they corrected last time — rather than this scan's guess.
+      const known = knownFood(store.doc.foods, r.name);
+      if (known) {
+        form.fill({ n: known.n, k: known.k, p: known.p, f: known.f, c: known.c, src: SOURCE[r.kind] || 'photo' });
+        lines.push('هذي أكلة سجّلتها قبل — عبّيتها بأرقامك المحفوظة.');
+        info.replaceChildren(...lines.map((text) => el('div', { class: 'mut', text })));
+        return;
+      }
+      form.fill({ n: r.name, k: r.kcal, p: r.protein, f: r.fat, c: r.carbs, src: SOURCE[r.kind] || 'photo' });
       if (r.kind === 'unknown') lines.push('ما لقيت أكل واضح بالصورة — عبّي الأرقام بيدك.');
       if (r.per === '100g') lines.push('الأرقام لكل 100 جرام — عدّلها حسب اللي أكلته.');
       if (r.serving) lines.push(`الحصة: ${r.serving}`);
