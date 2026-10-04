@@ -22,6 +22,7 @@ const JOURNEYS = [
   ['reset', 'reset.mjs', 'forgot-password form + the reset screen'],
   ['groups', 'groups.mjs', 'per-muscle-group strength levels'],
   ['theme', 'theme.mjs', 'the three themes + the setting they share with the top gap'],
+  ['meals', 'meals.mjs', 'meals add up, warn and delete back to not-logged'],
   ['restdays', 'restdays.mjs', 'rest days the trainee picks move the week'],
 ];
 

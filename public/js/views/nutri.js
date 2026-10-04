@@ -9,7 +9,11 @@ import {
   effectiveTdee,
   formulaTdee,
   dailyTarget,
+  macroTargets,
+  mealTotals,
+  mealAlerts,
 } from '../engine.js';
+import { mealPanel } from './meals.js';
 
 export function renderNutri(ctx) {
   const { store } = ctx;
@@ -46,6 +50,9 @@ export function renderNutri(ctx) {
   // Recomputed from today's weight and the whole log every time this page
   // opens, so the target follows the body instead of the number it had on day one.
   const { tdee, target, protein } = numbers(store, bodyWeight, goalKey);
+  const targets = macroTargets(target, bodyWeight, goalKey);
+  // Weekday index of today (Sat=0 … Fri=6), only meaningful in the current week.
+  const todayIndex = wk === store.currentWeek ? [1, 2, 3, 4, 5, 6, 0][new Date().getDay()] : -1;
 
   /* ── day rows ── */
   const summaryBox = el('div', {});
@@ -68,6 +75,26 @@ export function renderNutri(ctx) {
     });
     // Repaint only the summary: a full re-render would steal focus mid-typing.
     paint();
+  };
+
+  // One day open at a time; today's opens by itself so logging is one tap.
+  let openDay = null;
+  const panels = [];
+  const toggles = [];
+
+  /** Day totals come from its meals once it has any; the boxes then just show them. */
+  const syncRow = (i, calInput, proInput, toggle) => {
+    const w = store.week(wk);
+    const meals = w.meals?.[i] || [];
+    const fromMeals = meals.length > 0;
+    calInput.disabled = fromMeals;
+    proInput.disabled = fromMeals;
+    if (fromMeals) {
+      calInput.value = w.cal?.d?.[i] ? String(w.cal.d[i]) : '';
+      proInput.value = w.cal?.p?.[i] ? String(w.cal.p[i]) : '';
+    }
+    toggle.textContent = fromMeals ? `${meals.length} 🍽` : '🍽';
+    toggle.setAttribute('aria-label', `وجبات ${DAY_NAMES[i]} (${meals.length})`);
   };
 
   const rows = DAY_NAMES.map((name, i) => {
@@ -94,8 +121,43 @@ export function renderNutri(ctx) {
     calInput.addEventListener('change', () => commit(i, 'd', calInput.value, calInput));
     proInput.addEventListener('change', () => commit(i, 'p', proInput.value, proInput));
 
-    return el('div', { class: 'nrow' }, el('span', { class: 'nd', text: name }), calInput, proInput);
+    const toggle = el('button', {
+      class: 'mopen',
+      attrs: { type: 'button', 'aria-expanded': 'false' },
+      on: { click: () => openPanel(openDay === i ? null : i) },
+    });
+    const panelSlot = el('div', { class: 'mslot' });
+    panels[i] = panelSlot;
+    toggles[i] = toggle;
+    syncRow(i, calInput, proInput, toggle);
+
+    const onChange = () => {
+      syncRow(i, calInput, proInput, toggle);
+      paint();
+    };
+    panelSlot.open = () =>
+      panelSlot.replaceChildren(
+        mealPanel({ store, wk, day: i, targets, isToday: i === todayIndex, onChange })
+      );
+
+    return el(
+      'div',
+      { class: 'nday' },
+      el('div', { class: 'nrow' }, el('span', { class: 'nd', text: name }), calInput, proInput, toggle),
+      panelSlot
+    );
   });
+
+  function openPanel(day) {
+    openDay = day;
+    panels.forEach((slot, i) => {
+      if (i === day) slot.open();
+      else slot.replaceChildren();
+      toggles[i].setAttribute('aria-expanded', String(i === day));
+      toggles[i].classList.toggle('on', i === day);
+    });
+  }
+  if (todayIndex >= 0) openPanel(todayIndex);
 
   paint();
 
@@ -114,7 +176,7 @@ export function renderNutri(ctx) {
         // The gap is a deficit when cutting and a surplus when building, so it
         // is named for whichever it actually is.
         text:
-          `بروتين ${protein} جرام · احتياجك للثبات ${fmt(tdee)}` +
+          `بروتين ${protein} · دهون ${targets.fat} · كارب ${targets.carbs} جرام · احتياجك للثبات ${fmt(tdee)}` +
           (target === tdee
             ? ' · بدون عجز ولا زيادة'
             : target < tdee
@@ -168,7 +230,7 @@ export function renderNutri(ctx) {
  * and is re-learned from the whole log on every call, so a new week of data
  * moves it without anyone pressing a button.
  */
-function numbers(store, bodyWeight, goalKey) {
+export function numbers(store, bodyWeight, goalKey) {
   const nut = store.doc.nutrition;
   const formula = formulaTdee(nut, bodyWeight);
   const learned = measuredTDEE(store.calHist(), store.bodyHist(), formula);
@@ -306,7 +368,7 @@ function summaryCard(store, wk, bodyWeight, goalKey) {
   return box;
 }
 
-function lastKnownWeight(store) {
+export function lastKnownWeight(store) {
   const weeks = Object.keys(store.doc.weeks)
     .map(Number)
     .sort((a, b) => b - a);
@@ -315,4 +377,22 @@ function lastKnownWeight(store) {
     if (body?.weight) return body.weight;
   }
   return null;
+}
+
+/**
+ * Today's same-day alerts, for the home screen. Empty when nutrition is not
+ * set up, outside the current week, or nothing is logged today.
+ */
+export function todayMealAlerts(store) {
+  if (!store.doc.nutrition?.age || store.viewWeek !== store.currentWeek) return [];
+  const day = [1, 2, 3, 4, 5, 6, 0][new Date().getDay()];
+  const week = store.week(store.currentWeek);
+  const totals = mealTotals(week.meals?.[day]);
+  if (!totals) return [];
+  const bodyWeight = week.body?.weight || lastKnownWeight(store) || 80;
+  const { target } = numbers(store, bodyWeight, store.goal);
+  return mealAlerts(totals, macroTargets(target, bodyWeight, store.goal), {
+    isToday: true,
+    hour: new Date().getHours(),
+  });
 }
