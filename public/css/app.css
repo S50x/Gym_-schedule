@@ -1612,20 +1612,36 @@ input[type='range'].gap:active::-webkit-slider-thumb {
   position: fixed;
   bottom: calc(78px + var(--safe-bottom));
   left: 50%;
-  transform: translate(-50%, 140px);
+  /* Hidden by fading out, not only by sliding: the slide alone (140px) was
+     shorter than the toast's own lift above the screen edge (78px + the home
+     indicator), so the top of the pill stayed stuck under the tab bar. */
+  transform: translate(-50%, 24px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
   background: var(--txt);
   color: var(--ink);
   padding: 11px 20px;
   border-radius: 999px;
   font-size: 13px;
   font-weight: 600;
-  transition: transform 0.3s cubic-bezier(0.16, 0.84, 0.32, 1);
+  /* visibility flips only after the fade, so the exit is still animated. */
+  transition:
+    transform 0.3s cubic-bezier(0.16, 0.84, 0.32, 1),
+    opacity 0.25s ease,
+    visibility 0s linear 0.3s;
   z-index: 99;
   max-width: 90vw;
   text-align: center;
 }
 .toast.show {
   transform: translate(-50%, 0);
+  opacity: 1;
+  visibility: visible;
+  transition:
+    transform 0.3s cubic-bezier(0.16, 0.84, 0.32, 1),
+    opacity 0.2s ease,
+    visibility 0s;
 }
 
 /* ══════ account / sync ══════ */

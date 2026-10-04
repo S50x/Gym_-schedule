@@ -34,6 +34,10 @@ export default async function run({ base, browser, problems, step }) {
     await add('صدر دجاج ورز', 800, 60, 20, 90);
     if ((await page.locator('.meal').count()) !== 2) throw new Error('two meals not listed');
 
+    // The "saved" toast goes away completely; it once stayed half-visible
+    // under the tab bar after hiding.
+    await page.waitForSelector('#toast', { state: 'hidden', timeout: 5000 });
+
     // The day's boxes now show the sum and are locked to it.
     const row = page.locator('.nday:has(.mpanel) .nrow');
     const kcal = await row.locator('.ni').nth(0).inputValue();
