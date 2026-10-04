@@ -37,6 +37,14 @@ import {
   MAX_SETS,
   planOf,
   cardioOf,
+  arrangeWeek,
+  daysOf,
+  defaultRestDays,
+  maxRestDays,
+  normalizeRestDays,
+  weekOf,
+  todayLift,
+  DAY_NAMES,
 } from '../public/js/program.js';
 
 const fullSets = (id) => Array.from({ length: exById(id).sets }, () => true);
@@ -922,5 +930,61 @@ test('program data integrity', async (t) => {
       assert.equal(typeof rest, 'number');
       assert.ok(rest > 0 && rest <= 600, `${id} rest = ${rest}`);
     }
+  });
+});
+
+test('rest days chosen by the trainee', async (t) => {
+  await t.test("no choice reproduces every goal's own week exactly", () => {
+    for (const goal of GOAL_KEYS) {
+      const { lift, cardio } = arrangeWeek(goal, null);
+      assert.deepEqual(cardio, cardioOf(goal), goal);
+      assert.deepEqual(arrangeWeek(goal, defaultRestDays(goal)).lift, lift, goal);
+      // Lifts land on the weekday the goal was written for.
+      for (const [key, day] of Object.entries(planOf(goal))) {
+        assert.equal(DAY_NAMES[lift.indexOf(key)], day.day, `${goal}/${key}`);
+      }
+    }
+  });
+
+  await t.test('every lift and every rest day lands where chosen', () => {
+    for (const goal of GOAL_KEYS) {
+      const max = maxRestDays(goal);
+      const choices = [[], [0], [3], [2, 5], [0, 3, 6]].filter((r) => r.length <= max);
+      for (const rest of choices) {
+        const { lift, cardio } = arrangeWeek(goal, rest);
+        const keys = lift.filter(Boolean);
+        assert.deepEqual(keys, daysOf(goal), `${goal} ${rest}: lifts keep their order`);
+        for (const d of rest) {
+          assert.equal(lift[d], null, `${goal} ${rest}: no lift on a rest day`);
+          assert.ok(cardio[d].rest, `${goal} ${rest}: rest day is rest`);
+        }
+        cardio.forEach((c, i) => assert.equal(c.d, DAY_NAMES[i]));
+      }
+    }
+  });
+
+  await t.test('lifting days are spread out when there is room', () => {
+    // Fat loss lifts three days; resting Sun and Fri leaves five free days, so
+    // none of the three has to sit next to another.
+    const { lift } = arrangeWeek('cut', [1, 6]);
+    const at = lift.flatMap((k, i) => (k ? [i] : []));
+    for (let j = 1; j < at.length; j++) assert.ok(at[j] - at[j - 1] >= 2, JSON.stringify(at));
+  });
+
+  await t.test('too many rest days, or junk, falls back to the goal week', () => {
+    assert.deepEqual(normalizeRestDays('muscle', [0, 1, 2, 3]), defaultRestDays('muscle'));
+    assert.deepEqual(normalizeRestDays('cut', [1, 1]), defaultRestDays('cut'));
+    assert.deepEqual(normalizeRestDays('cut', [9]), defaultRestDays('cut'));
+    assert.deepEqual(normalizeRestDays('cut', [5, 0]), [0, 5]);
+  });
+
+  await t.test('today follows the moved week', () => {
+    // 2026-08-15 is a Saturday: with Saturday off, it is a rest day.
+    const saturday = new Date(2026, 7, 15);
+    assert.equal(todayLift('cut', saturday), 'sat');
+    assert.equal(todayLift('cut', saturday, [0]), 'rest');
+    const week = weekOf('cut', [0]);
+    assert.equal(week[0].rest, 1);
+    assert.equal(week.filter((d) => d.lift).length, daysOf('cut').length);
   });
 });

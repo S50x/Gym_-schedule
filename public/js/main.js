@@ -125,7 +125,7 @@ const ctx = {
    * or dropping a machine.
    */
   toggleMachine(index, key) {
-    const total = cardioOf(store.goal)[index]?.min || 0;
+    const total = cardioOf(store.goal, store.restDays)[index]?.min || 0;
     store.update(store.viewWeek, (w) => {
       const machines = { ...w.cmach };
       const current = machinesOfDay(machines[String(index)], total);
@@ -150,7 +150,7 @@ const ctx = {
 
   setMachineMinutes(index, key, minutes) {
     const value = Math.max(0, Math.min(300, Math.round(minutes)));
-    const total = cardioOf(store.goal)[index]?.min || 0;
+    const total = cardioOf(store.goal, store.restDays)[index]?.min || 0;
     store.update(store.viewWeek, (w) => {
       const machines = { ...w.cmach };
       const current = machinesOfDay(machines[String(index)], total);

@@ -1,6 +1,15 @@
 import { el, richText } from '../dom.js';
 import { bulletList, toast } from '../ui.js';
-import { planOf, goalHasLoads, goalOf, exById, setsByExercise, setsKey } from '../program.js';
+import {
+  planOf,
+  goalHasLoads,
+  goalOf,
+  exById,
+  setsByExercise,
+  setsKey,
+  normalizeRestDays,
+  DAY_NAMES,
+} from '../program.js';
 import { verdict, progress, proteinTarget, MAX_WEEK } from '../engine.js';
 
 export function renderWeek(ctx) {
@@ -10,7 +19,7 @@ export function renderWeek(ctx) {
   const prevBody = store.week(wk - 1).body;
   const goalKey = store.goal;
   const goal = goalOf(goalKey);
-  const PLAN = planOf(goalKey);
+  const PLAN = planOf(goalKey, store.restDays);
   const DAYS = Object.keys(PLAN);
   const v = verdict(week.body, prevBody, goalKey);
 
@@ -86,7 +95,12 @@ export function renderWeek(ctx) {
   const form = el(
     'div',
     { class: 'card' },
-    el('div', { class: 'mut', text: 'سجّلها الجمعة الصبح على الريق، قبل ما تاكل أو تشرب.' }),
+    el('div', {
+      class: 'mut',
+      // The last rest day of the week, so the reading lands after a full week
+      // of training — Friday for anyone who never moved their rest days.
+      text: `سجّلها ${weighDay(goalKey, store.restDays)} الصبح على الريق، قبل ما تاكل أو تشرب.`,
+    }),
     el('label', { class: 'inp' }, el('span', { text: 'وزنك بالكيلو' }), weightInput),
     el(
       'label',
@@ -197,4 +211,10 @@ export function renderWeek(ctx) {
       )
     )
   );
+}
+
+/** The weekday to weigh in on: the week's last rest day, else Friday. */
+function weighDay(goalKey, restDays) {
+  const rest = normalizeRestDays(goalKey, restDays);
+  return DAY_NAMES[rest.length ? rest[rest.length - 1] : DAY_NAMES.length - 1];
 }
