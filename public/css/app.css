@@ -2510,13 +2510,10 @@ a.cta {
   text-align: center;
   text-decoration: none;
 }
-.vh {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+/* Anything a script hides with the hidden attribute stays hidden, whatever
+   display a rule above gives its element. */
+[hidden] {
+  display: none !important;
 }
 .kguide {
   display: grid;

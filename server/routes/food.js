@@ -88,7 +88,9 @@ export function foodRouter(db) {
       await checkKey(key);
     } catch (err) {
       const code = err instanceof GeminiError ? err.code : 'unavailable';
-      return res.status(code === 'bad_key' ? 400 : 502).json({ error: code, message: MESSAGES[code] });
+      return res
+        .status(code === 'bad_key' ? 400 : 502)
+        .json({ error: code, message: MESSAGES[code], detail: err?.detail || null });
     }
     const sealed = encryptSecret(key);
     const last4 = key.slice(-4);
@@ -124,7 +126,9 @@ export function foodRouter(db) {
     } catch (err) {
       const code = err instanceof GeminiError ? err.code : 'unavailable';
       const status = { bad_key: 400, quota: 429, unreadable: 422 }[code] || 502;
-      res.status(status).json({ error: code, message: MESSAGES[code] });
+      // detail is a status code or "timeout" — enough for the user to read
+      // back, nothing about the key or the image.
+      res.status(status).json({ error: code, message: MESSAGES[code], detail: err?.detail || null });
     }
   });
 
