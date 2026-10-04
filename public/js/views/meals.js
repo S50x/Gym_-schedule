@@ -7,7 +7,7 @@
  * meals is "not logged", never "zero".
  */
 
-import { el } from '../dom.js';
+import { el, append } from '../dom.js';
 import { fmt, toast } from '../ui.js';
 import { mealTotals, mealAlerts, MEAL_SLOTS, slotForHour } from '../engine.js';
 
@@ -123,7 +123,9 @@ export function mealPanel({ store, wk, day, targets, isToday, onChange, extraAct
         )
       : el('div', { class: 'mut', text: 'ما سجّلت أكل لهاليوم. أضف اللي أكلته بس — كل الوجبات اختيارية.' });
 
-    box.replaceChildren(
+    // replaceChildren would print a null as the text "null"; append() skips it.
+    box.replaceChildren();
+    append(box, [
       macroBars(totals, targets),
       alerts.length
         ? el(
@@ -133,8 +135,8 @@ export function mealPanel({ store, wk, day, targets, isToday, onChange, extraAct
           )
         : null,
       list,
-      addForm()
-    );
+      addForm(),
+    ]);
   };
 
   /** Name, optional tag, four numbers. Only a name or one number is needed. */
