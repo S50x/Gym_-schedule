@@ -16,6 +16,11 @@ import {
   LEVEL_KEYS,
   GROUPS,
   groupCount,
+  DAY_NAMES,
+  arrangeWeek,
+  normalizeRestDays,
+  maxRestDays,
+  planOf,
 } from '../program.js';
 
 const ACTIVITY = [
@@ -33,6 +38,9 @@ export function renderOnboarding(ctx) {
   let goal = editing ? store.goal : null;
   let level = editing ? store.level : null;
   let activity = nut.act || 1.55;
+  // Weekdays off. Starts on what the trainee already has (or the goal's own
+  // week), and is re-checked against the goal whenever the goal changes.
+  let restDays = editing ? normalizeRestDays(store.goal, store.restDays) : null;
   // Per-group overrides, keyed by group. A group left out follows `level`.
   const groupLevels = { ...(editing ? store.levels || {} : {}) };
 
@@ -53,6 +61,9 @@ export function renderOnboarding(ctx) {
               card.classList.toggle('on', on);
               card.setAttribute('aria-pressed', String(on));
             }
+            // A new goal can have more lifting days than the old one had room for.
+            restDays = normalizeRestDays(goal, restDays);
+            paintRest();
           },
         },
       },
@@ -183,6 +194,60 @@ export function renderOnboarding(ctx) {
     groupBox
   );
 
+  /* ── step 4: rest days ── */
+  const restChips = DAY_NAMES.map((name, i) =>
+    el('button', {
+      class: 'mchip',
+      text: name,
+      data: { day: String(i) },
+      attrs: { 'aria-pressed': 'false' },
+      on: {
+        click: () => {
+          if (!goal) return toast('اختر هدفك أول');
+          const current = normalizeRestDays(goal, restDays);
+          const next = current.includes(i) ? current.filter((d) => d !== i) : [...current, i];
+          if (next.length > maxRestDays(goal)) {
+            return toast(`هدفك يحتاج ${DAY_NAMES.length - maxRestDays(goal)} أيام حديد — أقصى راحة ${maxRestDays(goal)}`);
+          }
+          restDays = next.sort((a, b) => a - b);
+          paintRest();
+        },
+      },
+    })
+  );
+  const restPreview = el('div', { class: 'wprev' });
+
+  /** Press the chosen days and show the week they produce. */
+  function paintRest() {
+    const chosen = goal ? normalizeRestDays(goal, restDays) : [];
+    for (const chip of restChips) {
+      const on = chosen.includes(Number(chip.dataset.day));
+      chip.classList.toggle('on', on);
+      chip.setAttribute('aria-pressed', String(on));
+    }
+    if (!goal) {
+      restPreview.replaceChildren(el('div', { class: 'mut', text: 'اختر هدفك فوق وبيطلع أسبوعك هنا.' }));
+      return;
+    }
+    const { lift, cardio } = arrangeWeek(goal, chosen);
+    const plan = planOf(goal, chosen);
+    restPreview.replaceChildren(
+      ...DAY_NAMES.map((name, i) => {
+        const what = lift[i]
+          ? `حديد — ${plan[lift[i]].title}`
+          : cardio[i]?.rest
+            ? 'راحة'
+            : `كارديو ${cardio[i].min} د`;
+        return el(
+          'div',
+          { class: ['wprow', lift[i] ? 'lift' : cardio[i]?.rest ? 'off' : ''] },
+          el('span', { class: 'wd', text: name }),
+          el('span', { text: what })
+        );
+      })
+    );
+  }
+
   /* ── step 3: body ── */
   const weightInput = el('input', {
     type: 'number',
@@ -231,6 +296,7 @@ export function renderOnboarding(ctx) {
   // First paint: labels and the inherited tag depend on `level`, which may
   // already be set when an existing trainee reopens this to edit.
   paintGroups();
+  paintRest();
 
   const save = () => {
     if (!goal) return toast('اختر هدفك أول');
@@ -267,6 +333,7 @@ export function renderOnboarding(ctx) {
         if (key && key !== level) overrides[group] = key;
       }
       p.levels = Object.keys(overrides).length ? overrides : null;
+      p.restDays = normalizeRestDays(goal, restDays);
     });
 
     // Only the inputs are stored. Calories and protein are derived from these
@@ -290,8 +357,8 @@ export function renderOnboarding(ctx) {
       el('div', { class: 'logo', text: 'حديد' }),
       el('p', {
         text: editing
-          ? 'عدّل هدفك ومستواك. برنامجك بيتغير، وكل اللي سجّلته محفوظ ويرجع لو رجعت لهدفك الأول.'
-          : 'ثلاث خطوات بس، وبعدها برنامجك جاهز ومضبوط عليك.',
+          ? 'عدّل هدفك ومستواك وأيام راحتك. برنامجك بيتغير، وكل اللي سجّلته محفوظ ويرجع لو رجعت لهدفك الأول.'
+          : 'أربع خطوات بس، وبعدها برنامجك جاهز ومضبوط عليك.',
       })
     ),
 
@@ -306,7 +373,19 @@ export function renderOnboarding(ctx) {
     }),
     groupDetails,
 
-    el('h3', { text: '٣ · بياناتك' }),
+    el('h3', { text: '٣ · أيام راحتك' }),
+    el(
+      'div',
+      { class: 'card' },
+      el('div', {
+        class: 'mut',
+        text: 'اختر الأيام اللي ما تبي تتمرن فيها، والبرنامج يرتّب أيام الحديد والكارديو على الباقي.',
+      }),
+      el('div', { class: 'mchips' }, restChips),
+      restPreview
+    ),
+
+    el('h3', { text: '٤ · بياناتك' }),
     el(
       'div',
       { class: 'card' },
