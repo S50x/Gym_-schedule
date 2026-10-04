@@ -7,7 +7,7 @@ export function renderCardio(ctx) {
   const week = store.week();
   const goalKey = store.goal;
   const goal = goalOf(goalKey);
-  const CARDIO = cardioOf(goalKey);
+  const CARDIO = cardioOf(goalKey, store.restDays);
   const cardioDays = CARDIO.filter((c) => !c.rest).length;
 
   const rows = CARDIO.map((entry, i) => {
