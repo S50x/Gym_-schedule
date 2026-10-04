@@ -2,6 +2,7 @@ import { el, append } from '../dom.js';
 import { toast, bulletList, qrSvg } from '../ui.js';
 import { api, ApiError, NetworkError } from '../api.js';
 import { SYNC } from '../store.js';
+import { geminiKeyCard } from './foodscan.js';
 import { goalOf, levelOf } from '../program.js';
 import {
   TOP_GAP,
@@ -225,6 +226,9 @@ export function renderAccount(ctx) {
         el('span', { class: 'b', text: SYNC_TEXT[store.syncState] })
       )
     ),
+    el('h3', { text: 'قراءة الأكل بالصور' }),
+    geminiKeyCard(),
+    el('h3', { text: 'الأمان' }),
     twoFactorCard(ctx),
     changePasswordCard(ctx),
     el(
