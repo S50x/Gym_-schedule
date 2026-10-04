@@ -144,11 +144,25 @@ export class GeminiError extends Error {
 export const GEMINI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-flash-latest';
 
 /**
+ * Every model a scan may try, in order, each once. Between Lite and full Flash
+ * sits Gemini 3.1 Flash Lite: same free allowance as Lite (15 a minute, 500 a
+ * day) on a quota of its own, so one key gets roughly twice the daily scans.
+ * GEMINI_MODELS (comma-separated) replaces the whole list.
+ */
+export const GEMINI_MODELS = (
+  process.env.GEMINI_MODELS
+    ? process.env.GEMINI_MODELS.split(',')
+    : [GEMINI_MODEL, 'gemini-3.1-flash-lite', GEMINI_FALLBACK_MODEL]
+)
+  .map((m) => m.trim())
+  .filter((m, i, all) => m && all.indexOf(m) === i);
+
+/**
  * The whole scan, retries included, has to answer before the browser gives up
  * (REQUEST_TIMEOUT_MS = 75 s in public/js/api.js), so attempts share one budget.
  */
 const SCAN_BUDGET_MS = 68_000;
-const ATTEMPT_MAX_MS = 40_000;
+const ATTEMPT_MAX_MS = 30_000;
 const RETRY_PAUSE_MS = 1_500;
 
 const isTimeout = (err) => err?.name === 'TimeoutError' || err?.name === 'AbortError';
@@ -170,7 +184,9 @@ function describe(err) {
 function retryable(err) {
   const status = Number(err?.status);
   // 429 too: the quota is per model, so the other model may still have room.
-  if (Number.isFinite(status) && status > 0) return status >= 500 || status === 429;
+  // 404 too: a model id Google does not know (renamed, retired, mistyped)
+  // should cost a log line, not the scan.
+  if (Number.isFinite(status) && status > 0) return status >= 500 || status === 429 || status === 404;
   return true;
 }
 
@@ -225,7 +241,7 @@ export async function readFoodImage(apiKey, image) {
   const started = Date.now();
   // One try per model. Retrying the same model spends quota the free tier is
   // short of; the other model has its own.
-  const plan = [GEMINI_MODEL, GEMINI_FALLBACK_MODEL];
+  const plan = GEMINI_MODELS;
   let response;
   let lastError;
 
