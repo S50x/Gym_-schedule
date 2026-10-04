@@ -16,6 +16,8 @@ export default async function run({ base, browser, problems, step }) {
     await page.waitForSelector('.mpanel', { timeout: 5000 });
     if ((await page.locator('.mpanel').count()) !== 1) throw new Error('expected one open day');
     if ((await page.locator('.meal').count()) !== 0) throw new Error('a new day has meals');
+    // An empty day with no alerts once printed the word "null" under the bars.
+    await noStrayNulls(page, 'empty meal panel');
 
     const add = async (name, k, p, f, c) => {
       const form = page.locator('.madd');
