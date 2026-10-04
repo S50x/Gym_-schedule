@@ -64,7 +64,7 @@ export default async function run({ base, browser, problems, step }) {
     await page.waitForSelector('.kguide a.cta', { timeout: 15_000 });
 
     const link = page.locator('.kguide a.cta');
-    if ((await link.getAttribute('href')) !== 'https://aistudio.google.com/app/apikey') {
+    if ((await link.getAttribute('href')) !== 'https://aistudio.google.com/api-keys') {
       throw new Error('wrong Google link');
     }
     if ((await link.getAttribute('target')) !== '_blank') throw new Error('link must open a new tab');
