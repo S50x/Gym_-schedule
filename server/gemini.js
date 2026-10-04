@@ -68,6 +68,7 @@ Return the calories (kcal) and grams of protein, fat and carbohydrates for ONE s
 - label: use the per-serving column. If only per-100g is shown and a serving size is printed, convert to one serving and set per="serving"; if no serving size is printed, give per-100g values and set per="100g". Put the serving size in "serving".
 - screenshot: sum everything shown as ordered/eaten and set per="total"; list each item in "items".
 - food: estimate a typical portion of what you see, list each component in "items", per="total".
+serving: the portion in short Arabic, e.g. "وجبة كاملة", "حبة واحدة", "200 مل", "كوب"; keep digits and units like g/مل. "" if unknown.
 meal_name: the product or brand name from a label, the item name(s) from a screenshot, or the dish name for a food photo. Prefer Arabic when the image is Arabic or the dish is Arab; otherwise keep the original name. Max 60 characters.
 found: true only for values actually read or confidently estimated. For anything you cannot see or estimate, set its number to 0 and found to false — never guess a label value that is not printed.
 confidence: 0..1 for the whole answer (labels read clearly ≈ 0.9+, food photos usually 0.4–0.7).
