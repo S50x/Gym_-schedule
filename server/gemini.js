@@ -121,7 +121,10 @@ export function cleanReading(raw) {
 }
 
 export class GeminiError extends Error {
-  /** @param {'bad_key'|'quota'|'unreadable'|'unavailable'} code */
+  /**
+   * @param {'bad_key'|'quota'|'unreadable'|'unavailable'} code
+   * @param {string} [detail]  what went wrong, short — an HTTP status or "timeout"
+   */
   constructor(code, detail) {
     super(code);
     this.code = code;
@@ -129,15 +132,63 @@ export class GeminiError extends Error {
   }
 }
 
+/** A second, lighter model to try when the first one keeps failing on Google's side. */
+export const GEMINI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-flash-lite-latest';
+
+/**
+ * The whole scan, retries included, has to answer before the browser gives up
+ * (REQUEST_TIMEOUT_MS = 75 s in public/js/api.js), so attempts share one budget.
+ */
+const SCAN_BUDGET_MS = 68_000;
+const ATTEMPT_MAX_MS = 40_000;
+const RETRY_PAUSE_MS = 1_500;
+
+const isTimeout = (err) => err?.name === 'TimeoutError' || err?.name === 'AbortError';
+
+/** Short, key-free description of a failure, for the log and the user's error code. */
+function describe(err) {
+  const status = Number(err?.status);
+  if (Number.isFinite(status) && status > 0) return String(status);
+  if (isTimeout(err)) return 'timeout';
+  return String(err?.name || 'error').slice(0, 40);
+}
+
+/**
+ * Worth trying again: Google overloaded or erroring (5xx), our own timeout, or
+ * a failure with no HTTP status at all (the connection dropped). A 4xx is the
+ * request's fault and would fail the same way twice.
+ */
+function retryable(err) {
+  const status = Number(err?.status);
+  if (Number.isFinite(status) && status > 0) return status >= 500;
+  return true;
+}
+
+/**
+ * Every failed call is logged so a report of "Google did not answer" can be
+ * traced in the host's logs. The SDK's messages describe the request, never
+ * carry the key, and the key is never passed here.
+ */
+function logFailure(op, model, err) {
+  console.warn('gemini', {
+    op,
+    model,
+    status: describe(err),
+    name: err?.name,
+    message: String(err?.message || '').slice(0, 300),
+  });
+}
+
 /** Map an SDK failure onto the few things the user can act on. */
 function classify(err) {
   const status = Number(err?.status);
   const text = String(err?.message || '');
-  if (status === 400 && /api key|API_KEY/i.test(text)) return new GeminiError('bad_key');
-  if (status === 401 || status === 403) return new GeminiError('bad_key');
-  if (status === 429) return new GeminiError('quota');
-  if (status === 400) return new GeminiError('unreadable', text.slice(0, 200));
-  return new GeminiError('unavailable', text.slice(0, 200));
+  const detail = describe(err);
+  if (status === 400 && /api key|API_KEY/i.test(text)) return new GeminiError('bad_key', detail);
+  if (status === 401 || status === 403) return new GeminiError('bad_key', detail);
+  if (status === 429) return new GeminiError('quota', detail);
+  if (status === 400) return new GeminiError('unreadable', detail);
+  return new GeminiError('unavailable', detail);
 }
 
 /**
@@ -148,36 +199,55 @@ export async function checkKey(apiKey) {
   try {
     await makeClient(apiKey).models.get({ model: GEMINI_MODEL });
   } catch (err) {
+    logFailure('check', GEMINI_MODEL, err);
     throw classify(err);
   }
 }
+
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * @param {string} apiKey
  * @param {{ data: string, mimeType: string }} image  base64 without the data: prefix
  */
 export async function readFoodImage(apiKey, image) {
+  const client = makeClient(apiKey);
+  const started = Date.now();
+  // Same model twice (a busy moment usually passes), then the lighter one.
+  const plan = [GEMINI_MODEL, GEMINI_MODEL, GEMINI_FALLBACK_MODEL];
   let response;
-  try {
-    response = await makeClient(apiKey).models.generateContent({
-      model: GEMINI_MODEL,
-      contents: [
-        {
-          role: 'user',
-          parts: [{ inlineData: { mimeType: image.mimeType, data: image.data } }, { text: 'اقرأ الأكل في الصورة.' }],
+  let lastError;
+
+  for (let i = 0; i < plan.length; i++) {
+    const left = SCAN_BUDGET_MS - (Date.now() - started);
+    if (left < 5_000) break;
+    try {
+      response = await client.models.generateContent({
+        model: plan[i],
+        contents: [
+          {
+            role: 'user',
+            parts: [{ inlineData: { mimeType: image.mimeType, data: image.data } }, { text: 'اقرأ الأكل في الصورة.' }],
+          },
+        ],
+        config: {
+          systemInstruction: INSTRUCTION,
+          responseMimeType: 'application/json',
+          responseJsonSchema: SCHEMA,
+          temperature: 0.2,
+          abortSignal: AbortSignal.timeout(Math.min(ATTEMPT_MAX_MS, left)),
         },
-      ],
-      config: {
-        systemInstruction: INSTRUCTION,
-        responseMimeType: 'application/json',
-        responseJsonSchema: SCHEMA,
-        temperature: 0.2,
-        abortSignal: AbortSignal.timeout(45_000),
-      },
-    });
-  } catch (err) {
-    throw classify(err);
+      });
+      break;
+    } catch (err) {
+      lastError = err;
+      logFailure('scan', plan[i], err);
+      if (!retryable(err) || i === plan.length - 1) break;
+      await pause(RETRY_PAUSE_MS);
+    }
   }
+
+  if (!response) throw classify(lastError);
   let parsed;
   try {
     parsed = JSON.parse(response?.text || '');
