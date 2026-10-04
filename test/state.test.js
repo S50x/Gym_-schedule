@@ -384,3 +384,26 @@ test('meals in a week', async (t) => {
     }
   });
 });
+
+test('the food library', async (t) => {
+  const { mergeStates } = await import('../server/state-schema.js');
+  const food = (over = {}) => ({ id: 'f1', n: 'شوفان', k: 300, p: 10, f: 6, c: 50, u: 2, t: 5, ...over });
+
+  await t.test('validates entries and keeps old documents valid', () => {
+    assert.deepEqual(validateState(docWith({})).doc.foods, []);
+    const ok = validateState(docWith({}, { foods: [food()] }));
+    assert.equal(ok.ok, true);
+    assert.deepEqual(ok.doc.foods, [food()]);
+    for (const bad of [[food({ n: '' })], [food({ id: 'BAD!' })], [food({ k: -1 })], 'x', [1]]) {
+      assert.equal(validateState(docWith({}, { foods: bad })).ok, false, JSON.stringify(bad));
+    }
+  });
+
+  await t.test('two devices merge food by food, newest use winning', () => {
+    const phone = { weeks: {}, foods: [food({ k: 280, t: 10 }), food({ id: 'f2', n: 'تمر', t: 3 })] };
+    const laptop = { weeks: {}, foods: [food({ k: 350, t: 4 }), food({ id: 'f3', n: 'لبن', t: 8 })] };
+    const merged = mergeStates(laptop, phone).foods;
+    assert.deepEqual(merged.map((f) => f.n), ['شوفان', 'لبن', 'تمر']);
+    assert.equal(merged[0].k, 280);
+  });
+});

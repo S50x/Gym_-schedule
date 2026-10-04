@@ -573,3 +573,144 @@ export function formatRest(seconds) {
 }
 
 export const EXERCISE_COUNT = ALL_EXERCISES.length;
+
+/* ────────────────────────── learning from what was eaten ────────────────────────── */
+
+/** Most foods remembered; the least recently used one makes room for a new one. */
+export const MAX_FOODS = 300;
+
+/**
+ * One spelling per food, so «أرز», «ارز» and «ارز » are the same entry: no
+ * diacritics, one alef, ة→ه, ى→ي, lower case, single spaces.
+ */
+export function foodKey(name) {
+  return String(name || '')
+    .replace(/[ً-ْٰـ]/g, '')
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/ى/g, 'ي')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Remember a saved meal. The numbers stored are the ones the user saved last —
+ * which after a correction are their own, not the scan's — so the next time
+ * the same food comes up it fills in the way they fixed it.
+ */
+export function rememberFood(foods, meal, now = Date.now()) {
+  const key = foodKey(meal?.n);
+  if (!key) return foods || [];
+  const list = [...(foods || [])];
+  const at = list.findIndex((f) => foodKey(f.n) === key);
+  const entry = {
+    id: at >= 0 ? list[at].id : meal.id,
+    n: String(meal.n).slice(0, 80),
+    k: meal.k || 0,
+    p: meal.p || 0,
+    f: meal.f || 0,
+    c: meal.c || 0,
+    u: (at >= 0 ? list[at].u || 0 : 0) + 1,
+    t: now,
+  };
+  if (at >= 0) list[at] = entry;
+  else list.push(entry);
+  if (list.length > MAX_FOODS) {
+    list.sort((a, b) => (b.t || 0) - (a.t || 0));
+    list.length = MAX_FOODS;
+  }
+  return list;
+}
+
+/**
+ * Foods to offer while typing a name — or, with nothing typed, the ones eaten
+ * most often lately, for a one-tap re-log. Starts-with beats contains.
+ */
+export function suggestFoods(foods, query = '', limit = 5, now = Date.now()) {
+  const q = foodKey(query);
+  const score = (f) => (f.u || 1) / (1 + (now - (f.t || 0)) / (7 * 24 * 60 * 60 * 1000));
+  const ranked = (foods || [])
+    .map((f) => {
+      const key = foodKey(f.n);
+      const match = !q ? 1 : key.startsWith(q) ? 2 : key.includes(q) ? 1 : 0;
+      return { f, match, s: score(f) };
+    })
+    .filter((x) => x.match > 0 && (!q || foodKey(x.f.n) !== q))
+    .sort((a, b) => b.match - a.match || b.s - a.s);
+  return ranked.slice(0, limit).map((x) => x.f);
+}
+
+/** The remembered food with exactly this name, if any. */
+export const knownFood = (foods, name) => {
+  const key = foodKey(name);
+  return key ? (foods || []).find((f) => foodKey(f.n) === key) || null : null;
+};
+
+const WEEKDAY_NAMES = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
+
+/**
+ * Patterns across the last four finished weeks, at most two, most useful
+ * first. Only logged days count: a skipped breakfast or an unlogged day is
+ * never read as a problem.
+ *
+ *  - the same weekday over on calories or fat in at least 3 of 4 weeks
+ *  - protein short on most logged days
+ *  - snacks carrying more than a third of the calories on over days
+ *
+ * @param {Record<string, object>} weeks   the document's weeks
+ * @param {number} currentWeek
+ * @param {{kcal,protein,fat,carbs}} targets
+ * @returns {{ key: string, text: string }[]}
+ */
+export function mealHabits(weeks, currentWeek, targets) {
+  const recent = [];
+  for (let n = currentWeek - 4; n < currentWeek; n++) {
+    if (n >= 1 && weeks?.[String(n)]) recent.push(weeks[String(n)]);
+  }
+  if (!targets?.kcal || recent.length < 3) return [];
+
+  const tips = [];
+  const overBy = Array(7).fill(0);
+  let logged = 0;
+  let proteinShort = 0;
+  let snackKcal = 0;
+  let overKcal = 0;
+
+  for (const week of recent) {
+    for (let day = 0; day < 7; day++) {
+      const meals = week.meals?.[day];
+      const totals = mealTotals(meals);
+      if (!totals) continue;
+      logged++;
+      const over = totals.kcal > targets.kcal * 1.1 || totals.fat > targets.fat * 1.2;
+      if (over) {
+        overBy[day]++;
+        overKcal += totals.kcal;
+        snackKcal += meals.filter((m) => m.s === 3).reduce((a, m) => a + (Number(m.k) || 0), 0);
+      }
+      if (totals.protein < targets.protein * 0.75) proteinShort++;
+    }
+  }
+
+  const worst = overBy.reduce((best, count, day) => (count > overBy[best] ? day : best), 0);
+  if (overBy[worst] >= 3) {
+    tips.push({
+      key: 'weekday',
+      text: `كل ${WEEKDAY_NAMES[worst]} تقريباً تطلع فوق هدفك (${overBy[worst]} من آخر ${recent.length} أسابيع). خطّط له من بدري — وجبة أخف قبله أو بعده.`,
+    });
+  }
+  if (logged >= 6 && proteinShort / logged >= 0.6) {
+    tips.push({
+      key: 'protein',
+      text: `بروتينك ناقص في ${proteinShort} من ${logged} يوم سجّلته. أسهل حل: مصدر بروتين واحد زيادة (لبن، بيض، تونة، دجاج) بأي وجبة.`,
+    });
+  }
+  if (overKcal > 0 && snackKcal / overKcal > 0.33) {
+    tips.push({
+      key: 'snacks',
+      text: 'بالأيام اللي تزيد فيها، السناك يشيل أكثر من ثلث السعرات. هنا أسهل مكان تقص منه.',
+    });
+  }
+  return tips.slice(0, 2);
+}

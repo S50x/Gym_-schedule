@@ -12,6 +12,7 @@ import {
   macroTargets,
   mealTotals,
   mealAlerts,
+  mealHabits,
 } from '../engine.js';
 import { mealPanel } from './meals.js';
 import { scanActions } from './foodscan.js';
@@ -336,6 +337,19 @@ function summaryCard(store, wk, bodyWeight, goalKey) {
         )
       );
     }
+  }
+
+  /* habits: what keeps happening, from the last four weeks of meals */
+  const habits = mealHabits(store.doc.weeks, store.currentWeek, macroTargets(target, bodyWeight, goalKey));
+  if (habits.length) {
+    parts.push(
+      el(
+        'div',
+        { class: 'verdict hold habits' },
+        el('h4', { text: 'لاحظت من أكلك' }),
+        habits.map((h) => el('p', { text: h.text }))
+      )
+    );
   }
 
   /* learned maintenance */
