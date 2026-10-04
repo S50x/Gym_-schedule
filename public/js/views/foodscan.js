@@ -42,7 +42,7 @@ export function keyGuide() {
       { class: 'ksteps' },
       el('li', { text: 'سجّل دخول بحساب Gmail حقك.' }),
       el('li', {}, 'اضغط الزر الأزرق ', el('b', { text: 'Create API key' }), '.'),
-      el('li', { text: 'انسخ المفتاح اللي يطلع لك (يبدأ غالباً بـ AIza).' }),
+      el('li', {}, 'اضغط على المفتاح، وبعدين زر النسخ ', el('b', { text: '⧉' }), ' اللي جنب API Key (يبدأ بـ AQ. أو AIza).'),
       el('li', { text: 'ارجع هنا، اضغط «لصق»، وبعدين «حفظ».' })
     ),
     el('div', {

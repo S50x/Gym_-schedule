@@ -72,11 +72,11 @@ export default async function run({ base, browser, problems, step }) {
   });
 
   await step('saving a key shows it working, never the key itself', async () => {
-    await page.fill('input[aria-label="مفتاح Gemini"]', 'AIzaSyD-browser-test-key-0123456WXYZ');
+    await page.fill('input[aria-label="مفتاح Gemini"]', 'AQ.Ab8-browser.test_key-0123456WXYZ');
     await page.locator('.krow .cta', { hasText: 'حفظ' }).click();
     await page.waitForSelector('.formok', { timeout: 5000 });
     const ok = await page.textContent('.formok');
-    if (!ok.includes('WXYZ') || ok.includes('AIza')) throw new Error(`status: ${ok}`);
+    if (!ok.includes('WXYZ') || ok.includes('AQ.')) throw new Error(`status: ${ok}`);
   });
 
   await step('a scan fills the meal and marks what it could not read', async () => {

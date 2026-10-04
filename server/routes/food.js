@@ -17,8 +17,12 @@ import { checkKey, readFoodImage, GeminiError } from '../gemini.js';
 
 const KIND = 'gemini';
 
-/** Gemini keys are long URL-safe tokens; anything else is a paste mistake. */
-const KEY_SHAPE = /^[A-Za-z0-9_-]{20,200}$/;
+/**
+ * Gemini keys are long tokens: the older "AIza…" kind, and the newer "AQ.…"
+ * kind with dots in it. Anything with spaces or other symbols is a paste
+ * mistake; Google itself has the last word when the key is checked.
+ */
+const KEY_SHAPE = /^[A-Za-z0-9._-]{20,300}$/;
 
 /** Base64 of the downsized JPEG the client sends; well under the JSON limit. */
 const IMAGE_MAX_CHARS = 560_000;
