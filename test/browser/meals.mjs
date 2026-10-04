@@ -61,6 +61,15 @@ export default async function run({ base, browser, problems, step }) {
     await page.waitForSelector('.meal', { timeout: 5000 });
     const names = await page.locator('.meal .mname b').allTextContents();
     if (names.join() !== 'تمر') throw new Error(`after reload: ${names}`);
+
+    // The app remembers it: with the name box empty it is offered as a usual
+    // food, and one tap fills the whole form with the saved numbers.
+    const chip = page.locator('.madd .fpick', { hasText: 'تمر' });
+    await chip.waitFor({ timeout: 5000 });
+    await chip.click();
+    const kcal2 = await page.locator('.madd .mgrid .mi').nth(0).inputValue();
+    if (kcal2 !== '100') throw new Error(`remembered kcal ${kcal2}`);
+    await noStrayNulls(page, 'food suggestions');
     await page.context().close();
   });
 }

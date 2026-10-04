@@ -20,7 +20,7 @@ import {
   LEVEL_KEYS,
   GROUP_KEYS,
 } from '../public/js/program.js';
-import { MAX_WEEK } from '../public/js/engine.js';
+import { MAX_WEEK, MAX_FOODS, foodKey } from '../public/js/engine.js';
 
 const EX_IDS = new Set(EXERCISE_IDS);
 const DAY_OF_WEEK = new Set(LIFT_DAY_KEYS);
@@ -201,6 +201,33 @@ function mealName(raw, path) {
   let out = '';
   for (const ch of raw) out += ch.charCodeAt(0) < 32 || ch === '\u007f' ? ' ' : ch;
   return out.trim().slice(0, 80);
+}
+
+/**
+ * The foods the trainee has logged before, with the numbers they last saved —
+ * what one-tap re-logging and "your numbers, not the scan's" are built on.
+ */
+function foodsOf(raw, path) {
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw)) throw new Invalid(path, 'شكل غير صحيح');
+  if (raw.length > MAX_FOODS) throw new Invalid(path, 'أكلات كثيرة');
+  return raw.map((f, i) => {
+    const at = `${path}[${i}]`;
+    if (!isPlainObject(f)) throw new Invalid(at, 'شكل غير صحيح');
+    if (typeof f.id !== 'string' || !MEAL_ID.test(f.id)) throw new Invalid(`${at}.id`, 'معرّف غير صالح');
+    const n = mealName(f.n, `${at}.n`);
+    if (!n) throw new Invalid(`${at}.n`, 'بدون اسم');
+    return {
+      id: f.id,
+      n,
+      k: num(f.k ?? 0, `${at}.k`, { min: 0, max: 10000 }),
+      p: num(f.p ?? 0, `${at}.p`, { min: 0, max: 1000 }),
+      f: num(f.f ?? 0, `${at}.f`, { min: 0, max: 1000 }),
+      c: num(f.c ?? 0, `${at}.c`, { min: 0, max: 1500 }),
+      u: num(f.u ?? 0, `${at}.u`, { min: 0, max: 1_000_000, integer: true }),
+      t: num(f.t ?? 0, `${at}.t`, { min: 0, max: 4102444800000, integer: true }),
+    };
+  });
 }
 
 /** `{ "0": [meal, …], … }` — keyed by weekday like cardio, every meal optional. */
@@ -386,6 +413,7 @@ export function validateState(input) {
       weeks,
       nutrition: nutritionOf(input.nutrition, 'doc.nutrition'),
       profile: profileOf(input.profile, 'doc.profile'),
+      foods: foodsOf(input.foods, 'doc.foods'),
     };
 
     const size = Buffer.byteLength(JSON.stringify(doc), 'utf8');
@@ -399,7 +427,21 @@ export function validateState(input) {
 }
 
 export function emptyState() {
-  return { schema: 1, meta: { week: 1 }, weeks: {}, nutrition: null, profile: null };
+  return { schema: 1, meta: { week: 1 }, weeks: {}, nutrition: null, profile: null, foods: [] };
+}
+
+/**
+ * Two devices' food lists: one entry per food, the one used most recently
+ * winning — so a correction made on the phone is not undone by the laptop.
+ */
+function mergeFoods(a = [], b = []) {
+  const byKey = new Map();
+  for (const f of [...(a || []), ...(b || [])]) {
+    const key = foodKey(f.n);
+    const have = byKey.get(key);
+    if (!have || (f.t || 0) >= (have.t || 0)) byKey.set(key, f);
+  }
+  return [...byKey.values()].sort((x, y) => (y.t || 0) - (x.t || 0)).slice(0, MAX_FOODS);
 }
 
 /**
@@ -431,5 +473,6 @@ export function mergeStates(base, incoming) {
     weeks,
     nutrition: nutrition ?? null,
     profile: profile ?? null,
+    foods: mergeFoods(base.foods, incoming.foods),
   };
 }
