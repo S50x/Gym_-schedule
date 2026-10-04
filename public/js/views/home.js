@@ -35,9 +35,10 @@ export function renderHome(ctx) {
   const wk = store.viewWeek;
   const week = store.week(wk);
   const goalKey = store.goal;
-  const PLAN = planOf(goalKey);
-  const WEEK = weekOf(goalKey);
-  const CARDIO = cardioOf(goalKey);
+  const rest = store.restDays;
+  const PLAN = planOf(goalKey, rest);
+  const WEEK = weekOf(goalKey, rest);
+  const CARDIO = cardioOf(goalKey, rest);
   const hasLoads = goalHasLoads(goalKey);
   // Naming the iron on a goal that has none reads like the app lost track of
   // which programme the trainee is on.
@@ -104,7 +105,7 @@ export function renderHome(ctx) {
   );
 
   /* ── today ── */
-  const tk = todayLift(goalKey);
+  const tk = todayLift(goalKey, new Date(), rest);
   const todayIndex = [1, 2, 3, 4, 5, 6, 0][new Date().getDay()];
   const todayName = DAY_NAMES[todayIndex];
   let hero;

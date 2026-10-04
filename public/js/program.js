@@ -1446,12 +1446,18 @@ function resolveExercise(item) {
   return typeof item === 'string' ? { id, ...base } : { id, ...base, ...item };
 }
 
-/** `{ sat: { day, title, focus, ex: [...] }, … }` for one goal. */
-export function planOf(goalKey) {
+/**
+ * `{ sat: { day, title, focus, ex: [...] }, … }` for one goal. `day` is the
+ * weekday the lift actually falls on once the trainee's rest days are applied —
+ * the key stays the same whatever day it moves to.
+ */
+export function planOf(goalKey, restDays = null) {
+  const { lift } = arrangeWeek(goalKey, restDays);
   const out = {};
   for (const day of goalOf(goalKey).days) {
+    const at = lift.indexOf(day.key);
     out[day.key] = {
-      day: day.day,
+      day: at >= 0 ? DAY_NAMES[at] : day.day,
       title: day.title,
       focus: day.focus,
       ex: day.ex.map(resolveExercise).filter(Boolean),
@@ -1476,33 +1482,127 @@ export const dayHasLoads = (exercises) => (exercises || []).some((e) => !e.body 
 export const goalHasLoads = (goalKey) =>
   goalOf(goalKey).days.some((d) => dayHasLoads(d.ex.map(resolveExercise).filter(Boolean)));
 
-/** The goal's cardio week — seven entries in DAY_NAMES order. */
-export const cardioOf = (goalKey) => goalOf(goalKey).cardio;
+/* ── the week around the trainee's rest days ─────────────────── */
+
+/** Weekday index (Sat=0 … Fri=6) each of the goal's lifting days is written for. */
+const liftHome = (goal) => goal.days.map((d) => DAY_NAMES.indexOf(d.day));
+
+/**
+ * The goal's own rest days: weekdays with no lift whose cardio slot is a rest.
+ * This is what anyone who never picked rest days gets, so their week is exactly
+ * the one the goal was written as.
+ */
+export function defaultRestDays(goalKey) {
+  const goal = goalOf(goalKey);
+  const lifts = new Set(liftHome(goal));
+  return goal.cardio.flatMap((c, i) => (c?.rest && !lifts.has(i) ? [i] : []));
+}
+
+/** Most rest days a goal allows: every lifting day still needs a weekday. */
+export const maxRestDays = (goalKey) => DAY_NAMES.length - goalOf(goalKey).days.length;
+
+/**
+ * Clean a stored rest-day list: weekday indexes 0–6, unique, sorted. Anything
+ * unusable — missing, malformed, or so many rest days that the lifts no longer
+ * fit (say after switching to a goal with more lifting days) — falls back to
+ * the goal's own week rather than producing a broken one.
+ */
+export function normalizeRestDays(goalKey, restDays) {
+  if (!Array.isArray(restDays)) return defaultRestDays(goalKey);
+  const clean = [...new Set(restDays)].filter((d) => Number.isInteger(d) && d >= 0 && d <= 6);
+  if (clean.length !== restDays.length || clean.length > maxRestDays(goalKey)) {
+    return defaultRestDays(goalKey);
+  }
+  return clean.sort((a, b) => a - b);
+}
+
+/** A cardio slot moved to another weekday carries that weekday's name. */
+const onDay = (entry, i) => ({ ...entry, d: DAY_NAMES[i] });
+
+/**
+ * Lay the goal's week out around the chosen rest days.
+ *
+ * Lifting days keep their order and are spread as evenly as the free weekdays
+ * allow; each keeps the cardio written for it (its warm-up, or none). The free
+ * days left over take the goal's cardio-only sessions in their original order,
+ * repeating them if the trainee rests less than the goal assumed. Rest days get
+ * the goal's rest entry.
+ *
+ * @returns {{ lift: (string|null)[], cardio: object[] }} seven entries each, in
+ *   DAY_NAMES order — index i is weekday i, which is also the cardio storage key.
+ */
+export function arrangeWeek(goalKey, restDays = null) {
+  const goal = goalOf(goalKey);
+  const rest = normalizeRestDays(goalKey, restDays);
+  const home = liftHome(goal);
+  const restSet = new Set(rest);
+
+  // The goal's own week, untouched: no reshuffle, so nothing can drift.
+  const own = defaultRestDays(goalKey);
+  if (rest.length === own.length && rest.every((d, i) => d === own[i])) {
+    const lift = DAY_NAMES.map((_, i) => goal.days[home.indexOf(i)]?.key ?? null);
+    return { lift, cardio: goal.cardio.map(onDay) };
+  }
+
+  const free = DAY_NAMES.map((_, i) => i).filter((i) => !restSet.has(i));
+  const k = goal.days.length;
+  // First and last free day both used, the rest evenly between: the widest
+  // gaps the free days allow, so two lifts only touch when they have to.
+  const liftAt = goal.days.map((_, j) =>
+    free[k === 1 ? 0 : Math.round((j * (free.length - 1)) / (k - 1))]
+  );
+
+  const liftSet = new Set(home);
+  const cardioOnly = goal.cardio.filter((c, i) => !liftSet.has(i) && !c?.rest);
+  const restEntry = goal.cardio.find((c, i) => c?.rest && !liftSet.has(i)) || {
+    detail: 'راحة كاملة. الراحة جزء من البرنامج مو كسل',
+    rest: 1,
+    min: 0,
+  };
+
+  const lift = Array(DAY_NAMES.length).fill(null);
+  const cardio = Array(DAY_NAMES.length);
+  goal.days.forEach((d, j) => {
+    lift[liftAt[j]] = d.key;
+    cardio[liftAt[j]] = onDay(goal.cardio[home[j]], liftAt[j]);
+  });
+  let next = 0;
+  for (let i = 0; i < DAY_NAMES.length; i++) {
+    if (lift[i]) continue;
+    if (restSet.has(i) || !cardioOnly.length) {
+      cardio[i] = onDay(restEntry, i);
+    } else {
+      cardio[i] = onDay(cardioOnly[next % cardioOnly.length], i);
+      next++;
+    }
+  }
+  return { lift, cardio };
+}
+
+/** The cardio week — seven entries in DAY_NAMES order, rest days applied. */
+export const cardioOf = (goalKey, restDays = null) => arrangeWeek(goalKey, restDays).cardio;
 
 /**
  * Seven-entry week: which weekday lifts, which cardio slot it maps to, and the
  * JS weekday number. `c` doubles as the storage key for cardio, so it stays the
  * index into the cardio array.
  */
-export function weekOf(goalKey) {
-  const goal = goalOf(goalKey);
-  const liftByDayName = new Map(goal.days.map((d) => [d.day, d.key]));
+export function weekOf(goalKey, restDays = null) {
+  const { lift, cardio } = arrangeWeek(goalKey, restDays);
   return DAY_NAMES.map((name, i) => {
     const entry = { d: name, c: i, js: JS_DAY[i] };
-    const lift = liftByDayName.get(name);
-    if (lift) entry.lift = lift;
-    else if (goal.cardio[i]?.rest && i === DAY_NAMES.length - 1) entry.rest = 1;
+    if (lift[i]) entry.lift = lift[i];
+    else if (cardio[i]?.rest) entry.rest = 1;
     return entry;
   });
 }
 
 /** The lifting day key for today, or 'cardio' / 'rest'. */
-export function todayLift(goalKey, date = new Date()) {
-  const week = weekOf(goalKey);
-  const entry = week.find((w) => w.js === date.getDay());
+export function todayLift(goalKey, date = new Date(), restDays = null) {
+  const entry = weekOf(goalKey, restDays).find((w) => w.js === date.getDay());
   if (!entry) return 'rest';
   if (entry.lift) return entry.lift;
-  return entry.rest || cardioOf(goalKey)[entry.c]?.rest ? 'rest' : 'cardio';
+  return entry.rest ? 'rest' : 'cardio';
 }
 
 /* ── muscle groups ────────────────────────────────────────────── */
