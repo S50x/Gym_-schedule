@@ -28,7 +28,13 @@ setGeminiClientFactory((apiKey) => ({
     },
     async generateContent(req) {
       calls.push({ op: 'generate', apiKey, req });
-      if (failWith) throw failWith;
+      // An array fails once per entry, in order, then succeeds.
+      if (Array.isArray(failWith)) {
+        const next = failWith.shift();
+        if (next) throw next;
+      } else if (failWith) {
+        throw failWith;
+      }
       return { text: JSON.stringify(answer) };
     },
   },
@@ -216,6 +222,52 @@ test('food scanning API', async (t) => {
     failWith = Object.assign(new Error('Permission denied'), { status: 403 });
     res = await client.post('/api/food/scan', { image: IMAGE });
     assert.equal(res.data.error, 'bad_key');
+
+    const overloaded = () => Object.assign(new Error('The model is overloaded'), { status: 503 });
+    const logged = [];
+    const warn = console.warn;
+    console.warn = (...args) => logged.push(JSON.stringify(args));
+    try {
+      // Busy once: the second try answers.
+      calls = [];
+      failWith = [overloaded()];
+      res = await client.post('/api/food/scan', { image: IMAGE });
+      assert.equal(res.status, 200);
+      assert.equal(calls.filter((c) => c.op === 'generate').length, 2);
+
+      // Busy twice: the lighter model gets the third try.
+      calls = [];
+      failWith = [overloaded(), overloaded()];
+      res = await client.post('/api/food/scan', { image: IMAGE });
+      assert.equal(res.status, 200);
+      const models = calls.filter((c) => c.op === 'generate').map((c) => c.req.model);
+      assert.equal(models.length, 3);
+      assert.equal(models[0], models[1]);
+      assert.notEqual(models[2], models[0]);
+
+      // Busy every time: the user gets the code to report back.
+      failWith = overloaded();
+      res = await client.post('/api/food/scan', { image: IMAGE });
+      assert.equal(res.status, 502);
+      assert.equal(res.data.error, 'unavailable');
+      assert.equal(res.data.detail, '503');
+
+      // Our own timeout has no HTTP status; it says so.
+      failWith = Object.assign(new Error('The operation timed out'), { name: 'TimeoutError' });
+      res = await client.post('/api/food/scan', { image: IMAGE });
+      assert.equal(res.data.detail, 'timeout');
+
+      // A 4xx is not retried: it would fail the same way again.
+      calls = [];
+      failWith = Object.assign(new Error('Invalid argument'), { status: 400 });
+      res = await client.post('/api/food/scan', { image: IMAGE });
+      assert.equal(res.data.error, 'unreadable');
+      assert.equal(calls.filter((c) => c.op === 'generate').length, 1);
+    } finally {
+      console.warn = warn;
+    }
+    assert.ok(logged.some((l) => l.includes('503')), 'failures are logged');
+    assert.ok(!logged.some((l) => l.includes(GOOD_KEY)), 'the key is never logged');
 
     failWith = null;
     answer = 'not json';
