@@ -310,47 +310,79 @@ export function avgPro(cal) {
   return Math.round(values.reduce((a, b) => a + b, 0) / values.length);
 }
 
+/** How hard each new week pulls the learned maintenance toward what it saw. */
+export const LEARN_RATE = 0.3;
+/** The most one week may move the learned maintenance, in kcal/day. */
+export const LEARN_MAX_STEP = 250;
+/** How far the learned value may stray from the formula before it is distrusted. */
+export const LEARN_MAX_DRIFT = 0.35;
+/** Smoothing for the trend weight; a single scale reading only counts this much. */
+const TREND_ALPHA = 0.4;
+
 /**
- * Real maintenance calories measured from behaviour rather than a formula:
- *   maintenance = average intake − (weight change × 7700 / 7)
+ * Real maintenance calories, learned week by week from behaviour:
+ *   sample = average intake − (trend-weight change × 7700 / 7)
+ *
+ * One raw week is a poor witness. A kilo of water lost in the first week of a
+ * diet reads as 1,100 extra calories a day, and one heavy weigh-in reads as a
+ * feast. So the scale reading goes through a trend line first, and each week
+ * only nudges the estimate a fraction of the way toward its sample, starting
+ * from the formula (`prior`). The more weeks logged, the further the estimate
+ * is allowed to have walked from the formula — but never past LEARN_MAX_DRIFT.
+ *
  * Only weeks with at least 4 logged days and a body weight on both ends count.
+ * Without a prior the first sample seeds the estimate.
+ *
+ * @returns {{val:number, weeks:number, samples:Array<{week:number, avg:number,
+ *   trendKg:number, sample:number, est:number}>}|null}
  */
-export function measuredTDEE(calHist, bodyHist) {
+export function measuredTDEE(calHist, bodyHist, prior = null) {
+  const trend = {};
+  const weekNums = Object.keys(bodyHist || {})
+    .map(Number)
+    .filter((n) => Number.isInteger(n) && Number(bodyHist[n]?.weight) > 0)
+    .sort((a, b) => a - b);
+  let last = null;
+  for (const n of weekNums) {
+    const w = Number(bodyHist[n].weight);
+    last = last === null ? w : last + TREND_ALPHA * (w - last);
+    trend[n] = last;
+  }
+
+  const hasPrior = Number.isFinite(prior);
+  let est = hasPrior ? prior : null;
   const samples = [];
-  for (const key of Object.keys(calHist || {})) {
-    const i = Number(key);
-    if (!Number.isInteger(i)) continue;
+  const calWeeks = Object.keys(calHist || {})
+    .map(Number)
+    .filter(Number.isInteger)
+    .sort((a, b) => a - b);
+  for (const i of calWeeks) {
     const a = avgCal(calHist[i]);
-    const prev = bodyHist?.[i - 1];
-    const cur = bodyHist?.[i];
-    if (a && a.days >= 4 && prev?.weight && cur?.weight) {
-      const dkg = cur.weight - prev.weight;
-      samples.push(Math.round(a.avg - (dkg * KCAL_PER_KG) / 7));
+    if (!a || a.days < 4 || trend[i - 1] === undefined || trend[i] === undefined) continue;
+    const dkg = trend[i] - trend[i - 1];
+    const sample = Math.round(a.avg - (dkg * KCAL_PER_KG) / 7);
+    if (est === null) {
+      est = sample;
+    } else {
+      const step = LEARN_RATE * (sample - est);
+      est += Math.max(-LEARN_MAX_STEP, Math.min(LEARN_MAX_STEP, step));
     }
+    if (hasPrior) {
+      est = Math.max(prior * (1 - LEARN_MAX_DRIFT), Math.min(prior * (1 + LEARN_MAX_DRIFT), est));
+    }
+    samples.push({ week: i, avg: a.avg, trendKg: Math.round(dkg * 10) / 10, sample, est: Math.round(est) });
   }
   if (!samples.length) return null;
-  return {
-    val: Math.round(samples.reduce((a, b) => a + b, 0) / samples.length),
-    weeks: samples.length,
-  };
+  return { val: Math.round(est), weeks: samples.length, samples };
 }
 
 export function proteinTarget(kg, goalKey = DEFAULT_GOAL) {
   return Math.round(kg * goalOf(goalKey).nutrition.proteinPerKg);
 }
 
-/**
- * Maintenance calories as of today.
- *
- * Deliberately derived rather than stored. A number worked out once at sign-up
- * is wrong the moment the body it describes changes — lose fifteen kilos on a
- * frozen target and you are eating for a person who no longer exists. A measured
- * value beats the formula, because it comes from what actually happened to this
- * person's weight at a known intake.
- */
-export function effectiveTdee(nutrition, weight) {
+/** Maintenance calories from the formula alone, at today's weight. */
+export function formulaTdee(nutrition, weight) {
   if (!nutrition) return null;
-  if (Number.isFinite(nutrition.measuredTdee)) return nutrition.measuredTdee;
   if (Number.isFinite(weight) && Number.isFinite(nutrition.age)) {
     return tdeeFormula(weight, nutrition.age, nutrition.act ?? 1.55, nutrition.height);
   }
@@ -358,9 +390,26 @@ export function effectiveTdee(nutrition, weight) {
   return Number.isFinite(nutrition.tdee) ? nutrition.tdee : null;
 }
 
+/**
+ * Maintenance calories as of today.
+ *
+ * Deliberately derived rather than stored. A number worked out once at sign-up
+ * is wrong the moment the body it describes changes — lose fifteen kilos on a
+ * frozen target and you are eating for a person who no longer exists. The same
+ * goes for a measured value: `learned` is recomputed from the log every time
+ * (see measuredTDEE) and beats the formula, because it comes from what
+ * actually happened to this person's weight at a known intake. The stored
+ * `nutrition.measuredTdee` is no longer read: it froze one reading forever.
+ */
+export function effectiveTdee(nutrition, weight, learned = null) {
+  if (!nutrition) return null;
+  if (Number.isFinite(learned)) return learned;
+  return formulaTdee(nutrition, weight);
+}
+
 /** The daily calorie target for today's weight and the current goal. */
-export function dailyTarget(nutrition, weight, goalKey = DEFAULT_GOAL) {
-  const tdee = effectiveTdee(nutrition, weight);
+export function dailyTarget(nutrition, weight, goalKey = DEFAULT_GOAL, learned = null) {
+  const tdee = effectiveTdee(nutrition, weight, learned);
   return tdee === null ? null : safeTarget(tdee, goalKey);
 }
 

@@ -11,6 +11,8 @@ import {
   dailyTarget,
   goalReview,
   measuredTDEE,
+  LEARN_MAX_STEP,
+  LEARN_MAX_DRIFT,
   avgCal,
   todayKey,
   formatRest,
@@ -523,10 +525,15 @@ test('the calorie target follows the body', async (t) => {
     assert.ok(heavy - lighter > 150, `difference was only ${heavy - lighter}`);
   });
 
-  await t.test('a measured maintenance overrides the formula', () => {
-    const measured = { ...nut, measuredTdee: 2400 };
-    assert.equal(effectiveTdee(measured, 100), 2400);
-    assert.equal(dailyTarget(measured, 100, 'cut'), safeTarget(2400, 'cut'));
+  await t.test('a learned maintenance overrides the formula', () => {
+    assert.equal(effectiveTdee(nut, 100, 2400), 2400);
+    assert.equal(dailyTarget(nut, 100, 'cut', 2400), safeTarget(2400, 'cut'));
+  });
+
+  await t.test('a stored measuredTdee no longer freezes the target', () => {
+    // It used to be saved once and then trusted forever.
+    const stale = { ...nut, measuredTdee: 4662 };
+    assert.equal(effectiveTdee(stale, 100), effectiveTdee(nut, 100));
   });
 
   await t.test('the same weight gives different targets per goal', () => {
@@ -788,13 +795,74 @@ test('nutrition', async (t) => {
     assert.equal(avgCal({ d: [] }), null);
   });
 
-  await t.test('measured maintenance backs out the weight change', () => {
+  await t.test('measured maintenance backs out the trend-weight change', () => {
     const calHist = { 2: { d: [2000, 2000, 2000, 2000, 2000, 2000, 2000] } };
     const bodyHist = { 1: { weight: 102 }, 2: { weight: 101.5 } };
     const measured = measuredTDEE(calHist, bodyHist);
-    // lost 0.5 kg → 0.5 × 7700 / 7 = 550 kcal/day deficit → maintenance ≈ 2550
-    assert.equal(measured.val, 2550);
+    // The trend moves 40% of the 0.5 kg drop → 0.2 × 7700 / 7 = 220 kcal/day.
+    assert.equal(measured.val, 2220);
     assert.equal(measured.weeks, 1);
+  });
+
+  await t.test('steady weight at steady intake learns that intake', () => {
+    const calHist = {};
+    const bodyHist = { 1: { weight: 90 } };
+    for (let w = 2; w <= 12; w++) {
+      calHist[w] = { d: Array(7).fill(2600) };
+      bodyHist[w] = { weight: 90 };
+    }
+    const measured = measuredTDEE(calHist, bodyHist, 2300);
+    assert.ok(Math.abs(measured.val - 2600) < 50, `got ${measured.val}`);
+  });
+
+  await t.test('one week only moves the estimate a small step', () => {
+    // 2.3 kg off in a week is mostly water; it must not swing the answer by 1,500.
+    const calHist = { 2: { d: Array(7).fill(1800) } };
+    const bodyHist = { 1: { weight: 102 }, 2: { weight: 99.7 } };
+    const measured = measuredTDEE(calHist, bodyHist, 2800);
+    assert.ok(measured.val - 2800 <= LEARN_MAX_STEP, `moved to ${measured.val}`);
+  });
+
+  await t.test('never drifts past the guard band around the formula', () => {
+    const calHist = {};
+    const bodyHist = { 1: { weight: 100 } };
+    for (let w = 2; w <= 30; w++) {
+      calHist[w] = { d: Array(7).fill(6000) };
+      bodyHist[w] = { weight: 100 };
+    }
+    const measured = measuredTDEE(calHist, bodyHist, 2500);
+    assert.equal(measured.val, Math.round(2500 * (1 + LEARN_MAX_DRIFT)));
+  });
+
+  await t.test('real log that used to read 4,662 now reads close to plausible', () => {
+    // A real account's weeks 1–7: two water-heavy weeks and a 97 → 99 → 96.7
+    // weigh-in bounce made the old per-week average claim 4,662 kcal/day.
+    const calHist = {
+      1: { d: [1800, 1682, 1800, 0, 0, 0, 0] },
+      2: { d: [1950, 1900, 1755, 1780, 1658, 1754, 2000] },
+      3: { d: [] },
+      4: { d: [] },
+      5: { d: [0, 2200, 0, 0, 0, 0, 0] },
+      6: { d: [2076, 2586, 2310, 2076, 2450, 2650, 2900] },
+      7: { d: [2000, 979, 0, 0, 0, 0, 0] },
+    };
+    const bodyHist = {
+      1: { weight: 102 },
+      2: { weight: 99.7 },
+      3: { weight: 99.7 },
+      4: { weight: 97 },
+      5: { weight: 99 },
+      6: { weight: 96.7 },
+    };
+    const formula = tdeeFormula(96.7, 25, 1.4, 182);
+    const measured = measuredTDEE(calHist, bodyHist, formula);
+    assert.equal(measured.weeks, 2);
+    assert.deepEqual(
+      measured.samples.map((s) => s.week),
+      [2, 6]
+    );
+    assert.ok(measured.val < 3300, `still inflated: ${measured.val}`);
+    assert.ok(measured.val > formula, 'losing ~1 kg a week on ~2,100 means above the formula');
   });
 
   await t.test('ignores weeks with fewer than four logged days', () => {
