@@ -72,7 +72,7 @@ export class GymMode {
 
   /** The day templates of whichever goal the trainee is on right now. */
   plan() {
-    return planOf(this.store.goal);
+    return planOf(this.store.goal, this.store.restDays);
   }
 
   async open(day) {

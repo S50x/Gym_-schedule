@@ -313,6 +313,20 @@ function groupLevelsOf(raw, path) {
   return Object.keys(out).length ? out : null;
 }
 
+/**
+ * Weekdays off, Sat=0 … Fri=6. Absent means "the goal's own week", which is
+ * what every older document says. How many fit depends on the goal and is
+ * settled on the client (program.js normalizeRestDays) — a list too long for
+ * the current goal falls back there, so storing it can never break a week.
+ */
+function restDaysOf(raw, path) {
+  if (raw === undefined || raw === null) return null;
+  if (!Array.isArray(raw) || raw.length > 7) throw new Invalid(path, 'صيغة غير صالحة');
+  const out = raw.map((d, i) => num(d, `${path}[${i}]`, { min: 0, max: 6, integer: true }));
+  if (new Set(out).size !== out.length) throw new Invalid(path, 'يوم مكرر');
+  return out.sort((a, b) => a - b);
+}
+
 /** The trainee's goal and experience level — what the whole programme hangs on. */
 function profileOf(raw, path) {
   if (!isPlainObject(raw)) return null;
@@ -327,6 +341,7 @@ function profileOf(raw, path) {
     // else here: an unknown group or an unknown level is dropped rather than
     // stored, so nothing a client invents reaches the document.
     levels: groupLevelsOf(raw.levels, `${path}.levels`),
+    restDays: restDaysOf(raw.restDays, `${path}.restDays`),
     // Body weight when this goal was chosen — the baseline the review prompt
     // measures progress against.
     startWeight: num(raw.startWeight ?? null, `${path}.startWeight`, {

@@ -98,9 +98,23 @@ test('state validation', async (t) => {
       goal: 'muscle',
       level: 'adv',
       levels: null,
+      restDays: null,
       startWeight: 88.5,
       ts: 5,
     });
+  });
+
+  await t.test('rest days are stored sorted, and junk is rejected', () => {
+    const ok = validateState(docWith({}, { profile: { goal: 'cut', restDays: [6, 0], ts: 1 } }));
+    assert.equal(ok.ok, true);
+    assert.deepEqual(ok.doc.profile.restDays, [0, 6]);
+    for (const restDays of [[7], [-1], [1, 1], [1.5], 'fri', { 0: 1 }, [0, 1, 2, 3, 4, 5, 6, 0]]) {
+      assert.equal(
+        validateState(docWith({}, { profile: { goal: 'cut', restDays } })).ok,
+        false,
+        JSON.stringify(restDays)
+      );
+    }
   });
 
   await t.test('a document with no profile is valid — that is every old one', () => {
@@ -137,6 +151,7 @@ test('state validation', async (t) => {
       'goal',
       'level',
       'levels',
+      'restDays',
       'startWeight',
       'ts',
     ]);

@@ -159,6 +159,16 @@ class Store extends EventTarget {
     return Object.keys(out).length ? out : null;
   }
 
+  /**
+   * Weekdays off (Sat=0 … Fri=6), or null to follow the goal's own week —
+   * which is what every document written before this existed says.
+   * program.js normalises it, so a list that no longer fits the goal is safe.
+   */
+  get restDays() {
+    const raw = this.doc.profile?.restDays;
+    return Array.isArray(raw) ? raw : null;
+  }
+
   /** Has the trainee been through onboarding? */
   get hasProfile() {
     return !!(this.doc.profile?.goal && GOALS[this.doc.profile.goal]);

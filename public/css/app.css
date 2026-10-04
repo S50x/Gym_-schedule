@@ -2481,4 +2481,25 @@ button.card.malerts {
   text-align: start;
   color: var(--txt);
   font: inherit;
+/* ── rest-day picker: the week it produces ── */
+.wprev {
+  margin-top: 12px;
+  display: grid;
+  gap: 4px;
+}
+.wprow {
+  display: flex;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--mut);
+}
+.wprow .wd {
+  min-width: 64px;
+  font-weight: 600;
+}
+.wprow.lift {
+  color: var(--txt);
+}
+.wprow.off {
+  opacity: 0.6;
 }
