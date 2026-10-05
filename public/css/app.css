@@ -499,6 +499,153 @@ ul.t b {
   transform: scale(0.99);
 }
 
+/* ══════ home: the week at a glance ══════ */
+.glance {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+.gday {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.gday .gem {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--line-2);
+  color: var(--mut);
+}
+.gday.rest .gem {
+  border-style: dashed;
+}
+.gday.now .gem {
+  border-color: var(--accent-text);
+  color: var(--accent-text);
+  background: rgba(var(--accent-rgb), 0.12);
+}
+.gday.done .gem {
+  background: var(--mint);
+  border-color: var(--mint);
+  color: var(--mint-ink);
+}
+.gday .tick {
+  font-size: 15px;
+  font-weight: 700;
+}
+.gday .gl {
+  font-size: 12px;
+  color: var(--mut);
+}
+.gday.now .gl {
+  color: var(--accent-text);
+  font-weight: 600;
+}
+.ico {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ══════ home: three numbers ══════ */
+.gstats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.gstat {
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  border-radius: calc(var(--r) - 6px);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.gsl {
+  font-size: 12px;
+  color: var(--mut);
+}
+.gsv {
+  font-family: var(--f-num);
+  font-weight: 800;
+  font-size: 24px;
+  line-height: 1.15;
+}
+.gsx {
+  font-size: 12px;
+  color: var(--mut);
+}
+/* Down is the good direction on most goals but not all, so neither colour says
+   "good" — the arrow carries the meaning, the colour only the direction. */
+.gsx.down {
+  color: var(--mint);
+}
+.gsx.up {
+  color: var(--accent-text);
+}
+.gbar {
+  display: block;
+  height: 5px;
+  margin-top: 6px;
+  border-radius: 3px;
+  background: var(--surf-2);
+  overflow: hidden;
+}
+.gbar i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--mint);
+}
+
+/* ══════ home: this week's record ══════ */
+.card.grec {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+}
+.grec .gem {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--orange);
+  transform: rotate(45deg);
+  margin: 0 4px;
+}
+.grt {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.grt b {
+  font-weight: 600;
+  font-size: 15px;
+}
+.gup {
+  font-family: var(--f-num);
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--accent-text);
+  direction: ltr;
+}
+
 /* ══════ progression cards ══════ */
 .pgrid {
   display: grid;
@@ -2935,4 +3082,53 @@ a.cta {
 :is(:root:not([data-theme]), :root[data-theme='najd']) .gcard .en,
 :is(:root:not([data-theme]), :root[data-theme='najd']) .lcard .en {
   display: none;
+}
+
+/* ── home at a glance: diamonds instead of circles ── */
+:is(:root:not([data-theme]), :root[data-theme='najd']) .gday .gem {
+  position: relative;
+  isolation: isolate;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .gday .gem::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  z-index: -1;
+  transform: rotate(45deg);
+  border-radius: 4px;
+  border: 1.5px solid var(--line-2);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .gday.rest .gem::before {
+  border-style: dashed;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .gday.now .gem {
+  background: none;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .gday.now .gem::before {
+  border: 2px solid var(--orange);
+  background: rgba(var(--accent-rgb), 0.16);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .gday.done .gem {
+  background: none;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .gday.done .gem::before {
+  background: var(--orange);
+  border-color: var(--orange);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .gday.done .gem {
+  color: var(--accent-ink);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .gstat {
+  background: var(--ink-2);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .gsv,
+:is(:root:not([data-theme]), :root[data-theme='najd']) .gup {
+  font-family: var(--f-kufi);
+  font-weight: 700;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .gbar i {
+  background: var(--orange);
 }

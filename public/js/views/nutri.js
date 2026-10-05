@@ -1,6 +1,6 @@
 import { el, richText } from '../dom.js';
 import { fmt, bulletList } from '../ui.js';
-import { DAY_NAMES, goalOf } from '../program.js';
+import { DAY_NAMES, DAY_LETTERS, goalOf } from '../program.js';
 import {
   avgCal,
   avgPro,
@@ -252,9 +252,6 @@ export function numbers(store, bodyWeight, goalKey) {
     protein: proteinTarget(bodyWeight, goalKey),
   };
 }
-
-/** Sat … Fri, in DAY_NAMES order. */
-const DAY_LETTERS = ['س', 'ح', 'ن', 'ث', 'ر', 'خ', 'ج'];
 
 function summaryCard(store, wk, bodyWeight, goalKey) {
   const { tdee, target, protein, formula, learned: measured } = numbers(store, bodyWeight, goalKey);
