@@ -19,11 +19,12 @@ export default async function run({ base, browser, problems, step }) {
   });
 
   await step('fonts load from our own origin', async () => {
-    const ok = await page.evaluate(async () => {
+    // The default theme's faces: Kufi for headings, Readex for everything else.
+    const missing = await page.evaluate(async () => {
       await document.fonts.ready;
-      return document.fonts.check('900 16px Cairo');
+      return ['700 16px "Reem Kufi"', '400 16px "Readex Pro"'].filter((f) => !document.fonts.check(f));
     });
-    if (!ok) throw new Error('Cairo 900 did not load');
+    if (missing.length) throw new Error(`did not load: ${missing.join(', ')}`);
   });
 
   await step('the week strip shows all seven days', async () => {

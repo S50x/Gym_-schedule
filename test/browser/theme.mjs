@@ -1,5 +1,5 @@
 /**
- * The three looks, and the one localStorage key they share with the top gap.
+ * The four looks, and the one localStorage key they share with the top gap.
  *
  * None of this is reachable from a unit test: the themes are custom properties
  * resolved by the browser, and the bug they are most likely to grow is two
@@ -9,7 +9,7 @@
 
 import { newPage, onboard, tab, runStandalone } from './helpers.mjs';
 
-const THEMES = ['volt', 'midnight', 'copper'];
+const THEMES = ['najd', 'volt', 'midnight', 'copper'];
 
 /** What the page is actually painting, not what it was told to paint. */
 const painted = (page) =>
@@ -72,7 +72,7 @@ export default async function run({ base, browser, problems, step }) {
 
   await step('the chosen theme survives a reload', async () => {
     await tab(page, 'account');
-    await page.locator('.mchips .mchip').nth(1).click(); // midnight
+    await page.locator('.mchips .mchip').nth(THEMES.indexOf('midnight')).click();
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#tabbar', { timeout: 8000 });
     const after = await painted(page);
@@ -103,7 +103,7 @@ export default async function run({ base, browser, problems, step }) {
 
     // …and now the other direction.
     await tab(page, 'account');
-    await page.locator('.mchips .mchip').nth(2).click(); // copper
+    await page.locator('.mchips .mchip').nth(THEMES.indexOf('copper')).click();
     await page.waitForTimeout(150);
     store = await saved();
     if (store.topGap !== gap) throw new Error(`switching theme moved the gap to ${store.topGap}, was ${gap}`);
@@ -127,7 +127,7 @@ export default async function run({ base, browser, problems, step }) {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#tabbar', { timeout: 8000 });
     const after = await painted(page);
-    if (after.attr !== 'volt') throw new Error(`fell back to ${after.attr}, wanted volt`);
+    if (after.attr !== 'najd') throw new Error(`fell back to ${after.attr}, wanted najd`);
     if (!after.accent) throw new Error('the fallback theme resolved no accent');
   });
 

@@ -231,7 +231,7 @@ export class GymMode {
     const setButtons = Array.from({ length: exercise.sets }, (_, k) =>
       el('button', {
         class: ['sdot', sets[k] ? 'done' : k === nextSet ? 'now' : ''],
-        text: sets[k] ? '✓' : `SET ${k + 1}`,
+        text: sets[k] ? '✓' : `مجموعة ${k + 1}`,
         attrs: { 'aria-pressed': String(!!sets[k]), 'aria-label': `مجموعة ${k + 1}` },
         on: { click: () => this.toggleSet(k) },
       })
