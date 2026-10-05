@@ -44,6 +44,29 @@ const errorText = (err, fallback) =>
     : fallback || 'صار خطأ غير متوقع. حدّث الصفحة وجرّب مرة ثانية.';
 
 /**
+ * The reason the last sync failed, and a way to try again without having to
+ * change something first — ERROR schedules no retry of its own.
+ */
+function syncErrorDetail(ctx) {
+  const { store } = ctx;
+  return el(
+    'div',
+    { class: 'syncerr' },
+    store.lastError ? el('div', { class: 'formerr', text: `السبب: ${store.lastError}` }) : null,
+    el('button', {
+      class: 'cta ghost',
+      text: 'جرّب المزامنة الحين',
+      on: {
+        click: async () => {
+          await store.push();
+          ctx.refresh();
+        },
+      },
+    })
+  );
+}
+
+/**
  * The programme card. Shown whether or not there is an account: the app is
  * usable signed out, and the goal is the single most important setting in it.
  */
@@ -224,7 +247,8 @@ export function renderAccount(ctx) {
         { class: 'acctrow' },
         el('span', { class: 'a', text: 'حالة المزامنة' }),
         el('span', { class: 'b', text: SYNC_TEXT[store.syncState] })
-      )
+      ),
+      store.syncState === SYNC.ERROR ? syncErrorDetail(ctx) : null
     ),
     el('h3', { text: 'قراءة الأكل بالصور' }),
     geminiKeyCard(),
