@@ -180,7 +180,7 @@ export function renderNutri(ctx) {
       // double-counted --top-gap. It stays because goals.mjs and review.mjs
       // select `.today.top` to tell this card from home's hero of the same name.
       { class: 'today top' },
-      el('div', { class: 'lbl', text: 'DAILY TARGET' }),
+      el('div', { class: 'lbl', text: 'هدفك اليومي' }),
       el('h2', {}, el('span', { class: 'n', text: fmt(target) }), ' سعرة'),
       el('p', {
         // The gap is a deficit when cutting and a surplus when building, so it
@@ -253,6 +253,9 @@ export function numbers(store, bodyWeight, goalKey) {
   };
 }
 
+/** Sat … Fri, in DAY_NAMES order. */
+const DAY_LETTERS = ['س', 'ح', 'ن', 'ث', 'ر', 'خ', 'ج'];
+
 function summaryCard(store, wk, bodyWeight, goalKey) {
   const { tdee, target, protein, formula, learned: measured } = numbers(store, bodyWeight, goalKey);
   const cal = store.week(wk).cal || { d: [], p: [] };
@@ -282,7 +285,9 @@ function summaryCard(store, wk, bodyWeight, goalKey) {
       'div',
       { class: 'cb', attrs: { title: value ? `${name}: ${fmt(value)}` : name } },
       bar,
-      el('span', { text: name.slice(0, 3) })
+      // The customary one-letter forms. Cutting the word instead printed
+      // fragments like "الس" and "الأ" — three letters of "ال" plus one.
+      el('span', { text: DAY_LETTERS[i] })
     );
   });
 

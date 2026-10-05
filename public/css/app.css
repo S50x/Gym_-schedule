@@ -1,9 +1,10 @@
 @import url('./fonts.css');
 
 :root {
-  /* ── Volt Glass: lime on graphite — the default, and what a page with no
-     data-theme paints. Two more sets live below; they redefine these tokens
-     and nothing else, so there is exactly one copy of every layout rule.
+  /* ── Volt Glass: lime on graphite. Until the Najd redesign this was the
+     default; it is now what data-theme='volt' paints, and the base the other
+     sets below redefine — they change these tokens and nothing else, so there
+     is exactly one copy of every layout rule.
 
      --orange keeps its name to avoid churn across the file, but it is now the
      primary lime accent. It is the FILL; text and strokes use --accent-text,
@@ -84,6 +85,67 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
+
+  /* Type, as tokens so a theme can carry its own voice. Volt, Midnight and
+     Copper keep the faces they shipped with; Najd overrides all three. */
+  --f-display: 'Cairo', system-ui, sans-serif;
+  --f-body: 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-num: 'Archivo', system-ui, sans-serif;
+}
+
+/* ── Najd: navy and gold, Kufi display type — the default since the redesign.
+   It paints whenever no other theme is chosen, which is why it matches the bare
+   :root as well as its own attribute: the block above is now only what Volt
+   paints, plus the layout tokens every theme shares.
+
+   Flat panes, not glass. The identity comes from the type, the diamond and the
+   arch (the .najd-* rules near the end of the file), so the panes keep quiet;
+   a blur behind an opaque pane would cost a repaint and show nothing. */
+:root:not([data-theme]),
+:root[data-theme='najd'] {
+  --ink: #0e1424;
+  --ink-2: #131b30;
+  --surf: #172038;
+  --surf-2: #1d2742;
+  --line: rgba(232, 176, 75, 0.16);
+  --line-2: rgba(232, 176, 75, 0.32);
+  --txt: #efe6d2;
+  --txt-2: #e2d7bf;
+  --mut: #c9bfa8;
+  --orange: #e8b04b;
+  --accent-text: #f0c26a;
+  --accent-rgb: 232, 176, 75;
+  --mint: #7fd4a6;
+  --mint-rgb: 127, 212, 166;
+  --blue: #7fa8e0;
+  --coral: #e08a6a;
+  --focus: #f0c26a;
+  --accent-ink: #1a1306;
+  --mint-ink: #06281a;
+  --glass: #151d33;
+  --glass-line: rgba(232, 176, 75, 0.16);
+  --glass-hi: none;
+  --glass-hi-sm: none;
+  --blur-card: none;
+  --bg: #0e1424;
+  --r: 22px;
+  --glass-bar: rgba(11, 16, 29, 0.96);
+  /* The eight-point star, tiled. Today's card and the finish screen are the
+     only surfaces that carry it — anywhere else it turns into wallpaper. */
+  --pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Cpath d='M28 6 34 20 48 14 42 28 48 42 34 36 28 50 22 36 8 42 14 28 8 14 22 20Z' fill='none' stroke='%23e8b04b' stroke-opacity='.14'/%3E%3C/svg%3E");
+  --hero: var(--pattern) 0 0 / 56px 56px, #131b30;
+  --hero-ink: #efe6d2;
+  --hero-mut: #c9bfa8;
+  --hero-btn: #e8b04b;
+  --hero-btn-ink: #1a1306;
+  /* Kufi is a display face: it carries a heading or a big number and falls
+     apart at caption size. So the shared display token is Readex in its heavy
+     weights, and Kufi is a separate token the identity rules below put only
+     on what is large enough to hold it. */
+  --f-display: 'Readex Pro', system-ui, sans-serif;
+  --f-body: 'Readex Pro', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-num: 'Readex Pro', system-ui, sans-serif;
+  --f-kufi: 'Reem Kufi', 'Readex Pro', system-ui, sans-serif;
 }
 
 /* ── Midnight Blue: iPhone blue, low contrast, the Control Centre look ── */
@@ -187,7 +249,7 @@ body {
   background: var(--bg);
   background-attachment: fixed;
   color: var(--txt);
-  font-family: 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: var(--f-body);
   font-size: 15px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
@@ -208,7 +270,7 @@ button {
 }
 
 .n {
-  font-family: 'Archivo', system-ui;
+  font-family: var(--f-num);
   font-variant-numeric: tabular-nums;
   direction: ltr;
   display: inline-block;
@@ -248,7 +310,7 @@ button {
   gap: 10px;
 }
 .logo {
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 900;
   font-size: 21px;
   min-width: 0;
@@ -257,7 +319,7 @@ button {
 /* A long email must not push the week navigator off the screen. */
 .logo small {
   display: block;
-  font-family: 'IBM Plex Sans Arabic';
+  font-family: var(--f-body);
   font-weight: 400;
   font-size: 11.5px;
   color: var(--mut);
@@ -301,13 +363,13 @@ button {
   cursor: default;
 }
 .wk .v {
-  font-family: 'Archivo';
-  font-weight: 800;
+  font-family: var(--f-display);
+  font-weight: 700;
   font-size: 13px;
   color: var(--accent-text);
-  min-width: 56px;
+  min-width: 64px;
   text-align: center;
-  direction: ltr;
+  white-space: nowrap;
 }
 
 .card {
@@ -330,7 +392,7 @@ button {
   padding: 8px 14px;
 }
 h3 {
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 900;
   font-size: 15px;
   margin: 22px 0 9px;
@@ -389,20 +451,20 @@ ul.t b {
   background: var(--glass);
   color: var(--txt);
 }
+/* Arabic now ("اليوم · الاثنين"), so no tracking: letter-spacing pulls the
+   joined letters of a word apart. */
 .today .lbl {
-  font-family: 'Archivo';
-  font-weight: 800;
-  font-size: 11px;
-  letter-spacing: 0.16em;
+  font-family: var(--f-body);
+  font-weight: 600;
+  font-size: 12.5px;
   color: var(--hero-mut);
-  direction: ltr;
 }
 .today.rest .lbl,
 .today.rest p {
   color: var(--mut);
 }
 .today h2 {
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 900;
   font-size: 24px;
   margin: 4px 0;
@@ -424,7 +486,7 @@ ul.t b {
   border-radius: 16px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
   padding: 15px;
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 900;
   font-size: 16px;
   text-align: center;
@@ -458,7 +520,7 @@ ul.t b {
   flex-direction: column;
 }
 .pcard .pname {
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 700;
   font-size: 11.5px;
   line-height: 1.3;
@@ -472,7 +534,7 @@ ul.t b {
   margin-top: 1px;
 }
 .pcard .pbig {
-  font-family: 'Archivo';
+  font-family: var(--f-num);
   font-weight: 800;
   font-size: 27px;
   line-height: 1;
@@ -511,7 +573,7 @@ ul.t b {
   position: absolute;
   top: 11px;
   inset-inline-start: 11px;
-  font-family: 'Archivo';
+  font-family: var(--f-num);
   font-weight: 800;
   font-size: 10px;
   color: var(--mint);
@@ -556,7 +618,7 @@ ul.t b {
 }
 .wl b {
   display: block;
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 900;
   font-size: 14px;
 }
@@ -579,7 +641,7 @@ ul.t b {
   border: 1px solid var(--line-2);
   border-radius: 11px;
   padding: 8px 12px;
-  font-family: 'Archivo';
+  font-family: var(--f-num);
   font-weight: 800;
   font-size: 12.5px;
   color: var(--txt);
@@ -590,7 +652,7 @@ ul.t b {
   color: var(--mint);
 }
 .wlift.ghost {
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 600;
   color: var(--mut);
   background: transparent;
@@ -627,7 +689,7 @@ ul.t b {
 }
 .chead b {
   display: block;
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 900;
   font-size: 14px;
 }
@@ -670,7 +732,7 @@ ul.t b {
 }
 .nd {
   flex: 0 0 62px;
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 600;
   font-size: 13px;
 }
@@ -682,14 +744,14 @@ ul.t b {
   border-radius: 11px;
   padding: 11px 8px;
   color: var(--txt);
-  font-family: 'Archivo';
+  font-family: var(--f-num);
   font-weight: 800;
   font-size: 15px;
   text-align: center;
   direction: ltr;
 }
 .ni::placeholder {
-  font-family: 'IBM Plex Sans Arabic';
+  font-family: var(--f-body);
   font-weight: 400;
   font-size: 12px;
   color: var(--mut);
@@ -769,7 +831,7 @@ ul.t b {
 }
 .tile b {
   display: block;
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 900;
   font-size: 14.5px;
   margin-bottom: 2px;
@@ -807,13 +869,12 @@ ul.t b {
   padding: 4px 8px;
   line-height: 1;
 }
+/* "1 / 7 · السبت" — Arabic in it, so no tracking and no forced direction. */
 .gcount {
-  font-family: 'Archivo';
+  font-family: var(--f-num);
   font-weight: 800;
   font-size: 12px;
   color: var(--mut);
-  direction: ltr;
-  letter-spacing: 0.06em;
 }
 .gdots {
   display: flex;
@@ -844,7 +905,7 @@ ul.t b {
   padding: 8px 0;
 }
 .gname {
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 900;
   font-size: 23px;
   line-height: 1.25;
@@ -869,7 +930,7 @@ ul.t b {
   flex: 1;
 }
 .wnum {
-  font-family: 'Archivo';
+  font-family: var(--f-num);
   font-weight: 900;
   font-size: 88px;
   line-height: 0.82;
@@ -878,7 +939,7 @@ ul.t b {
 }
 .wnum.sm {
   font-size: 52px;
-  font-family: 'Cairo';
+  font-family: var(--f-display);
 }
 /* The reading is also the control: tap it to type an exact load. */
 button.wnum {
@@ -918,7 +979,7 @@ input.wedit::-webkit-inner-spin-button {
 .wunit {
   font-size: 14px;
   color: var(--mut);
-  font-family: 'IBM Plex Sans Arabic';
+  font-family: var(--f-body);
 }
 .adj {
   display: flex;
@@ -935,7 +996,7 @@ input.wedit::-webkit-inner-spin-button {
   -webkit-backdrop-filter: var(--blur-card);
   border-radius: 13px;
   font-size: 19px;
-  font-family: 'Archivo';
+  font-family: var(--f-num);
   font-weight: 800;
   color: var(--txt);
   display: grid;
@@ -974,7 +1035,7 @@ input.wedit::-webkit-inner-spin-button {
   border: 1.5px solid var(--line-2);
   display: grid;
   place-items: center;
-  font-family: 'Archivo';
+  font-family: var(--f-num);
   font-weight: 800;
   font-size: 14px;
   color: var(--mut);
@@ -999,7 +1060,7 @@ input.wedit::-webkit-inner-spin-button {
   width: 100%;
   border-radius: 18px;
   padding: 19px;
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 900;
   font-size: 17px;
   background: var(--orange);
@@ -1230,14 +1291,14 @@ input.wedit::-webkit-inner-spin-button {
   }
 }
 #rest .lb {
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 900;
   font-size: 16px;
   color: var(--blue);
   margin-bottom: 6px;
 }
 #rest .tm {
-  font-family: 'Archivo';
+  font-family: var(--f-num);
   font-weight: 900;
   font-size: 82px;
   line-height: 1;
@@ -1260,7 +1321,7 @@ input.wedit::-webkit-inner-spin-button {
   border: 1px solid var(--line-2);
   border-radius: 13px;
   padding: 13px 20px;
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 600;
   font-size: 14px;
 }
@@ -1293,7 +1354,7 @@ input.wedit::-webkit-inner-spin-button {
   border: 1.5px solid var(--line-2);
   border-radius: 13px;
   padding: 12px 4px;
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 600;
   font-size: 13px;
   color: var(--mut);
@@ -1344,7 +1405,7 @@ input.wedit::-webkit-inner-spin-button {
   margin-bottom: 18px;
 }
 #fin h2 {
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 900;
   font-size: 25px;
   margin: 0 0 6px;
@@ -1373,7 +1434,7 @@ input.wedit::-webkit-inner-spin-button {
 }
 .stat b {
   display: block;
-  font-family: 'Archivo';
+  font-family: var(--f-num);
   font-weight: 800;
   font-size: 21px;
   direction: ltr;
@@ -1401,7 +1462,7 @@ input.wedit::-webkit-inner-spin-button {
   border-radius: 13px;
   padding: 14px;
   color: var(--txt);
-  font-family: 'Archivo';
+  font-family: var(--f-num);
   font-weight: 800;
   font-size: 20px;
   text-align: center;
@@ -1412,7 +1473,7 @@ input.wedit::-webkit-inner-spin-button {
   outline-offset: 1px;
 }
 .inp.text input {
-  font-family: 'IBM Plex Sans Arabic';
+  font-family: var(--f-body);
   font-weight: 500;
   font-size: 16px;
   text-align: right;
@@ -1421,7 +1482,7 @@ input.wedit::-webkit-inner-spin-button {
 .inp.ltr input {
   text-align: left;
   direction: ltr;
-  font-family: 'IBM Plex Sans Arabic';
+  font-family: var(--f-body);
   font-weight: 500;
   font-size: 16px;
 }
@@ -1431,7 +1492,7 @@ input.wedit::-webkit-inner-spin-button {
   background: var(--orange);
   border-radius: 14px;
   padding: 15px;
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 900;
   font-size: 15px;
   color: var(--accent-ink);
@@ -1451,7 +1512,7 @@ input.wedit::-webkit-inner-spin-button {
   gap: 14px;
 }
 .gaprow .gapval {
-  font-family: 'Archivo';
+  font-family: var(--f-num);
   font-weight: 900;
   font-size: 19px;
   color: var(--accent-text);
@@ -1536,7 +1597,7 @@ input[type='range'].gap:active::-webkit-slider-thumb {
   border-color: rgba(255, 92, 92, 0.4);
 }
 .verdict h4 {
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 900;
   font-size: 17px;
   margin: 0 0 6px;
@@ -1562,7 +1623,7 @@ input[type='range'].gap:active::-webkit-slider-thumb {
 }
 .deltas span b {
   display: block;
-  font-family: 'Archivo';
+  font-family: var(--f-num);
   font-weight: 800;
   font-size: 16px;
   color: var(--txt);
@@ -1581,7 +1642,7 @@ input[type='range'].gap:active::-webkit-slider-thumb {
   padding-bottom: 0;
 }
 .row .a {
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 600;
   font-size: 13.5px;
 }
@@ -1694,7 +1755,7 @@ input[type='range'].gap:active::-webkit-slider-thumb {
   border: 1px solid var(--line-2);
   border-radius: 12px;
   padding: 11px;
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 600;
   font-size: 13.5px;
   color: var(--mut);
@@ -1838,7 +1899,7 @@ ol.steps b {
   border: 1px solid var(--line-2);
   border-radius: 10px;
   padding: 10px 6px;
-  font-family: 'Archivo', monospace;
+  font-family: var(--f-num);
   font-weight: 800;
   font-size: 14px;
   text-align: center;
@@ -1846,7 +1907,7 @@ ol.steps b {
   user-select: all;
 }
 .mfahead {
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 900;
   font-size: 16px;
   margin-bottom: 6px;
@@ -1861,7 +1922,7 @@ ol.steps b {
   margin-bottom: 14px;
 }
 .review h4 {
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 900;
   font-size: 15.5px;
   margin: 0 0 6px;
@@ -1926,7 +1987,7 @@ ol.steps b {
 }
 .gtitle,
 .ltitle {
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 900;
   font-size: 16px;
   color: var(--txt);
@@ -1976,7 +2037,7 @@ ol.steps b {
   gap: 8px;
   padding: 13px 14px;
   cursor: pointer;
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 600;
   font-size: 14px;
   color: var(--accent-text);
@@ -2001,7 +2062,7 @@ ol.steps b {
 }
 .gdet > summary .opt {
   margin-inline-start: auto;
-  font-family: 'Archivo', system-ui;
+  font-family: var(--f-num);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.09em;
@@ -2031,7 +2092,7 @@ ol.steps b {
   gap: 7px;
 }
 .glabel .gn {
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 600;
   font-size: 13.5px;
   color: var(--txt);
@@ -2074,7 +2135,7 @@ ol.steps b {
    the page direction. */
 small.en {
   display: block;
-  font-family: 'Archivo', system-ui;
+  font-family: var(--f-num);
   font-weight: 600;
   font-size: 10.5px;
   letter-spacing: 0.02em;
@@ -2107,13 +2168,13 @@ small.en {
   padding: 14px 16px;
 }
 .hold .hlbl {
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 600;
   font-size: 13.5px;
   color: var(--mut);
 }
 .hold .htime {
-  font-family: 'Archivo';
+  font-family: var(--f-num);
   font-weight: 800;
   font-size: 26px;
   color: var(--txt);
@@ -2185,7 +2246,7 @@ small.en {
   padding: 6px 0;
 }
 .srow .sname {
-  font-family: 'Cairo';
+  font-family: var(--f-display);
   font-weight: 600;
   font-size: 12.5px;
 }
@@ -2201,7 +2262,7 @@ small.en {
   background: var(--surf-2);
   border: 1px solid var(--line-2);
   color: var(--txt);
-  font-family: 'Archivo';
+  font-family: var(--f-num);
   font-weight: 800;
   font-size: 16px;
   display: grid;
@@ -2214,7 +2275,7 @@ small.en {
 .smin {
   min-width: 52px;
   text-align: center;
-  font-family: 'Archivo';
+  font-family: var(--f-num);
   font-weight: 800;
   font-size: 14px;
   direction: ltr;
@@ -2269,7 +2330,7 @@ small.en {
   padding: 4px 2px;
   border-radius: 13px;
   color: var(--mut);
-  font-family: 'IBM Plex Sans Arabic';
+  font-family: var(--f-body);
   font-size: 10px;
   font-weight: 600;
   line-height: 1;
@@ -2497,6 +2558,7 @@ button.card.malerts {
   text-align: start;
   color: var(--txt);
   font: inherit;
+}
 /* ── rest-day picker: the week it produces ── */
 .wprev {
   margin-top: 12px;
@@ -2569,4 +2631,308 @@ a.cta {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   Najd — the identity layer.
+
+   Everything above is shared layout coloured by tokens. These rules add what a
+   token cannot carry: the diamond in place of the dot, the arch in place of the
+   rectangle, Kufi headings. They are scoped to the theme so the other three
+   keep the look they were chosen for.
+
+   The prefix matches the theme with or without its attribute, the same pair the
+   token block uses, because Najd is also what a page with no theme paints.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── home: header ── */
+:is(:root:not([data-theme]), :root[data-theme='najd']) .logo {
+  font-family: var(--f-kufi);
+  font-weight: 700;
+  font-size: 26px;
+  color: var(--accent-text);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .logo small {
+  margin-top: 0;
+  color: var(--mut);
+}
+
+/* ── home: today's card — the patterned banner ── */
+:is(:root:not([data-theme]), :root[data-theme='najd']) .today {
+  padding: 24px 20px 22px;
+  border-color: var(--line);
+}
+/* The dashed gold sill under the banner. Drawn as a gradient so it needs no
+   element of its own and moves with the card. */
+:is(:root:not([data-theme]), :root[data-theme='najd']) .today::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 4px;
+  background: repeating-linear-gradient(90deg, var(--orange) 0 14px, transparent 14px 20px);
+  opacity: 0.55;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .today h2 {
+  font-family: var(--f-kufi);
+  font-weight: 700;
+  font-size: 34px;
+  line-height: 1.25;
+  margin: 6px 0 4px;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .today p {
+  font-size: 14px;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .today.rest {
+  background: var(--hero);
+  color: var(--hero-ink);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .go {
+  border-radius: 999px;
+  padding: 16px;
+  font-weight: 700;
+  font-size: 17px;
+  box-shadow: none;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .today.rest .go {
+  background: var(--hero-btn);
+  color: var(--hero-btn-ink);
+}
+
+/* ── section headings carry a small gold diamond ── */
+:is(:root:not([data-theme]), :root[data-theme='najd']) h3 {
+  font-family: var(--f-kufi);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 18px;
+  margin: 26px 0 10px;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) h3::before {
+  content: '';
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  transform: rotate(45deg);
+  background: var(--orange);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) h3.first {
+  margin-top: 0;
+}
+
+/* ── cards: a hairline of gold instead of a lit edge ── */
+:is(:root:not([data-theme]), :root[data-theme='najd']) .card,
+:is(:root:not([data-theme]), :root[data-theme='najd']) .pcard {
+  background: var(--ink-2);
+}
+
+/* ── progression cards: the Arabic name is enough ── */
+:is(:root:not([data-theme]), :root[data-theme='najd']) .pcard .pname {
+  font-weight: 500;
+  font-size: 13px;
+  min-height: 36px;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .pcard .pname .en {
+  display: none;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .pcard .pbig {
+  font-family: var(--f-kufi);
+  font-weight: 700;
+  font-size: 30px;
+}
+
+/* ── week strip: diamonds for cardio, pills for the lifting count ── */
+:is(:root:not([data-theme]), :root[data-theme='najd']) .wl b {
+  font-weight: 600;
+  font-size: 15px;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .pcard .pbig .unit {
+  font-family: var(--f-body);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .wlift {
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-weight: 700;
+}
+/* The button keeps its 34px target; the diamond is drawn inside it, so the ✓
+   stays upright instead of turning with the shape. */
+:is(:root:not([data-theme]), :root[data-theme='najd']) .ck {
+  position: relative;
+  isolation: isolate;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .ck::before {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  z-index: -1;
+  transform: rotate(45deg);
+  border: 1.5px solid var(--line-2);
+  border-radius: 3px;
+  transition: 0.2s;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .ck.on {
+  background: none;
+  color: var(--mint-ink);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .ck.on::before {
+  background: var(--mint);
+  border-color: var(--mint);
+}
+
+/* ── tab bar: gold for the current tab, marked by a diamond above it ── */
+:is(:root:not([data-theme]), :root[data-theme='najd']) #tabbar {
+  background: var(--glass-bar);
+  box-shadow: none;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) #tabbar .tab {
+  position: relative;
+  font-weight: 500;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) #tabbar .tab.on {
+  background: none;
+  box-shadow: none;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) #tabbar .tab.on::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  width: 5px;
+  height: 5px;
+  transform: rotate(45deg);
+  background: var(--orange);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) #tabbar .tab svg {
+  stroke-width: 1.7;
+}
+
+/* ── gym mode ── */
+:is(:root:not([data-theme]), :root[data-theme='najd']) .gname {
+  font-family: var(--f-kufi);
+  font-weight: 700;
+  font-size: 30px;
+  line-height: 1.3;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .gname .en {
+  display: none;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .gsub {
+  font-size: 14px;
+}
+/* Progress through the session as a row of diamonds: filled when done, gold
+   for the one in hand. */
+:is(:root:not([data-theme]), :root[data-theme='najd']) .gdots {
+  gap: 10px;
+  justify-content: center;
+  margin-top: 14px;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .gdots i {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 1px;
+  transform: rotate(45deg);
+  background: none;
+  border: 1.2px solid var(--line-2);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .gdots i.d {
+  background: var(--mint);
+  border-color: var(--mint);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .gdots i.c {
+  background: var(--orange);
+  border-color: var(--orange);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .wnum {
+  font-family: var(--f-kufi);
+  font-weight: 700;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .sdot,
+:is(:root:not([data-theme]), :root[data-theme='najd']) .big,
+:is(:root:not([data-theme]), :root[data-theme='najd']) .glink,
+:is(:root:not([data-theme]), :root[data-theme='najd']) .fb button {
+  border-radius: 999px;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .big {
+  font-weight: 700;
+}
+/* The photographed pair sits in an arch. */
+:is(:root:not([data-theme]), :root[data-theme='najd']) .fphoto {
+  border-color: rgba(var(--accent-rgb), 0.45);
+  border-radius: 150px 150px 16px 16px;
+  aspect-ratio: 4 / 3;
+}
+
+/* ── rest: gold, and the screen behind it stays navy ── */
+:is(:root:not([data-theme]), :root[data-theme='najd']) #rest {
+  background: rgba(14, 20, 36, 0.9);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) #rest .fr {
+  border-color: var(--orange);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) #rest .lb {
+  font-family: var(--f-kufi);
+  font-weight: 700;
+  font-size: 22px;
+  color: var(--accent-text);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) #rest .tm {
+  font-family: var(--f-kufi);
+  font-weight: 700;
+  font-size: 92px;
+  letter-spacing: 0;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) #rest .btns button {
+  border-radius: 999px;
+  padding: 14px 24px;
+  border-color: rgba(var(--accent-rgb), 0.35);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) #restbar {
+  background: var(--orange);
+}
+
+/* ── finish: the star pattern, fading into the page ── */
+:is(:root:not([data-theme]), :root[data-theme='najd']) #fin {
+  background: linear-gradient(to bottom, transparent, var(--ink) 340px), var(--pattern) 0 0 / 56px 56px,
+    var(--ink);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) #fin .tick {
+  position: relative;
+  isolation: isolate;
+  background: none;
+  border-radius: 0;
+  color: var(--accent-ink);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) #fin .tick::before {
+  content: '';
+  position: absolute;
+  inset: 10px;
+  z-index: -1;
+  transform: rotate(45deg);
+  border-radius: 6px;
+  background: var(--orange);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) #fin h2 {
+  font-family: var(--f-kufi);
+  font-weight: 700;
+  font-size: 34px;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .stat b {
+  font-family: var(--f-kufi);
+  font-weight: 700;
+  font-size: 24px;
+}
+
+/* ── buttons and pickers across the remaining screens: pills, Kufi only where
+   the type is large ── */
+:is(:root:not([data-theme]), :root[data-theme='najd']) .cta,
+:is(:root:not([data-theme]), :root[data-theme='najd']) .big-cta {
+  border-radius: 999px;
+  font-weight: 700;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .gcard .en,
+:is(:root:not([data-theme]), :root[data-theme='najd']) .lcard .en {
+  display: none;
 }
