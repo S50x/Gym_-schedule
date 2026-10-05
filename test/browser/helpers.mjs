@@ -180,6 +180,15 @@ export async function newPage(browser, problems, { allowRejections = false, serv
  *
  * @param {number} goal  index into the goal cards (0 = تنشيف … 4 = قوة)
  */
+/**
+ * First-run onboarding is a four-step wizard; this moves it on one step. Its
+ * sections stay in the DOM but hidden, so a journey that wants a later step
+ * has to page to it the way a person would.
+ */
+export async function onbNext(page) {
+  await page.locator('.onext').click();
+}
+
 export async function onboard(
   page,
   base,
@@ -193,7 +202,10 @@ export async function onboard(
   await page.waitForSelector('.onb', { timeout: 10_000 });
 
   await page.locator('.gcard').nth(goal).click();
+  await onbNext(page);
   await page.locator('.lcard').nth(level).click();
+  await onbNext(page);
+  await onbNext(page); // rest days: keep the goal's own
   const inputs = page.locator('.onb .inp input');
   await inputs.nth(0).fill(String(weight));
   await inputs.nth(1).fill(String(height));

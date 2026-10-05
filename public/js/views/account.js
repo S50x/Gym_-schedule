@@ -73,7 +73,7 @@ function programmeCard(ctx) {
 }
 
 /**
- * Which of the three looks the app wears on this device.
+ * Which of the four looks the app wears on this device.
  *
  * Per device like the gap above, and for a reason of its own: a screen read in
  * a bright gym is a property of that room, not of the account. Each theme is a
@@ -102,7 +102,7 @@ function themeCard(ctx) {
   return el(
     'div',
     { class: 'card' },
-    el('div', { class: 'mut', text: 'شكل التطبيق على هذا الجهاز. الترتيب ما يتغيّر — اللون والزجاج بس.' }),
+    el('div', { class: 'mut', text: 'شكل التطبيق على هذا الجهاز. الترتيب ما يتغيّر — الألوان والخطوط بس.' }),
     el('div', { class: 'mchips' }, chips)
   );
 }

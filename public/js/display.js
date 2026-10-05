@@ -77,14 +77,15 @@ export function setTopGap(px) {
 }
 
 /* ── الثيم ────────────────────────────────────────────────────────────────
-   Three looks over one layout. Each is a set of custom properties in app.css
+   Four looks over one layout. Each is a set of custom properties in app.css
    under :root[data-theme='…'], so switching is one attribute — never a
    style="" the CSP would reject, and never a second copy of any rule. */
 
-export const THEMES = ['volt', 'midnight', 'copper'];
+export const THEMES = ['najd', 'volt', 'midnight', 'copper'];
 
 /** Arabic label + the colour the OS chrome takes while that theme is on. */
 export const THEME_INFO = {
+  najd: { label: 'كحلي وذهبي', chrome: '#0e1424' },
   volt: { label: 'ليموني', chrome: '#0f1109' },
   midnight: { label: 'أزرق ليلي', chrome: '#05070e' },
   copper: { label: 'نحاسي', chrome: '#150e0a' },
@@ -92,7 +93,7 @@ export const THEME_INFO = {
 
 /** The one the CSS paints when no attribute is set — so a dead script still
     leaves a finished-looking app rather than an unstyled one. */
-export const THEME_FALLBACK = 'volt';
+export const THEME_FALLBACK = 'najd';
 
 /** Reads the stored theme, falling back on anything unexpected. */
 export function readTheme() {

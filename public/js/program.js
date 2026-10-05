@@ -1371,6 +1371,9 @@ export function clashesOf(keys) {
 
 export const DAY_NAMES = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
 
+/** The customary one-letter forms, same order — for anything that shows seven days across. */
+export const DAY_LETTERS = ['س', 'ح', 'ن', 'ث', 'ر', 'خ', 'ج'];
+
 /** JavaScript Date#getDay() for each entry in DAY_NAMES order. */
 const JS_DAY = [6, 0, 1, 2, 3, 4, 5];
 
