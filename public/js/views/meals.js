@@ -79,8 +79,9 @@ export function macroBars(totals, targets) {
  * @param {boolean} o.isToday
  * @param {() => void} o.onChange  called after every saved change
  * @param {(form: object) => HTMLElement|null} [o.extraActions]  e.g. the photo reader
+ * @param {boolean} [o.showBars]  false where the page already shows the day's totals
  */
-export function mealPanel({ store, wk, day, targets, isToday, onChange, extraActions }) {
+export function mealPanel({ store, wk, day, targets, isToday, onChange, extraActions, showBars = true }) {
   const box = el('div', { class: 'mpanel' });
 
   const paint = () => {
@@ -126,7 +127,7 @@ export function mealPanel({ store, wk, day, targets, isToday, onChange, extraAct
     // replaceChildren would print a null as the text "null"; append() skips it.
     box.replaceChildren();
     append(box, [
-      macroBars(totals, targets),
+      showBars ? macroBars(totals, targets) : null,
       alerts.length
         ? el(
             'div',

@@ -543,6 +543,35 @@ export function goalReview({ profile, weight, goalKey = DEFAULT_GOAL, now = Date
   return null;
 }
 
+/* ────────────────────────── records ────────────────────────── */
+
+/**
+ * The lifts whose working weight this week beats every earlier week.
+ *
+ * The app logs the weight a lift was done at and whether each set was
+ * finished — not reps — so a record here is "the heaviest you have trained
+ * this movement at", which is what the progression actually moves. On an
+ * assisted lift less help is the stronger number, so the comparison flips.
+ *
+ * @param {Record<string, number[]>} history  per exercise, one value per week, oldest first
+ * @param {string[]} ids  which lifts to consider, in display order
+ * @param {(id: string) => boolean} [inverse]  true where lower is better
+ * @returns {{id: string, now: number, best: number}[]}  best = the record it beat
+ */
+export function newRecords(history, ids, inverse = () => false) {
+  const out = [];
+  for (const id of ids) {
+    const values = history[id];
+    if (!values || values.length < 2) continue;
+    const now = values[values.length - 1];
+    const earlier = values.slice(0, -1);
+    const lower = inverse(id);
+    const best = lower ? Math.min(...earlier) : Math.max(...earlier);
+    if (lower ? now < best : now > best) out.push({ id, now, best });
+  }
+  return out;
+}
+
 /* ────────────────────────── misc ────────────────────────── */
 
 export function round1(n) {

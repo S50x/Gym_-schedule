@@ -1,5 +1,5 @@
 import { el } from '../dom.js';
-import { fmtN, sparkline } from '../ui.js';
+import { fmtN, fmt, sparkline, icon } from '../ui.js';
 import {
   planOf,
   weekOf,
@@ -10,11 +10,12 @@ import {
   setsKey,
   todayLift,
   DAY_NAMES,
+  DAY_LETTERS,
   exById,
   machName,
   machinesOfDay,
 } from '../program.js';
-import { MAX_WEEK, goalReview } from '../engine.js';
+import { MAX_WEEK, goalReview, newRecords, proteinTarget } from '../engine.js';
 import { SYNC } from '../store.js';
 import { todayMealAlerts } from './nutri.js';
 
@@ -98,7 +99,7 @@ export function renderHome(ctx) {
         'div',
         { class: 'wk' },
         prevBtn,
-        el('span', { class: 'v', text: `WEEK ${wk}` }),
+        el('span', { class: 'v', text: `الأسبوع ${wk}` }),
         nextBtn
       )
     )
@@ -113,7 +114,7 @@ export function renderHome(ctx) {
     hero = el(
       'div',
       { class: 'today rest' },
-      el('div', { class: 'lbl', text: `WEEK ${wk}` }),
+      el('div', { class: 'lbl', text: `الأسبوع ${wk}` }),
       el('h2', { text: 'أسبوع سابق' }),
       el('p', { text: 'تتصفح أسبوع قديم. تقدر تعدّل عليه وبيتحدّث حساب الأسابيع اللي بعده.' }),
       el('button', {
@@ -126,7 +127,7 @@ export function renderHome(ctx) {
     hero = el(
       'div',
       { class: 'today rest' },
-      el('div', { class: 'lbl', text: `TODAY · ${todayName}` }),
+      el('div', { class: 'lbl', text: `اليوم · ${todayName}` }),
       el('h2', { text: 'راحة كاملة' }),
       el('p', {
         text: `${restLine}. الراحة جزء من البرنامج، وجسمك يبني فيها مو بالنادي.`,
@@ -137,7 +138,7 @@ export function renderHome(ctx) {
     hero = el(
       'div',
       { class: 'today rest' },
-      el('div', { class: 'lbl', text: `TODAY · ${todayName}` }),
+      el('div', { class: 'lbl', text: `اليوم · ${todayName}` }),
       el('h2', { text: 'يوم كارديو' }),
       el('p', { text: CARDIO[todayIndex]?.detail || 'كارديو خفيف اليوم.' }),
       el('button', {
@@ -152,7 +153,7 @@ export function renderHome(ctx) {
     hero = el(
       'div',
       { class: 'today' },
-      el('div', { class: 'lbl', text: `TODAY · ${todayName}` }),
+      el('div', { class: 'lbl', text: `اليوم · ${todayName}` }),
       el('h2', { text: plan.title }),
       el('p', { text: `${plan.ex.length} تمارين${done ? ` · خلّصت ${done} منها` : ''}` }),
       el('button', {
@@ -326,11 +327,28 @@ export function renderHome(ctx) {
     );
   });
 
+  /* ── the week at a glance, the three numbers, the latest record ── */
+  const glance = weekGlance({ WEEK, PLAN, CARDIO, week, doneCount, isCurrent: wk === store.currentWeek });
+  // The programme raises every weight when a week opens, so a heavier number
+  // alone is a plan, not a record. It counts once the sets at that weight are
+  // all ticked, on any day this week.
+  const lifted = (id) =>
+    Object.keys(PLAN).some((dayKey) => {
+      const e = PLAN[dayKey].ex.find((x) => x.id === id);
+      if (!e) return false;
+      const sets = week.sets[setsKey(dayKey, id)] || [];
+      return sets.length >= e.sets && sets.slice(0, e.sets).every(Boolean);
+    });
+  const records = newRecords(history, railIds.filter(lifted), (id) => !!exById(id)?.inverse);
+
   return el(
     'div',
     { class: 'wrap' },
     header,
     hero,
+    glance.strip,
+    statRow(store, glance, goalKey, wk),
+    recordCard(records),
     reviewCard,
     mealAlertCard(ctx),
     el('h3', { text: hasLoads ? 'أوزانك وهي تطلع' : 'تقدّمك' }),
@@ -339,7 +357,7 @@ export function renderHome(ctx) {
     el('div', { class: 'card tight' }, strip),
     el('div', {
       class: 'hint',
-      text: 'الدائرة = علّم الكارديو لما تخلّصه · الرقم = تمارين الحديد المكتملة',
+      text: 'علّم الكارديو لما تخلّصه · الرقم = تمارين الحديد المكتملة',
     })
   );
 }
@@ -352,5 +370,119 @@ function mealAlertCard(ctx) {
     'button',
     { class: 'card malerts', on: { click: () => ctx.navigate('nutri') } },
     alerts.map((a) => el('div', { class: ['malert', a.level], text: a.text }))
+  );
+}
+
+/* ────────────────────────── at a glance ────────────────────────── */
+
+/**
+ * Seven diamonds, one per day: filled once the day's work is done, outlined
+ * in gold for today, dashed for a rest day. A day is done when its lifting is
+ * all ticked, or — on a cardio day — when the cardio is.
+ *
+ * Read-only on purpose. The rows further down are where a day is opened or
+ * ticked; two controls for one action would be one too many.
+ */
+function weekGlance({ WEEK, PLAN, CARDIO, week, doneCount, isCurrent }) {
+  const jsToday = new Date().getDay();
+  let planned = 0;
+  let done = 0;
+
+  const days = WEEK.map((day) => {
+    const cardioSlot = CARDIO[day.c];
+    const hasCardio = !day.rest && cardioSlot && !cardioSlot.rest;
+    const isRest = day.rest || (!day.lift && !hasCardio);
+    let finished = false;
+    if (day.lift) finished = doneCount(day.lift) === PLAN[day.lift].ex.length;
+    else if (hasCardio) finished = !!week.cardio[String(day.c)];
+    if (!isRest) {
+      planned++;
+      if (finished) done++;
+    }
+    const today = isCurrent && day.js === jsToday;
+    const kind = day.lift ? 'lift' : isRest ? 'rest' : 'cardio';
+    const state = finished ? 'تم' : isRest ? 'راحة' : today ? 'اليوم' : 'باقي';
+    return el(
+      'li',
+      {
+        class: ['gday', kind, finished ? 'done' : '', today ? 'now' : ''],
+        attrs: { 'aria-label': `${day.d}: ${state}` },
+      },
+      el('span', { class: 'gem' }, finished ? el('span', { class: 'tick', text: '✓' }) : icon(kind)),
+      el('span', { class: 'gl', text: DAY_LETTERS[day.c] })
+    );
+  });
+
+  return {
+    planned,
+    done,
+    strip: el('ol', { class: 'glance', attrs: { 'aria-label': 'أسبوعك' } }, days),
+  };
+}
+
+/**
+ * Three numbers: how much of the week is done, where the scale is heading, and
+ * today's protein. Each says "—" rather than inventing a value it does not have.
+ */
+function statRow(store, glance, goalKey, wk) {
+  const bodies = Object.entries(store.bodyHist())
+    .map(([n, b]) => [Number(n), b?.weight])
+    .filter(([, w]) => Number.isFinite(w))
+    .sort((a, b) => a[0] - b[0]);
+  const latest = bodies.at(-1)?.[1] ?? null;
+  const previous = bodies.at(-2)?.[1] ?? null;
+  const change = latest !== null && previous !== null ? Math.round((latest - previous) * 10) / 10 : null;
+
+  const todayIndex = [1, 2, 3, 4, 5, 6, 0][new Date().getDay()];
+  const isCurrent = wk === store.currentWeek;
+  const eaten = isCurrent ? store.week(wk).cal?.p?.[todayIndex] || 0 : 0;
+  const weight = latest ?? store.doc.nutrition?.weight ?? null;
+  const target = store.doc.nutrition?.age && weight ? proteinTarget(weight, goalKey) : null;
+
+  const stat = (label, value, extra = null) =>
+    el('div', { class: 'gstat' }, el('span', { class: 'gsl', text: label }), el('b', { class: 'gsv', text: value }), extra);
+
+  return el(
+    'div',
+    { class: 'gstats' },
+    stat('هالأسبوع', `${glance.done}/${glance.planned}`, el('span', { class: 'gsx', text: 'أيام' })),
+    stat(
+      'وزنك',
+      latest === null ? '—' : fmtN(latest),
+      change === null || change === 0
+        ? null
+        : el('span', { class: ['gsx', change < 0 ? 'down' : 'up'], text: `${change < 0 ? '↓' : '↑'} ${fmtN(Math.abs(change))}` })
+    ),
+    stat(
+      'بروتين اليوم',
+      target ? fmt(eaten) : '—',
+      target
+        ? el(
+            'span',
+            { class: 'gbar', attrs: { role: 'img', 'aria-label': `${fmt(eaten)} من ${target} جرام` } },
+            el('i', { style: { width: `${Math.min(100, Math.round((eaten / target) * 100))}%` } })
+          )
+        : null
+    )
+  );
+}
+
+/** This week's new records, best first. Nothing to show → no card at all. */
+function recordCard(records) {
+  if (!records.length) return null;
+  const top = records[0];
+  const e = exById(top.id);
+  const gain = Math.round(Math.abs(top.now - top.best) * 10) / 10;
+  return el(
+    'div',
+    { class: 'card grec' },
+    el('span', { class: 'gem' }),
+    el(
+      'div',
+      { class: 'grt' },
+      el('span', { class: 'gsl', text: records.length > 1 ? `${records.length} أرقام جديدة هالأسبوع` : 'رقم جديد هالأسبوع' }),
+      el('b', { text: `${e?.n || top.id} — ${fmtN(top.now)} ${e?.time ? 'ث' : 'كجم'}` })
+    ),
+    el('span', { class: 'gup', text: `${e?.inverse ? '−' : '+'}${fmtN(gain)}` })
   );
 }

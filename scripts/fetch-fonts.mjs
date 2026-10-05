@@ -15,7 +15,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 const CSS_URL =
-  'https://fonts.googleapis.com/css2?family=Cairo:wght@600;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Archivo:wght@600;800;900&display=swap';
+  'https://fonts.googleapis.com/css2?family=Cairo:wght@600;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Archivo:wght@600;800;900&family=Reem+Kufi:wght@500;700&family=Readex+Pro:wght@300;400;500;600;700&display=swap';
 
 // Only the subsets this app actually renders. Dropping the rest cuts ~80% of bytes.
 const KEEP_SUBSETS = new Set(['arabic', 'latin', 'latin-ext']);

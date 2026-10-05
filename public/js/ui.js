@@ -202,3 +202,27 @@ function richParts(parts) {
 }
 
 export const deltaChip = (label, value) => el('span', {}, label, el('b', { text: value }));
+
+/* ── icons ──────────────────────────────────────────────── */
+
+const ICONS = {
+  // A dumbbell, a pulse line, a crescent — one stroke each, drawn on a 24 grid.
+  lift: ['M6 8v8M3.5 10v4M18 8v8M20.5 10v4M6 12h12'],
+  cardio: ['M3 12h4l2-5 4 10 2-5h6'],
+  rest: ['M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z'],
+};
+
+/** A small stroke icon, built as real SVG nodes for the same CSP reason as above. */
+export function icon(name) {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('class', 'ico');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  for (const d of ICONS[name] || []) {
+    const path = document.createElementNS(SVG_NS, 'path');
+    path.setAttribute('d', d);
+    svg.appendChild(path);
+  }
+  return svg;
+}

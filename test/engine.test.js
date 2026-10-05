@@ -26,6 +26,7 @@ import {
   knownFood,
   mealHabits,
   MAX_FOODS,
+  newRecords,
 } from '../public/js/engine.js';
 import fs from 'node:fs';
 import { FIGURE_IDS, figureOf, hasFigure, hasPhoto, PHOTO_IDS, photoFrame } from '../public/js/figure.js';
@@ -1112,5 +1113,29 @@ test('learning from what was eaten', async (t) => {
     assert.deepEqual(mealHabits({ 1: { meals: {} }, 2: {} }, 3, targets), []);
     const empty = { 1: { meals: {} }, 2: { meals: {} }, 3: { meals: {} }, 4: { meals: {} } };
     assert.deepEqual(mealHabits(empty, 5, targets), []);
+  });
+});
+
+test('new records: this week beats every earlier week', async (t) => {
+  await t.test('a heavier week is a record, measured against the best before it', () => {
+    const got = newRecords({ press: [10, 12, 11, 13] }, ['press']);
+    assert.deepEqual(got, [{ id: 'press', now: 13, best: 12 }]);
+  });
+  await t.test('matching the best is not a record', () => {
+    assert.deepEqual(newRecords({ press: [10, 12, 12] }, ['press']), []);
+  });
+  await t.test('one week of history has nothing to beat', () => {
+    assert.deepEqual(newRecords({ press: [10] }, ['press']), []);
+  });
+  await t.test('on an assisted lift, less help is the record', () => {
+    const inverse = (id) => id === 'pullup';
+    assert.deepEqual(newRecords({ pullup: [40, 35, 30] }, ['pullup'], inverse), [
+      { id: 'pullup', now: 30, best: 35 },
+    ]);
+    assert.deepEqual(newRecords({ pullup: [30, 35] }, ['pullup'], inverse), []);
+  });
+  await t.test('keeps the order it was asked in and skips unknown ids', () => {
+    const got = newRecords({ a: [1, 2], b: [1, 3] }, ['b', 'missing', 'a']).map((r) => r.id);
+    assert.deepEqual(got, ['b', 'a']);
   });
 });

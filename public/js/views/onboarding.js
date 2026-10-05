@@ -348,81 +348,138 @@ export function renderOnboarding(ctx) {
     ctx.navigate('home');
   };
 
+  /* ── the four sections ── */
+  const sections = [
+    [el('h3', { class: 'first', text: 'وش هدفك؟' }), el('div', { class: 'gcards' }, goalCards)],
+    [
+      el('h3', { class: 'first', text: 'مستواك بالحديد' }),
+      el('div', { class: 'lcards' }, levelCards),
+      el('div', {
+        class: 'hint-lg',
+        text: 'هذا يضبط أوزان البداية بس — تقدر تعدّل أي وزن بنفسك داخل النادي.',
+      }),
+      groupDetails,
+    ],
+    [
+      el('h3', { class: 'first', text: 'أيام راحتك' }),
+      el(
+        'div',
+        { class: 'card' },
+        el('div', {
+          class: 'mut',
+          text: 'اختر الأيام اللي ما تبي تتمرن فيها، والبرنامج يرتّب أيام الحديد والكارديو على الباقي.',
+        }),
+        el('div', { class: 'mchips' }, restChips),
+        restPreview
+      ),
+    ],
+    [
+      el('h3', { class: 'first', text: 'بياناتك' }),
+      el(
+        'div',
+        { class: 'card' },
+        el('label', { class: 'inp' }, el('span', { text: 'وزنك بالكيلو' }), weightInput),
+        el('label', { class: 'inp' }, el('span', { text: 'طولك بالسنتيمتر' }), heightInput),
+        el('label', { class: 'inp' }, el('span', { text: 'عمرك' }), ageInput),
+        el(
+          'div',
+          { class: 'inp' },
+          el('span', { text: 'نشاطك خارج النادي' }),
+          el('div', { class: 'mchips' }, actChips)
+        ),
+        el('div', {
+          class: 'mut',
+          text: 'النادي محسوب أصلاً بالمعادلة — لا تحسبه مرتين.',
+        })
+      ),
+    ],
+  ];
+
+  const saveButton = el('button', {
+    class: 'cta big-cta',
+    text: editing ? 'احفظ التعديل' : 'ابدأ برنامجي',
+    on: { click: save },
+  });
+
+  /* Editing from the account page: one page, every section at once — the
+     person is changing one thing and should not page through four to find it. */
+  if (editing) {
+    return el(
+      'div',
+      { class: 'wrap onb' },
+      el(
+        'div',
+        { class: 'onbhead' },
+        el('div', { class: 'logo', text: 'حديد' }),
+        el('p', {
+          text: 'عدّل هدفك ومستواك وأيام راحتك. برنامجك بيتغير، وكل اللي سجّلته محفوظ ويرجع لو رجعت لهدفك الأول.',
+        })
+      ),
+      sections.map((parts, i) => {
+        const [heading, ...rest] = parts;
+        // Only the first heading sits flush; the rest keep their spacing.
+        if (i) heading.classList.remove('first');
+        return [heading, ...rest];
+      }),
+      saveButton,
+      el('button', {
+        class: 'cta ghost',
+        text: 'رجوع بدون تعديل',
+        on: { click: () => ctx.navigate('account') },
+      })
+    );
+  }
+
+  /* First run: one step at a time. The sections are built once and only shown
+     or hidden, never rebuilt — what was chosen or typed stays where it was. */
+  let current = 0;
+  const steps = sections.map((parts) => el('section', { class: 'ostep' }, parts));
+  const marks = steps.map(() => el('li', {}));
+  const counter = el('span', { class: 'ocount' });
+  const back = el('button', { class: 'cta ghost oback', text: 'رجوع', on: { click: () => go(current - 1) } });
+  const next = el('button', { class: 'cta onext', text: 'التالي', on: { click: () => advance() } });
+  // Someone who already has an account on another phone must not be made to
+  // invent a goal before they can even reach the login form — their real goal
+  // is about to arrive with their data.
+  const login = el('button', {
+    class: 'cta ghost',
+    text: 'عندي حساب — سجّل دخول',
+    on: { click: () => ctx.goToLogin() },
+  });
+
+  function go(index) {
+    current = Math.max(0, Math.min(steps.length - 1, index));
+    steps.forEach((node, i) => (node.hidden = i !== current));
+    marks.forEach((mark, i) => (mark.className = i < current ? 'done' : i === current ? 'now' : ''));
+    counter.textContent = `خطوة ${current + 1} من ${steps.length}`;
+    const last = current === steps.length - 1;
+    next.hidden = last;
+    saveButton.hidden = !last;
+    back.hidden = current === 0;
+    login.hidden = current !== 0;
+    window.scrollTo(0, 0);
+  }
+
+  function advance() {
+    if (current === 0 && !goal) return toast('اختر هدفك أول');
+    if (current === 1 && !level) return toast('اختر مستواك');
+    go(current + 1);
+  }
+
+  go(0);
+
   return el(
     'div',
-    { class: 'wrap onb' },
+    { class: 'wrap onb wizard' },
     el(
       'div',
       { class: 'onbhead' },
       el('div', { class: 'logo', text: 'حديد' }),
-      el('p', {
-        text: editing
-          ? 'عدّل هدفك ومستواك وأيام راحتك. برنامجك بيتغير، وكل اللي سجّلته محفوظ ويرجع لو رجعت لهدفك الأول.'
-          : 'أربع خطوات بس، وبعدها برنامجك جاهز ومضبوط عليك.',
-      })
+      el('ol', { class: 'omarks', attrs: { 'aria-hidden': 'true' } }, marks),
+      counter
     ),
-
-    el('h3', { class: 'first', text: '١ · وش هدفك؟' }),
-    el('div', { class: 'gcards' }, goalCards),
-
-    el('h3', { text: '٢ · مستواك بالحديد' }),
-    el('div', { class: 'lcards' }, levelCards),
-    el('div', {
-      class: 'hint-lg',
-      text: 'هذا يضبط أوزان البداية بس — تقدر تعدّل أي وزن بنفسك داخل النادي.',
-    }),
-    groupDetails,
-
-    el('h3', { text: '٣ · أيام راحتك' }),
-    el(
-      'div',
-      { class: 'card' },
-      el('div', {
-        class: 'mut',
-        text: 'اختر الأيام اللي ما تبي تتمرن فيها، والبرنامج يرتّب أيام الحديد والكارديو على الباقي.',
-      }),
-      el('div', { class: 'mchips' }, restChips),
-      restPreview
-    ),
-
-    el('h3', { text: '٤ · بياناتك' }),
-    el(
-      'div',
-      { class: 'card' },
-      el('label', { class: 'inp' }, el('span', { text: 'وزنك بالكيلو' }), weightInput),
-      el('label', { class: 'inp' }, el('span', { text: 'طولك بالسنتيمتر' }), heightInput),
-      el('label', { class: 'inp' }, el('span', { text: 'عمرك' }), ageInput),
-      el(
-        'div',
-        { class: 'inp' },
-        el('span', { text: 'نشاطك خارج النادي' }),
-        el('div', { class: 'mchips' }, actChips)
-      ),
-      el('div', {
-        class: 'mut',
-        text: 'النادي محسوب أصلاً بالمعادلة — لا تحسبه مرتين.',
-      })
-    ),
-
-    el('button', {
-      class: 'cta big-cta',
-      text: editing ? 'احفظ التعديل' : 'ابدأ برنامجي',
-      on: { click: save },
-    }),
-
-    editing
-      ? el('button', {
-          class: 'cta ghost',
-          text: 'رجوع بدون تعديل',
-          on: { click: () => ctx.navigate('account') },
-        })
-      : // Someone who already has an account on another phone must not be made
-        // to invent a goal before they can even reach the login form — their
-        // real goal is about to arrive with their data.
-        el('button', {
-          class: 'cta ghost',
-          text: 'عندي حساب — سجّل دخول',
-          on: { click: () => ctx.goToLogin() },
-        })
+    steps,
+    el('div', { class: 'onav' }, back, next, saveButton),
+    login
   );
 }
