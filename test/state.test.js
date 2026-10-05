@@ -26,6 +26,34 @@ test('state validation', async (t) => {
     assert.equal(res.doc.weeks['1'].weights.chest_db, 12.5);
   });
 
+  await t.test('a bad cached calorie figure is dropped, not a reason to refuse the document', () => {
+    // Shape of a laptop's copy from before maintenance was recomputed on read:
+    // the stale cache was out of range and every push came back 400.
+    const res = validateState(
+      docWith(
+        { 1: { weights: { chest_db: 10 }, sets: {} } },
+        { nutrition: { age: 30, act: 1.55, height: 180, measuredTdee: 12000, tdee: 300, target: 'x' } }
+      )
+    );
+    assert.equal(res.ok, true);
+    assert.equal(res.doc.nutrition.measuredTdee, null);
+    assert.equal(res.doc.nutrition.tdee, null);
+    assert.equal(res.doc.nutrition.target, null);
+    assert.equal(res.doc.nutrition.age, 30);
+    assert.equal(res.doc.weeks['1'].weights.chest_db, 10);
+  });
+
+  await t.test('a valid cached figure is kept', () => {
+    const res = validateState(docWith({}, { nutrition: { age: 30, act: 1.55, measuredTdee: 2800 } }));
+    assert.equal(res.ok, true);
+    assert.equal(res.doc.nutrition.measuredTdee, 2800);
+  });
+
+  await t.test('a fact about the person is still checked strictly', () => {
+    const res = validateState(docWith({}, { nutrition: { age: 300, act: 1.55 } }));
+    assert.equal(res.ok, false);
+  });
+
   await t.test('drops exercises that are not in the program', () => {
     const res = validateState(
       docWith({ 1: { weights: { chest_db: 10, evil_injected_id: 999 }, sets: {} } })
