@@ -329,7 +329,17 @@ export function renderHome(ctx) {
 
   /* ── the week at a glance, the three numbers, the latest record ── */
   const glance = weekGlance({ WEEK, PLAN, CARDIO, week, doneCount, isCurrent: wk === store.currentWeek });
-  const records = newRecords(history, railIds, (id) => !!exById(id)?.inverse);
+  // The programme raises every weight when a week opens, so a heavier number
+  // alone is a plan, not a record. It counts once the sets at that weight are
+  // all ticked, on any day this week.
+  const lifted = (id) =>
+    Object.keys(PLAN).some((dayKey) => {
+      const e = PLAN[dayKey].ex.find((x) => x.id === id);
+      if (!e) return false;
+      const sets = week.sets[setsKey(dayKey, id)] || [];
+      return sets.length >= e.sets && sets.slice(0, e.sets).every(Boolean);
+    });
+  const records = newRecords(history, railIds.filter(lifted), (id) => !!exById(id)?.inverse);
 
   return el(
     'div',
