@@ -3269,3 +3269,146 @@ a.cta {
   color: var(--mut);
   padding-top: 6px;
 }
+
+/* ══════ calories: today's ring ══════ */
+.today.live {
+  padding-bottom: 18px;
+}
+.tring-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.tring {
+  position: relative;
+  flex: 0 0 auto;
+  width: 132px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+}
+.tring svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.tring circle {
+  fill: none;
+  stroke-width: 9;
+}
+.tring .rtrack {
+  stroke: rgba(255, 255, 255, 0.1);
+}
+.tring .rfill {
+  stroke: var(--hero-btn);
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+}
+.tring.over .rfill {
+  stroke: var(--coral);
+}
+.tc {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+.tc b {
+  font-family: var(--f-num);
+  font-weight: 800;
+  font-size: 28px;
+}
+.tc span {
+  font-size: 12px;
+  color: var(--hero-mut);
+}
+.tbars {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tbars h2 {
+  margin: 0 0 2px;
+  font-size: 22px;
+}
+.tbl {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 12.5px;
+}
+.tbn {
+  color: var(--hero-mut);
+  white-space: nowrap;
+}
+.tbt {
+  display: block;
+  height: 5px;
+  margin-top: 4px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.tbt i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+.tbar.p .tbt i {
+  background: var(--mint);
+}
+.tbar.c .tbt i {
+  background: var(--blue);
+}
+.tbar.f .tbt i {
+  background: var(--coral);
+}
+.today .tgap {
+  margin: 14px 0 0;
+  font-size: 12.5px;
+}
+
+/* ══════ calories: folded sections ══════ */
+details.card > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: 14px;
+}
+details.card > summary::-webkit-details-marker {
+  display: none;
+}
+details.card > summary::after {
+  content: '▾';
+  color: var(--mut);
+  transition: transform 0.2s;
+}
+details.card[open] > summary::after {
+  transform: rotate(180deg);
+}
+details.card[open] > summary {
+  margin-bottom: 6px;
+}
+
+:is(:root:not([data-theme]), :root[data-theme='najd']) .tc b {
+  font-family: var(--f-kufi);
+  font-weight: 700;
+  font-size: 30px;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .tbar.p .tbt i {
+  background: var(--orange);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .tbars h2 {
+  font-size: 24px;
+}

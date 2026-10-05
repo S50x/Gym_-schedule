@@ -1,5 +1,7 @@
 import { el, richText } from '../dom.js';
 import { fmt, bulletList } from '../ui.js';
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
 import { DAY_NAMES, DAY_LETTERS, goalOf } from '../program.js';
 import {
   avgCal,
@@ -58,8 +60,17 @@ export function renderNutri(ctx) {
 
   /* ── day rows ── */
   const summaryBox = el('div', {});
-  const paint = () =>
+  const heroArgs = { store, wk, todayIndex, target, tdee, protein, targets };
+  // The card itself is the page's first child, not a wrapper around it — the
+  // tabs line their first line of text up against each other — so a repaint
+  // swaps the node rather than its contents.
+  let heroBox = todayCard(heroArgs);
+  const paint = () => {
     summaryBox.replaceChildren(summaryCard(store, wk, bodyWeight, goalKey));
+    const next = todayCard(heroArgs);
+    heroBox.replaceWith(next);
+    heroBox = next;
+  };
 
   const commit = (index, field, raw, input) => {
     const max = field === 'd' ? 20000 : 1000;
@@ -145,6 +156,8 @@ export function renderNutri(ctx) {
           day: i,
           targets,
           isToday: i === todayIndex,
+          // Today's totals are the ring and bars at the top of the page.
+          showBars: i !== todayIndex,
           onChange,
           extraActions: (form) => scanActions(ctx, form),
         })
@@ -171,36 +184,32 @@ export function renderNutri(ctx) {
 
   paint();
 
+  // Today's day first and on its own: it is the one being logged. The rest of
+  // the week folds away until it is wanted.
+  const isLive = todayIndex >= 0;
+  const daysBlock = isLive
+    ? [
+        el('h3', { text: 'أكل اليوم' }),
+        el('div', { class: 'card rows' }, rows[todayIndex]),
+        el(
+          'details',
+          { class: 'card rows ndays' },
+          el('summary', { text: `باقي أيام الأسبوع ${wk}` }),
+          rows.filter((_, i) => i !== todayIndex)
+        ),
+      ]
+    : [el('h3', { text: `سجّل يومك — أسبوع ${wk}` }), el('div', { class: 'card rows' }, rows)];
+
   return el(
     'div',
     { class: 'wrap' },
-    el(
-      'div',
-      // `top` carries no styling any more — it used to add a 6px margin that
-      // double-counted --top-gap. It stays because goals.mjs and review.mjs
-      // select `.today.top` to tell this card from home's hero of the same name.
-      { class: 'today top' },
-      el('div', { class: 'lbl', text: 'هدفك اليومي' }),
-      el('h2', {}, el('span', { class: 'n', text: fmt(target) }), ' سعرة'),
-      el('p', {
-        // The gap is a deficit when cutting and a surplus when building, so it
-        // is named for whichever it actually is.
-        text:
-          `بروتين ${protein} · دهون ${targets.fat} · كارب ${targets.carbs} جرام · احتياجك للثبات ${fmt(tdee)}` +
-          (target === tdee
-            ? ' · بدون عجز ولا زيادة'
-            : target < tdee
-              ? ` · العجز ${fmt(tdee - target)} سعرة`
-              : ` · الزيادة ${fmt(target - tdee)} سعرة`),
-      })
-    ),
-    el('h3', { text: `سجّل يومك — أسبوع ${wk}` }),
-    el('div', { class: 'card rows' }, rows),
+    heroBox,
+    daysBlock,
     summaryBox,
-    el('h3', { text: 'ليش هالصفحة أهم من الحديد' }),
     el(
-      'div',
-      { class: 'card' },
+      'details',
+      { class: 'card why' },
+      el('summary', { text: 'ليش هالأرقام؟' }),
       bulletList([
         [
           { b: 'الحديد يقرر شكل جسمك. السعرات تقرر حجمه.' },
@@ -226,6 +235,100 @@ export function renderNutri(ctx) {
         on: { click: () => ctx.editProfile() },
       })
     )
+  );
+}
+
+/* ────────────────────────── today ────────────────────────── */
+
+/**
+ * The day's target, and — on the live week — how much of it is left, as a
+ * ring, with protein, carbs and fat as bars under it. Keeps `.today.top .n`
+ * holding the target: goals.mjs and review.mjs read the number from there.
+ */
+function todayCard({ store, wk, todayIndex, target, tdee, protein, targets }) {
+  const gap =
+    target === tdee
+      ? 'بدون عجز ولا زيادة'
+      : target < tdee
+        ? `العجز ${fmt(tdee - target)} سعرة`
+        : `الزيادة ${fmt(target - tdee)} سعرة`;
+  const head = [
+    el('div', { class: 'lbl', text: 'هدفك اليومي' }),
+    el('h2', {}, el('span', { class: 'n', text: fmt(target) }), ' سعرة'),
+  ];
+
+  if (todayIndex < 0) {
+    return el(
+      'div',
+      { class: 'today top' },
+      head,
+      el('p', {
+        text: `بروتين ${protein} · دهون ${targets.fat} · كارب ${targets.carbs} جرام · احتياجك للثبات ${fmt(tdee)} · ${gap}`,
+      })
+    );
+  }
+
+  const week = store.week(wk);
+  const eaten = week.cal?.d?.[todayIndex] || 0;
+  const proteinEaten = week.cal?.p?.[todayIndex] || 0;
+  const fromMeals = mealTotals(week.meals?.[todayIndex] || []);
+  const left = target - eaten;
+
+  const bar = (label, value, goal, kind) =>
+    el(
+      'div',
+      { class: ['tbar', kind] },
+      el('div', { class: 'tbl' }, el('span', { text: label }), el('span', { class: 'tbn', text: `${fmt(value)} / ${fmt(goal)} جم` })),
+      el('span', { class: 'tbt' }, el('i', { style: { width: `${Math.min(100, goal ? Math.round((value / goal) * 100) : 0)}%` } }))
+    );
+
+  return el(
+    'div',
+    { class: 'today top live' },
+    el(
+      'div',
+      { class: 'tring-row' },
+      ring(eaten / Math.max(1, target), left),
+      el(
+        'div',
+        { class: 'tbars' },
+        head,
+        bar('بروتين', proteinEaten, protein, 'p'),
+        bar('كارب', fromMeals?.carbs || 0, targets.carbs, 'c'),
+        bar('دهون', fromMeals?.fat || 0, targets.fat, 'f')
+      )
+    ),
+    el('p', { class: 'tgap', text: `احتياجك للثبات ${fmt(tdee)} · ${gap}` })
+  );
+}
+
+/** The calorie ring: filled by what was eaten, the number in it is what is left. */
+function ring(ratio, left) {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 120 120');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  // No fill at all for an empty day: a zero-length stroke with round caps
+  // still paints a dot.
+  for (const cls of ratio > 0 ? ['rtrack', 'rfill'] : ['rtrack']) {
+    const c = document.createElementNS(SVG_NS, 'circle');
+    c.setAttribute('class', cls);
+    c.setAttribute('cx', '60');
+    c.setAttribute('cy', '60');
+    c.setAttribute('r', '52');
+    c.setAttribute('pathLength', '100');
+    if (cls === 'rfill') c.style.setProperty('stroke-dashoffset', String(100 - Math.min(1, Math.max(0, ratio)) * 100));
+    svg.appendChild(c);
+  }
+  const over = left < 0;
+  return el(
+    'div',
+    {
+      class: ['tring', over ? 'over' : ''],
+      attrs: { role: 'img', 'aria-label': over ? `زدت ${fmt(-left)} سعرة` : `باقي ${fmt(left)} سعرة` },
+    },
+    svg,
+    el('div', { class: 'tc' }, el('b', { text: fmt(Math.abs(left)) }), el('span', { text: over ? 'زيادة' : 'باقي' }))
   );
 }
 
