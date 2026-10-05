@@ -3,7 +3,7 @@
 import { el, clear, append, richText, safeUrl } from './dom.js';
 import { fmt, fmtN, toast, buzz, beep, primeAudio } from './ui.js';
 import { planOf, fineStep, setsKey, setsOfDay, MAX_LOAD } from './program.js';
-import { dayVolume, formatRest } from './engine.js';
+import { dayVolume, formatRest, newRecords } from './engine.js';
 import { exerciseFigure } from './figure.js';
 
 const FEEDBACK = [
@@ -11,6 +11,53 @@ const FEEDBACK = [
   { v: 'ok', label: 'مضبوط', toast: 'بنزيده قفزة الأسبوع الجاي' },
   { v: 'heavy', label: 'ثقيل عليّ', toast: 'بيثبت الأسبوع الجاي' },
 ];
+
+/**
+ * One line for the end of a session. It names what actually happened — a
+ * record, a full session, or a part of one — so it reads as noticed, not as
+ * a slogan printed every time.
+ */
+function cheer(recordCount, finished, total) {
+  if (recordCount > 1) return `كسرت ${recordCount} أرقام اليوم. هذا تقدّم حقيقي — جسمك يستجيب.`;
+  if (recordCount === 1) return 'كسرت رقمك اليوم. كل رقم جديد يعني إنك أقوى من الأسبوع اللي فات.';
+  if (finished === total) return 'تمرين كامل. الثبات هو اللي يجيب النتيجة، وأنت ثابت.';
+  if (finished > 0) return `خلّصت ${finished} من ${total}. اللي سويته اليوم محسوب — والجاي تكمّله.`;
+  return 'حضورك اليوم بحد ذاته خطوة. المرة الجاية نكمّل.';
+}
+
+/** How last week's feedback reads, looking back at it. */
+const FELT = { light: 'كان خفيف', ok: 'كان مضبوط', heavy: 'كان ثقيل' };
+
+/** "10 كجم", "45 ث", or null for a bodyweight movement. */
+function loadText(exercise, value) {
+  if (exercise.body || !Number.isFinite(value)) return null;
+  return `${fmtN(value)} ${exercise.time ? 'ث' : 'كجم'}`;
+}
+
+/**
+ * What this lift was last week and how it felt, and — when the programme has
+ * moved it on — by how much. The one line a trainee looks for before a set.
+ * Nothing on week one: there is no last time to show.
+ */
+function lastTime(store, exercise, now) {
+  const wk = store.viewWeek;
+  if (wk <= 1) return null;
+  const before = store.weightsFor(wk - 1)[exercise.id];
+  const felt = FELT[store.week(wk - 1).fb?.[exercise.id]];
+  const load = loadText(exercise, before);
+  if (!load && !felt) return null;
+
+  const parts = [load ? `المرة الماضية ${load}` : 'المرة الماضية', felt].filter(Boolean);
+  const gain = Number.isFinite(before) && Number.isFinite(now) ? Math.round((now - before) * 10) / 10 : 0;
+  // On an assisted lift a smaller number is the progress.
+  const better = exercise.inverse ? gain < 0 : gain > 0;
+  return el(
+    'div',
+    { class: ['glast', better ? 'up' : ''] },
+    parts.join(' · '),
+    better ? el('b', { text: ` — اليوم أقوى بـ ${fmtN(Math.abs(gain))}` }) : null
+  );
+}
 
 export class GymMode {
   constructor(ctx) {
@@ -39,10 +86,13 @@ export class GymMode {
       rest: document.getElementById('rest'),
       restBar: document.getElementById('restbar'),
       restTime: document.getElementById('rtm'),
+      restRing: document.getElementById('rprog'),
       restNext: document.getElementById('rnx'),
       fin: document.getElementById('fin'),
       finP: document.getElementById('finp'),
       finStats: document.getElementById('finstats'),
+      finRec: document.getElementById('finrec'),
+      finCheer: document.getElementById('fincheer'),
     };
 
     document.getElementById('gx').addEventListener('click', () => this.close());
@@ -228,13 +278,18 @@ export class GymMode {
       );
     }
 
+    const load = loadText(exercise, weight);
     const setButtons = Array.from({ length: exercise.sets }, (_, k) =>
-      el('button', {
-        class: ['sdot', sets[k] ? 'done' : k === nextSet ? 'now' : ''],
-        text: sets[k] ? '✓' : `مجموعة ${k + 1}`,
-        attrs: { 'aria-pressed': String(!!sets[k]), 'aria-label': `مجموعة ${k + 1}` },
-        on: { click: () => this.toggleSet(k) },
-      })
+      el(
+        'button',
+        {
+          class: ['sdot', sets[k] ? 'done' : k === nextSet ? 'now' : ''],
+          attrs: { 'aria-pressed': String(!!sets[k]), 'aria-label': `مجموعة ${k + 1}` },
+          on: { click: () => this.toggleSet(k) },
+        },
+        el('span', { class: 'sl', text: `مجموعة ${k + 1}` }),
+        el('span', { class: 'sv', text: sets[k] ? `✓ ${load || ''}`.trim() : load || exercise.reps })
+      )
     );
 
     clear(this.nodes.body);
@@ -252,6 +307,7 @@ export class GymMode {
         class: 'gsub',
         text: `${exercise.sets} مجموعات × ${exercise.reps} · راحة ${formatRest(exercise.rest)}`,
       }),
+      lastTime(this.store, exercise, weight),
       el('div', { class: 'wbox' }, el('div', { class: 'val' }, bigValue), adjust),
       chips,
       // A timed hold counts itself down here, so nobody has to leave the app,
@@ -585,12 +641,19 @@ export class GymMode {
     this.draw();
 
     const nowDone = isDone(exercise, this.store.week(), this.state.day);
+    // The last set at a weight heavier than any earlier week is the moment to
+    // say so — not later on a summary the trainee may skip.
+    if (nowDone && this.recordsFor([exercise]).length) {
+      toast(`رقم جديد في ${exercise.n} — عاش!`);
+      buzz([40, 60, 40, 60, 120]);
+    }
     const next = plan.ex[this.state.index + 1];
+    const load = loadText(exercise, this.store.weightsFor()[exercise.id]);
     this.startRest(
       exercise.rest,
       nowDone
         ? `خلّصت ${exercise.n} — الجاي: ${next ? next.n : 'نهاية التمرين'}`
-        : `الجاي: مجموعة ${completedIndex + 2} من ${exercise.n}`
+        : `الجاي: مجموعة ${completedIndex + 2} من ${exercise.n}${load ? ` · ${load}` : ''}`
     );
   }
 
@@ -621,10 +684,46 @@ export class GymMode {
       stat(String(minutes), 'دقيقة'),
     ]);
 
+    const finished = plan.ex.filter((e) => isDone(e, week, this.state.day));
+    const records = this.recordsFor(finished);
+    this.nodes.finRec.hidden = !records.length;
+    clear(this.nodes.finRec);
+    if (records.length) {
+      append(this.nodes.finRec, [
+        el('div', { class: 'frh', text: records.length > 1 ? 'أرقامك الجديدة' : 'رقمك الجديد' }),
+        records.slice(0, 3).map((r) => {
+          const e = plan.ex.find((x) => x.id === r.id);
+          const unit = e?.time ? 'ث' : 'كجم';
+          return el(
+            'div',
+            { class: 'fri' },
+            el('span', { class: 'gem', attrs: { 'aria-hidden': 'true' } }),
+            el('span', { class: 'frn', text: e?.n || r.id }),
+            el('span', { class: 'frv', text: `${fmtN(r.now)} ${unit}` }),
+            el('span', { class: 'frw', text: `كان ${fmtN(r.best)}` })
+          );
+        }),
+        records.length > 3 ? el('div', { class: 'frmore', text: `و${records.length - 3} غيرها` }) : null,
+      ]);
+    }
+    this.nodes.finCheer.textContent = cheer(records.length, finished.length, plan.ex.length);
+
     this.stopRest();
     this.show(this.nodes.fin);
     buzz([60, 60, 60, 60, 180]);
     this.sessionStart = Date.now();
+  }
+
+  /**
+   * Which of these lifts are at a weight no earlier week reached. Only called
+   * for exercises whose sets are all ticked: a heavier number the programme
+   * handed out is not a record until it has been lifted.
+   */
+  recordsFor(exercises) {
+    const ids = exercises.filter((e) => !e.body).map((e) => e.id);
+    if (!ids.length) return [];
+    const history = this.store.weightHistory(this.store.viewWeek);
+    return newRecords(history, ids, (id) => !!exercises.find((e) => e.id === id)?.inverse);
   }
 
   /* ── rest timer ─────────────────────────────────────────── */
@@ -647,6 +746,10 @@ export class GymMode {
     // Clamp: adding +30s past the original total used to push the bar over 100%.
     const ratio = this.rest.total > 0 ? Math.min(1, left / (this.rest.total * 1000)) : 0;
     this.nodes.restBar.style.width = `${(ratio * 100).toFixed(1)}%`;
+    // The ring empties as the rest runs out. pathLength="100" on the circle
+    // makes the offset a plain percentage. Set through the CSSOM: the CSP
+    // forbids a style="" attribute, not this.
+    this.nodes.restRing?.style.setProperty('stroke-dashoffset', (100 - ratio * 100).toFixed(1));
     if (left <= 0) {
       beep();
       buzz([220, 110, 220]);

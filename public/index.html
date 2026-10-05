@@ -37,7 +37,13 @@
     <div id="rest" role="dialog" aria-modal="true" aria-label="مؤقّت الراحة" hidden>
       <div class="fr" aria-hidden="true"></div>
       <div class="lb">راحة</div>
-      <div class="tm n" id="rtm" role="timer" aria-live="off">1:30</div>
+      <div class="rring">
+        <svg viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+          <circle class="rtrack" cx="60" cy="60" r="54" />
+          <circle class="rprog" id="rprog" cx="60" cy="60" r="54" pathLength="100" />
+        </svg>
+        <div class="tm n" id="rtm" role="timer" aria-live="off">1:30</div>
+      </div>
       <div class="nx" id="rnx"></div>
       <div class="btns">
         <button id="radd">+30 ثانية</button>
@@ -50,6 +56,8 @@
       <h2>خلّصت</h2>
       <p id="finp"></p>
       <div class="stats" id="finstats"></div>
+      <div class="frec" id="finrec" hidden></div>
+      <p class="fcheer" id="fincheer"></p>
       <button class="cta max" id="finx">تمام</button>
     </div>
 
