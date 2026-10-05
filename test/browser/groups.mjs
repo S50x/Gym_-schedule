@@ -8,7 +8,7 @@
  * someone who never opens it lands on exactly the numbers they used to get.
  */
 
-import { newPage, onboard, noStrayNulls, tab, runStandalone } from './helpers.mjs';
+import { newPage, onboard, onbNext, noStrayNulls, tab, runStandalone } from './helpers.mjs';
 
 /**
  * Open a training day in gym mode and read the exercise name and the weight
@@ -45,6 +45,7 @@ export default async function groups({ base, browser, problems, step }) {
     if (await details.evaluate((n) => n.open)) throw new Error('it should start collapsed');
 
     await page.locator('.gcard').nth(4).click(); // قوة
+    await onbNext(page);
     await page.locator('.lcard').nth(2).click(); // متقدم
     await details.evaluate((n) => (n.open = true));
 
@@ -108,6 +109,7 @@ export default async function groups({ base, browser, problems, step }) {
       await page.waitForSelector('.onb', { timeout: 10_000 });
 
       await page.locator('.gcard').nth(4).click(); // قوة
+      await onbNext(page);
       await page.locator('.lcard').nth(1).click(); // متوسط
 
       if (override) {
@@ -120,6 +122,8 @@ export default async function groups({ base, browser, problems, step }) {
         }, override);
       }
 
+      await onbNext(page);
+      await onbNext(page);
       const inputs = page.locator('.onb .inp input');
       await inputs.nth(0).fill('90');
       await inputs.nth(1).fill('180');
@@ -178,6 +182,7 @@ export default async function groups({ base, browser, problems, step }) {
     await page.waitForSelector('.onb', { timeout: 10_000 });
 
     await page.locator('.gcard').nth(1).click();
+    await onbNext(page);
     await page.locator('.lcard').nth(1).click();
     await page.locator('.gdet').evaluate((n) => (n.open = true));
     await page.evaluate(() => {
@@ -186,6 +191,8 @@ export default async function groups({ base, browser, problems, step }) {
       );
       row.querySelector('.mchip[data-level="adv"]').click();
     });
+    await onbNext(page);
+    await onbNext(page);
     const inputs = page.locator('.onb .inp input');
     await inputs.nth(0).fill('85');
     await inputs.nth(1).fill('178');
