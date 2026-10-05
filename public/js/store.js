@@ -458,6 +458,7 @@ class Store extends EventTarget {
       this._weightCache.clear();
       writeLocal(this.doc);
       writeJson(META_KEY, { version: this.version, dirty: false });
+      this._retries = 0;
       this.setSync(SYNC.SYNCED);
       if (res.status === 409) this.emit(); // merged copy differs — repaint
     } catch (err) {
@@ -492,7 +493,22 @@ class Store extends EventTarget {
       this._pushTimer = setTimeout(() => this.push(), seconds * 1000 + 500);
       return;
     }
-    this.setSync(SYNC.ERROR, err.message);
+    // The server is down, restarting, or — on a free host — still waking up:
+    // the first request after a quiet spell answers 502/503 for up to a minute.
+    // That is not a problem with the document, so keep the edits queued and try
+    // again, backing off, instead of parking in ERROR where nothing retries.
+    if (err instanceof ApiError && err.status >= 500) {
+      this._retries = (this._retries || 0) + 1;
+      const seconds = Math.min(300, 10 * 2 ** (this._retries - 1));
+      this.setSync(SYNC.PENDING);
+      clearTimeout(this._pushTimer);
+      this._pushTimer = setTimeout(() => this.push(), seconds * 1000);
+      return;
+    }
+    // What the server actually objected to, so the account screen can say it
+    // instead of a generic line nobody can act on.
+    const detail = err instanceof ApiError ? err.body?.detail : null;
+    this.setSync(SYNC.ERROR, detail ? `${err.message} — ${detail}` : err.message);
   }
 
   /**

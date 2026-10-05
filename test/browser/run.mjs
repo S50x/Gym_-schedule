@@ -25,6 +25,7 @@ const JOURNEYS = [
   ['meals', 'meals.mjs', 'meals add up, warn and delete back to not-logged'],
   ['restdays', 'restdays.mjs', 'rest days the trainee picks move the week'],
   ['foodscan', 'foodscan.mjs', 'Gemini key guide + a scan filling the meal form'],
+  ['syncretry', 'syncretry.mjs', 'a waking host is retried; a refused write says why'],
 ];
 
 const filter = process.argv.slice(2).filter((a) => !a.startsWith('-'));
