@@ -3412,3 +3412,80 @@ details.card[open] > summary {
 :is(:root:not([data-theme]), :root[data-theme='najd']) .tbars h2 {
   font-size: 24px;
 }
+
+/* ══════ onboarding: one step at a time ══════ */
+.wizard .onbhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.omarks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 8px;
+}
+.omarks li {
+  width: 26px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surf-2);
+}
+.omarks li.done,
+.omarks li.now {
+  background: var(--accent-text);
+}
+.ocount {
+  flex-basis: 100%;
+  font-size: 13px;
+  color: var(--mut);
+}
+.wizard h3.first {
+  font-size: 26px;
+  margin-bottom: 14px;
+}
+.onav {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+.onav .cta {
+  flex: 2;
+}
+.onav .oback {
+  flex: 1;
+}
+
+:is(:root:not([data-theme]), :root[data-theme='najd']) .omarks {
+  gap: 12px;
+  padding: 0 4px;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .omarks li {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  transform: rotate(45deg);
+  background: none;
+  border: 1.5px solid var(--line-2);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .omarks li.done,
+:is(:root:not([data-theme]), :root[data-theme='najd']) .omarks li.now {
+  background: var(--orange);
+  border-color: var(--orange);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .wizard h3.first {
+  font-size: 30px;
+}
+/* The goal list runs past the fold; the buttons stay in reach under it. */
+.wizard .onav {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin-inline: -15px;
+  padding: 18px 15px calc(12px + var(--safe-bottom));
+  background: linear-gradient(to bottom, transparent, var(--ink) 40%);
+}

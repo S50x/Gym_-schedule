@@ -3,7 +3,7 @@
  * the home screen, and that the choice survives a reload.
  */
 
-import { newPage, noStrayNulls, runStandalone } from './helpers.mjs';
+import { newPage, onbNext, noStrayNulls, runStandalone } from './helpers.mjs';
 
 /** The home strip, one entry per weekday: name, whether it lifts, whether it rests. */
 const strip = (page) =>
@@ -24,7 +24,9 @@ export default async function run({ base, browser, problems, step }) {
     await page.waitForSelector('.onb', { timeout: 10_000 });
 
     await page.locator('.gcard').nth(0).click();
+    await onbNext(page);
     await page.locator('.lcard').nth(1).click();
+    await onbNext(page);
 
     // Friday comes pre-selected (the goal's own rest day); swap it for Sat + Tue.
     const chip = (name) => page.locator('.onb .mchip', { hasText: name }).first();
@@ -42,6 +44,7 @@ export default async function run({ base, browser, problems, step }) {
 
     const preview = await page.$$eval('.wprow', (rows) => rows.map((r) => r.textContent));
     if (!preview[0].includes('راحة')) throw new Error(`preview Saturday: ${preview[0]}`);
+    await onbNext(page);
 
     const inputs = page.locator('.onb .inp input');
     await inputs.nth(0).fill('90');
