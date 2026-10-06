@@ -306,7 +306,9 @@ export function renderAccount(ctx) {
 function twoFactorCard(ctx) {
   const { store } = ctx;
   const enabled = !!store.user.totpEnabled;
-  const box = el('div', { class: 'card' });
+  // Named so a test can reach this card's password box: the Gemini key and
+  // the change-password card above and below it are password inputs too.
+  const box = el('div', { class: 'card mfacard' });
 
   const heading = el(
     'div',

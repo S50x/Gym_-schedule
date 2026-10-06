@@ -78,17 +78,17 @@ export default async function run({ base, browser, problems, step }) {
     const pill = await page.locator('.pill').first().textContent();
     if (!pill.includes('مو مفعّل')) throw new Error(`expected "off", got "${pill}"`);
     await page.locator('.cta', { hasText: 'فعّل التحقق بخطوتين' }).click();
-    await page.waitForSelector('input[type=password]', { timeout: 5000 });
+    await page.waitForSelector('.mfacard input[type=password]', { timeout: 5000 });
   });
 
   await step('refuses a wrong password', async () => {
-    await page.fill('input[type=password]', 'wrong-password-here');
+    await page.fill('.mfacard input[type=password]', 'wrong-password-here');
     await page.locator('.cta', { hasText: 'كمّل' }).click();
     await page.waitForSelector('.formerr', { timeout: 8000 });
   });
 
   await step('renders a QR and the manual secret', async () => {
-    await page.fill('input[type=password]', PASSWORD);
+    await page.fill('.mfacard input[type=password]', PASSWORD);
     await page.locator('.cta', { hasText: 'كمّل' }).click();
     await page.waitForSelector('.qrbox svg', { timeout: 12_000 });
 
@@ -182,15 +182,15 @@ export default async function run({ base, browser, problems, step }) {
     await page.reload({ waitUntil: 'networkidle' });
     await tab(page, 'account');
     await page.locator('.cta', { hasText: 'أوقف التحقق بخطوتين' }).click();
-    await page.waitForSelector('input[type=password]', { timeout: 5000 });
+    await page.waitForSelector('.mfacard input[type=password]', { timeout: 5000 });
 
-    await page.fill('input[type=password]', PASSWORD);
+    await page.fill('.mfacard input[type=password]', PASSWORD);
     await page.fill('.inp.ltr input[inputmode=numeric]', '999999');
     await page.locator('.cta.danger', { hasText: 'أوقف' }).click();
     await page.waitForSelector('.formerr', { timeout: 8000 });
 
     await totp.fresh();
-    await page.fill('input[type=password]', PASSWORD);
+    await page.fill('.mfacard input[type=password]', PASSWORD);
     await page.fill('.inp.ltr input[inputmode=numeric]', totp.next(secret));
     await page.locator('.cta.danger', { hasText: 'أوقف' }).click();
     await page.waitForTimeout(1500);

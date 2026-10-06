@@ -210,6 +210,7 @@ export async function onboard(
   await inputs.nth(0).fill(String(weight));
   await inputs.nth(1).fill(String(height));
   await inputs.nth(2).fill(String(age));
+  await page.locator('.mchips.jobs .mchip').first().click(); // مكتبي
   await page.locator('.big-cta').click();
   await page.waitForSelector('.today', { timeout: 10_000 });
 }
