@@ -33,18 +33,29 @@
       <div class="gfoot" id="gfoot"></div>
     </div>
 
-    <div id="restbar" aria-hidden="true"></div>
     <div id="rest" role="dialog" aria-modal="true" aria-label="مؤقّت الراحة" hidden>
       <div class="fr" aria-hidden="true"></div>
-      <div class="lb">راحة</div>
-      <div class="rring">
-        <svg viewBox="0 0 120 120" aria-hidden="true" focusable="false">
-          <circle class="rtrack" cx="60" cy="60" r="54" />
-          <circle class="rprog" id="rprog" cx="60" cy="60" r="54" pathLength="100" />
-        </svg>
-        <div class="tm n" id="rtm" role="timer" aria-live="off">1:30</div>
+      <div class="rbody">
+        <div class="lb">راحة</div>
+        <div class="rring">
+          <svg viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+            <circle class="rtrack" cx="60" cy="60" r="54" />
+            <circle class="rprog" id="rprog" cx="60" cy="60" r="54" pathLength="100" />
+          </svg>
+          <div class="rcenter">
+            <div class="tm n" id="rtm" role="timer" aria-live="off">1:30</div>
+            <div class="rof" id="rof"></div>
+          </div>
+        </div>
+        <div class="rfeel" id="rfeel" hidden>
+          <div class="rfq" id="rfq"></div>
+          <div class="rfb" id="rfb"></div>
+        </div>
+        <div class="rnext">
+          <span>الجاي</span>
+          <b id="rnx"></b>
+        </div>
       </div>
-      <div class="nx" id="rnx"></div>
       <div class="btns">
         <button id="radd">+30 ثانية</button>
         <button id="rskip">تخطّي</button>
