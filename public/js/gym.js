@@ -7,9 +7,9 @@ import { dayVolume, formatRest, newRecords } from './engine.js';
 import { exerciseFigure } from './figure.js';
 
 const FEEDBACK = [
-  { v: 'light', label: 'كان خفيف', toast: 'بنزيده قفزتين الأسبوع الجاي' },
-  { v: 'ok', label: 'مضبوط', toast: 'بنزيده قفزة الأسبوع الجاي' },
-  { v: 'heavy', label: 'ثقيل عليّ', toast: 'بيثبت الأسبوع الجاي' },
+  { v: 'light', label: 'كان خفيف', short: 'خفيف', toast: 'بنزيده قفزتين الأسبوع الجاي' },
+  { v: 'ok', label: 'مضبوط', short: 'مضبوط', toast: 'بنزيده قفزة الأسبوع الجاي' },
+  { v: 'heavy', label: 'ثقيل عليّ', short: 'ثقيل', toast: 'بيثبت الأسبوع الجاي' },
 ];
 
 /**
@@ -84,10 +84,13 @@ export class GymMode {
       body: document.getElementById('gbody'),
       foot: document.getElementById('gfoot'),
       rest: document.getElementById('rest'),
-      restBar: document.getElementById('restbar'),
       restTime: document.getElementById('rtm'),
       restRing: document.getElementById('rprog'),
       restNext: document.getElementById('rnx'),
+      restOf: document.getElementById('rof'),
+      restFeel: document.getElementById('rfeel'),
+      restFeelQ: document.getElementById('rfq'),
+      restFeelButtons: document.getElementById('rfb'),
       fin: document.getElementById('fin'),
       finP: document.getElementById('finp'),
       finStats: document.getElementById('finstats'),
@@ -652,8 +655,11 @@ export class GymMode {
     this.startRest(
       exercise.rest,
       nowDone
-        ? `خلّصت ${exercise.n} — الجاي: ${next ? next.n : 'نهاية التمرين'}`
-        : `الجاي: مجموعة ${completedIndex + 2} من ${exercise.n}${load ? ` · ${load}` : ''}`
+        ? next
+          ? next.n
+          : 'نهاية التمرين'
+        : [`مجموعة ${completedIndex + 2}`, load ? `${load} × ${exercise.reps}` : exercise.reps].join(' · '),
+      { exercise, setNumber: completedIndex + 1 }
     );
   }
 
@@ -728,12 +734,13 @@ export class GymMode {
 
   /* ── rest timer ─────────────────────────────────────────── */
 
-  startRest(seconds, nextText) {
+  startRest(seconds, nextText, { exercise = null, setNumber = 0 } = {}) {
     this.rest.total = seconds;
     this.rest.end = Date.now() + seconds * 1000;
     this.nodes.restNext.textContent = nextText || '';
+    this.nodes.restOf.textContent = `من ${clockText(seconds)}`;
+    this.paintFeel(exercise, setNumber);
     this.show(this.nodes.rest);
-    this.nodes.restBar.style.display = 'block';
     this.tickRest();
     clearInterval(this.rest.timer);
     this.rest.timer = setInterval(() => this.tickRest(), 200);
@@ -743,9 +750,8 @@ export class GymMode {
     const left = Math.max(0, this.rest.end - Date.now());
     const seconds = Math.ceil(left / 1000);
     this.nodes.restTime.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
-    // Clamp: adding +30s past the original total used to push the bar over 100%.
+    // Clamp: adding +30s past the original total used to push the ring past full.
     const ratio = this.rest.total > 0 ? Math.min(1, left / (this.rest.total * 1000)) : 0;
-    this.nodes.restBar.style.width = `${(ratio * 100).toFixed(1)}%`;
     // The ring empties as the rest runs out. pathLength="100" on the circle
     // makes the offset a plain percentage. Set through the CSSOM: the CSP
     // forbids a style="" attribute, not this.
@@ -761,7 +767,38 @@ export class GymMode {
     clearInterval(this.rest.timer);
     this.rest.timer = null;
     this.hide(this.nodes.rest);
-    this.nodes.restBar.style.display = 'none';
+  }
+
+  /**
+   * "How was that set?" — asked while resting, when there is time to answer.
+   * It writes the same per-exercise feedback the end of the exercise asks for
+   * (and next week's increase reads), so the latest answer is the one kept.
+   * Not asked for bodyweight movements: there is no load for it to move.
+   */
+  paintFeel(exercise, setNumber) {
+    const show = !!exercise && !exercise.body;
+    this.nodes.restFeel.hidden = !show;
+    if (!show) return;
+    this.nodes.restFeelQ.textContent = `كيف كانت المجموعة ${setNumber}؟`;
+    const current = this.store.week().fb?.[exercise.id];
+    this.nodes.restFeelButtons.replaceChildren(
+      ...FEEDBACK.map((option) =>
+        el('button', {
+          text: option.short,
+          data: { v: option.v },
+          attrs: { 'aria-pressed': String(current === option.v) },
+          on: {
+            click: () => {
+              this.store.update(this.store.viewWeek, (w) => {
+                w.fb = { ...w.fb, [exercise.id]: option.v };
+              });
+              this.paintFeel(exercise, setNumber);
+              this.draw();
+            },
+          },
+        })
+      )
+    );
   }
 
   /* ── input ──────────────────────────────────────────────── */
