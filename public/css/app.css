@@ -1453,16 +1453,15 @@ input.wedit::-webkit-inner-spin-button {
   z-index: 60;
   display: none;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
   /* Frosted over the gym screen rather than painted over it: the exercise you
      were on stays faintly visible, which is what makes it read as a pause. */
   background: rgba(8, 9, 6, 0.72);
   backdrop-filter: var(--blur-fixed);
   -webkit-backdrop-filter: var(--blur-fixed);
-  padding: calc(24px + var(--safe-top)) calc(24px + var(--safe-right))
-    calc(24px + var(--safe-bottom)) calc(24px + var(--safe-left));
-  text-align: center;
+  padding: calc(28px + var(--safe-top)) calc(22px + var(--safe-right))
+    calc(22px + var(--safe-bottom)) calc(22px + var(--safe-left));
+  overflow-y: auto;
 }
 #rest.on {
   display: flex;
@@ -1484,50 +1483,120 @@ input.wedit::-webkit-inner-spin-button {
     opacity: 0.9;
   }
 }
+/* Label, ring, the question and what is next — centred in the space above
+   the two buttons, which sit at the bottom within reach of a thumb. */
+#rest .rbody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+}
 #rest .lb {
   font-family: var(--f-display);
   font-weight: 900;
-  font-size: 16px;
+  font-size: 18px;
   color: var(--blue);
-  margin-bottom: 6px;
+}
+.rcenter {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
 }
 #rest .tm {
   font-family: var(--f-num);
   font-weight: 900;
-  font-size: 82px;
+  font-size: 72px;
   line-height: 1;
   direction: ltr;
   letter-spacing: -0.03em;
 }
-#rest .nx {
+.rof {
   font-size: 13px;
   color: var(--mut);
-  margin-top: 14px;
-  max-width: 280px;
+}
+.rfeel {
+  width: 100%;
+  background: var(--surf);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.rfeel[hidden] {
+  display: none;
+}
+.rfq {
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: 15px;
+}
+.rfb {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.rfb button {
+  min-height: 46px;
+  border-radius: 14px;
+  border: 1px solid var(--line-2);
+  font-size: 14px;
+  color: var(--txt);
+}
+.rfb button[aria-pressed='true'] {
+  border: 1.5px solid var(--accent-text);
+  background: rgba(var(--accent-rgb), 0.14);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+.rnext {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 4px;
+}
+.rnext span {
+  font-size: 14px;
+  color: var(--mut);
+  flex: 0 0 auto;
+}
+.rnext b {
+  font-weight: 600;
+  font-size: 15px;
+  text-align: end;
 }
 #rest .btns {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
-  margin-top: 26px;
+  width: 100%;
+  max-width: 420px;
+  margin: 18px auto 0;
 }
 #rest .btns button {
+  min-height: 56px;
   background: var(--surf);
   border: 1px solid var(--line-2);
-  border-radius: 13px;
-  padding: 13px 20px;
+  border-radius: 16px;
   font-family: var(--f-display);
-  font-weight: 600;
-  font-size: 14px;
+  font-weight: 700;
+  font-size: 16px;
 }
-#restbar {
-  position: fixed;
-  top: var(--safe-top);
-  right: 0;
-  height: 5px;
-  background: var(--blue);
-  z-index: 61;
-  width: 0;
-  display: none;
+/* Skipping is the usual way out of a rest, so it is the light one. */
+#rest #rskip {
+  background: var(--txt);
+  border-color: var(--txt);
+  color: var(--ink);
 }
 
 /* feedback */
@@ -3135,16 +3204,33 @@ a.cta {
 :is(:root:not([data-theme]), :root[data-theme='najd']) #rest .tm {
   font-family: var(--f-kufi);
   font-weight: 700;
-  font-size: 92px;
+  font-size: 80px;
   letter-spacing: 0;
 }
-:is(:root:not([data-theme]), :root[data-theme='najd']) #rest .btns button {
+:is(:root:not([data-theme]), :root[data-theme='najd']) #rest .btns button,
+:is(:root:not([data-theme]), :root[data-theme='najd']) .rfb button {
   border-radius: 999px;
-  padding: 14px 24px;
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) #rest .btns button {
   border-color: rgba(var(--accent-rgb), 0.35);
 }
-:is(:root:not([data-theme]), :root[data-theme='najd']) #restbar {
+:is(:root:not([data-theme]), :root[data-theme='najd']) #rest #rskip {
+  border-color: var(--txt);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .rfeel {
+  background: var(--ink-2);
+  border-color: rgba(var(--accent-rgb), 0.3);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .rfq {
+  font-family: var(--f-body);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .rfb button[aria-pressed='true'] {
+  border: 0;
   background: var(--orange);
+  color: var(--accent-ink);
+}
+:is(:root:not([data-theme]), :root[data-theme='najd']) .rnext b {
+  font-weight: 500;
 }
 
 /* ── finish: the star pattern, fading into the page ── */
