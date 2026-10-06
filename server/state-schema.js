@@ -56,6 +56,16 @@ function num(value, path, { min, max, integer = false, allowNull = false }) {
   return integer ? n : Math.round(n * 10) / 10;
 }
 
+/** A derived value kept only for old documents: invalid → null, never a 400. */
+function stale(check, ...args) {
+  try {
+    return check(...args);
+  } catch (err) {
+    if (err instanceof Invalid) return null;
+    throw err;
+  }
+}
+
 function weightsOf(raw, path) {
   if (!isPlainObject(raw)) return {};
   const out = {};
@@ -284,13 +294,17 @@ function nutritionOf(raw, path) {
   const act = num(raw.act, `${path}.act`, { min: 1.2, max: 2.5 });
   // tdee/target are derived from today's weight now, so they are no longer
   // required — but older documents still carry them and must keep validating.
-  const tdee = num(raw.tdee ?? null, `${path}.tdee`, {
+  // They, and measuredTdee, are caches the app no longer reads: a bad value in
+  // one is dropped rather than refusing the whole document. A laptop holding a
+  // copy from before the change carried an out-of-range measuredTdee, and the
+  // 400 stopped that device from syncing anything at all.
+  const tdee = stale(num, raw.tdee ?? null, `${path}.tdee`, {
     min: 800,
     max: 8000,
     integer: true,
     allowNull: true,
   });
-  const target = num(raw.target ?? null, `${path}.target`, {
+  const target = stale(num, raw.target ?? null, `${path}.target`, {
     min: 800,
     max: 8000,
     integer: true,
@@ -301,7 +315,7 @@ function nutritionOf(raw, path) {
     act,
     // A maintenance figure backed out of real intake vs. weight change. When
     // present it overrides the formula, so it is stored rather than recomputed.
-    measuredTdee: num(raw.measuredTdee ?? null, `${path}.measuredTdee`, {
+    measuredTdee: stale(num, raw.measuredTdee ?? null, `${path}.measuredTdee`, {
       min: 800,
       max: 8000,
       integer: true,
