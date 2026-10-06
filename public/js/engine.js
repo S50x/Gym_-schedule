@@ -3,7 +3,7 @@
  * Pure functions only — no DOM, no storage. Imported by the app and the tests.
  */
 
-import { ALL_EXERCISES, exById, goalOf, DEFAULT_GOAL } from './program.js';
+import { ALL_EXERCISES, exById, goalOf, DEFAULT_GOAL, arrangeWeek, planOf } from './program.js';
 
 export const MAX_WEEK = 520; // ~10 years. Bounds the week navigator and the stored doc.
 export const KCAL_PER_KG = 7700;
@@ -269,15 +269,122 @@ export function dayVolume(dayExercises, weights, sets) {
 /* ────────────────────────── nutrition ────────────────────────── */
 
 /**
- * Mifflin-St Jeor, male.
+ * Mifflin-St Jeor.
  * Height matters: a taller body burns more at rest, so two people at the same
  * weight get different maintenance numbers. `height` falls back to a sane
  * default only for legacy records saved before the field existed.
  */
-export function tdeeFormula(kg, age, activity, height = HEIGHT_CM) {
+export function bmrOf(kg, age, height = HEIGHT_CM, sex = 'm') {
   const cm = Number.isFinite(height) ? height : HEIGHT_CM;
-  const bmr = 10 * kg + 6.25 * cm - 5 * age + 5;
-  return Math.round(bmr * activity);
+  return 10 * kg + 6.25 * cm - 5 * age + (sex === 'f' ? -161 : 5);
+}
+
+/** The legacy one-multiplier estimate: BMR × an activity factor that already includes the gym. */
+export function tdeeFormula(kg, age, activity, height = HEIGHT_CM) {
+  return Math.round(bmrOf(kg, age, height) * activity);
+}
+
+/**
+ * What the day looks like outside the gym. The factor covers the body at rest
+ * plus everything that is not planned exercise — walking to the car, standing
+ * at a counter, carrying boxes — and nothing else: the training is added on
+ * top from the programme itself, so it is never counted twice.
+ */
+export const JOBS = [
+  { k: 'desk', f: 1.2, n: 'مكتبي — جالس أغلب اليوم', hint: 'دوام مكتب، طالب، سواقة' },
+  { k: 'light', f: 1.3, n: 'خفيف — أقوم وأتحرك شوي', hint: 'معلم، مبيعات، شغل بين مكتب وميدان' },
+  { k: 'feet', f: 1.42, n: 'واقف أغلب اليوم', hint: 'كاشير، مطبخ، تمريض، محل' },
+  { k: 'labor', f: 1.6, n: 'شغل بدني', hint: 'بناء، مستودع، توصيل، شيل وحمل' },
+];
+export const JOB_KEYS = JOBS.map((j) => j.k);
+export const jobOf = (key) => JOBS.find((j) => j.k === key) || null;
+
+/**
+ * The old single activity factor (gym included) mapped to the nearest job, so
+ * the edit form opens on something sensible for a profile saved before jobs.
+ */
+export function jobFromAct(act) {
+  if (!Number.isFinite(act)) return 'light';
+  if (act <= 1.45) return 'desk';
+  if (act <= 1.65) return 'light';
+  return 'labor';
+}
+
+/**
+ * Metabolic equivalents for a whole session, rest periods included, from the
+ * 2024 Adult Compendium of Physical Activities: resistance training with
+ * multiple exercises ≈ 3.5–5, calisthenics at moderate effort ≈ 3.8,
+ * stretching ≈ 2.3, steady cardio "out of breath but can talk" ≈ 5–7
+ * depending on the machine.
+ */
+export const MET = { lift: 4.5, body: 3.8, stretch: 2.3, cardio: 5.8 };
+/** Seconds one working set takes before its rest, for exercises counted in reps. */
+const SET_SECONDS = 40;
+
+/** One exercise's share of a session, in minutes, with the rest after each set. */
+function exerciseMinutes(e) {
+  const work = e.time ? Number(e.base) || 30 : SET_SECONDS;
+  return ((Number(e.sets) || 0) * (work + (Number(e.rest) || 0))) / 60;
+}
+
+const kindOf = (e) => (e.time && !e.step ? 'stretch' : e.body || e.time ? 'body' : 'lift');
+
+/**
+ * The planned training of one week, weekday by weekday, and what it burns on
+ * top of the day itself. Net of rest: the BMR × job figure already counts the
+ * hour spent in the gym as an ordinary hour, so only the extra is added —
+ * (MET − 1) × kg × hours.
+ *
+ * Derived from the goal and the trainee's rest days, so switching from a
+ * three-day cut to a six-day cardio week moves the number without anyone
+ * touching a setting.
+ *
+ * @returns {{ days: {lift:number, cardio:number, kcal:number}[], liftMin:number,
+ *   cardioMin:number, weekKcal:number, perDay:number }}
+ */
+export function trainingBurn(goalKey = DEFAULT_GOAL, restDays = null, kg = 80) {
+  const { lift, cardio } = arrangeWeek(goalKey, restDays);
+  const plan = planOf(goalKey, restDays);
+  const days = lift.map((key, i) => {
+    const kcalPerMin = { lift: 0, body: 0, stretch: 0 };
+    let liftMin = 0;
+    for (const e of key ? plan[key]?.ex || [] : []) {
+      const min = exerciseMinutes(e);
+      liftMin += min;
+      kcalPerMin[kindOf(e)] += min;
+    }
+    const cardioMin = Number(cardio[i]?.min) || 0;
+    const kcal =
+      ((kcalPerMin.lift * (MET.lift - 1) +
+        kcalPerMin.body * (MET.body - 1) +
+        kcalPerMin.stretch * (MET.stretch - 1) +
+        cardioMin * (MET.cardio - 1)) *
+        kg) /
+      60;
+    return { lift: Math.round(liftMin), cardio: cardioMin, kcal: Math.round(kcal) };
+  });
+  const weekKcal = days.reduce((a, d) => a + d.kcal, 0);
+  return {
+    days,
+    liftMin: days.reduce((a, d) => a + d.lift, 0),
+    cardioMin: days.reduce((a, d) => a + d.cardio, 0),
+    weekKcal,
+    perDay: Math.round(weekKcal / 7),
+  };
+}
+
+/**
+ * Maintenance, piece by piece: the body at rest, the day around it, and the
+ * programme's training averaged over the week. Null when the profile predates
+ * the job question — `formulaTdee` then keeps the old single factor.
+ */
+export function energyBreakdown(nutrition, weight, goalKey = DEFAULT_GOAL, restDays = null) {
+  const job = jobOf(nutrition?.job);
+  if (!job || !Number.isFinite(weight) || !Number.isFinite(nutrition.age)) return null;
+  const bmr = Math.round(bmrOf(weight, nutrition.age, nutrition.height, nutrition.sex));
+  const daily = Math.round(bmr * job.f) - bmr;
+  const training = trainingBurn(goalKey, restDays, weight);
+  return { bmr, job, daily, training, tdee: bmr + daily + training.perDay };
 }
 
 /**
@@ -467,9 +574,15 @@ export function slotForHour(hour) {
 /** Weeks of meal detail kept; older weeks keep their daily totals only. */
 export const MEAL_WEEKS_KEPT = 26;
 
-/** Maintenance calories from the formula alone, at today's weight. */
-export function formulaTdee(nutrition, weight) {
+/**
+ * Maintenance calories from the formula alone, at today's weight: BMR × the
+ * job, plus the programme's own training. A profile saved before the job
+ * question keeps its single activity factor until it is edited.
+ */
+export function formulaTdee(nutrition, weight, goalKey = DEFAULT_GOAL, restDays = null) {
   if (!nutrition) return null;
+  const parts = energyBreakdown(nutrition, weight, goalKey, restDays);
+  if (parts) return parts.tdee;
   if (Number.isFinite(weight) && Number.isFinite(nutrition.age)) {
     return tdeeFormula(weight, nutrition.age, nutrition.act ?? 1.55, nutrition.height);
   }
@@ -488,15 +601,15 @@ export function formulaTdee(nutrition, weight) {
  * actually happened to this person's weight at a known intake. The stored
  * `nutrition.measuredTdee` is no longer read: it froze one reading forever.
  */
-export function effectiveTdee(nutrition, weight, learned = null) {
+export function effectiveTdee(nutrition, weight, learned = null, goalKey = DEFAULT_GOAL, restDays = null) {
   if (!nutrition) return null;
   if (Number.isFinite(learned)) return learned;
-  return formulaTdee(nutrition, weight);
+  return formulaTdee(nutrition, weight, goalKey, restDays);
 }
 
-/** The daily calorie target for today's weight and the current goal. */
-export function dailyTarget(nutrition, weight, goalKey = DEFAULT_GOAL, learned = null) {
-  const tdee = effectiveTdee(nutrition, weight, learned);
+/** The daily calorie target for today's weight, the current goal and its week. */
+export function dailyTarget(nutrition, weight, goalKey = DEFAULT_GOAL, learned = null, restDays = null) {
+  const tdee = effectiveTdee(nutrition, weight, learned, goalKey, restDays);
   return tdee === null ? null : safeTarget(tdee, goalKey);
 }
 

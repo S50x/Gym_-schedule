@@ -20,7 +20,7 @@ import {
   LEVEL_KEYS,
   GROUP_KEYS,
 } from '../public/js/program.js';
-import { MAX_WEEK, MAX_FOODS, foodKey } from '../public/js/engine.js';
+import { MAX_WEEK, MAX_FOODS, foodKey, JOB_KEYS } from '../public/js/engine.js';
 
 const EX_IDS = new Set(EXERCISE_IDS);
 const DAY_OF_WEEK = new Set(LIFT_DAY_KEYS);
@@ -287,6 +287,13 @@ function weekOf(raw, path) {
   };
 }
 
+/** One of a fixed set of strings, or null when absent. */
+function oneOf(value, allowed, path) {
+  if (value === undefined || value === null) return null;
+  if (!allowed.includes(value)) throw new Invalid(path, 'قيمة غير معروفة');
+  return value;
+}
+
 function nutritionOf(raw, path) {
   if (!isPlainObject(raw)) return null;
   if (raw.age === undefined || raw.age === null) return null;
@@ -328,6 +335,10 @@ function nutritionOf(raw, path) {
       integer: true,
       allowNull: true,
     }),
+    // What the day looks like outside the gym, and sex for the BMR. Both
+    // optional: a document saved before them keeps the old activity factor.
+    job: oneOf(raw.job, JOB_KEYS, `${path}.job`),
+    sex: oneOf(raw.sex, ['m', 'f'], `${path}.sex`),
     tdee,
     target,
     protein: num(raw.protein ?? 0, `${path}.protein`, { min: 0, max: 500, integer: true }),

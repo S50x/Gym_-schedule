@@ -50,6 +50,7 @@ export default async function run({ base, browser, problems, step }) {
     await inputs.nth(0).fill('90');
     await inputs.nth(1).fill('180');
     await inputs.nth(2).fill('30');
+    await page.locator('.mchips.jobs .mchip').first().click(); // مكتبي
     await page.locator('.big-cta').click();
     await page.waitForSelector('.today', { timeout: 10_000 });
 
