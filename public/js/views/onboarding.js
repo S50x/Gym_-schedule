@@ -9,6 +9,8 @@
 
 import { el } from '../dom.js';
 import { toast } from '../ui.js';
+import { JOBS, jobOf, jobFromAct, energyBreakdown, dailyTarget } from '../engine.js';
+import { calcRows } from './nutri.js';
 import {
   GOALS,
   GOAL_KEYS,
@@ -23,10 +25,9 @@ import {
   planOf,
 } from '../program.js';
 
-const ACTIVITY = [
-  { a: 1.375, label: 'مكتبي — أجلس أغلب اليوم' },
-  { a: 1.55, label: 'متوسط — أتحرك عادي' },
-  { a: 1.725, label: 'عالي — شغلي حركة' },
+const SEXES = [
+  { k: 'm', n: 'ذكر' },
+  { k: 'f', n: 'أنثى' },
 ];
 
 export function renderOnboarding(ctx) {
@@ -37,7 +38,10 @@ export function renderOnboarding(ctx) {
 
   let goal = editing ? store.goal : null;
   let level = editing ? store.level : null;
-  let activity = nut.act || 1.55;
+  // A profile from before the job question opens on the job nearest its old
+  // activity factor; a new one on nothing, so the choice is made, not inherited.
+  let job = jobOf(nut.job)?.k || (nut.act ? jobFromAct(nut.act) : null);
+  let sex = nut.sex === 'f' ? 'f' : 'm';
   // Weekdays off. Starts on what the trainee already has (or the goal's own
   // week), and is re-checked against the goal whenever the goal changes.
   let restDays = editing ? normalizeRestDays(store.goal, store.restDays) : null;
@@ -219,6 +223,8 @@ export function renderOnboarding(ctx) {
 
   /** Press the chosen days and show the week they produce. */
   function paintRest() {
+    // The calorie preview follows the week: a goal or a rest day changes it.
+    paintCalc();
     const chosen = goal ? normalizeRestDays(goal, restDays) : [];
     for (const chip of restChips) {
       const on = chosen.includes(Number(chip.dataset.day));
@@ -275,23 +281,65 @@ export function renderOnboarding(ctx) {
     value: nut.age != null ? String(nut.age) : '',
   });
 
-  const actChips = ACTIVITY.map((option) =>
-    el('button', {
-      class: ['mchip', option.a === activity ? 'on' : ''],
-      text: option.label,
-      attrs: { 'aria-pressed': String(option.a === activity) },
-      on: {
-        click: (event) => {
-          activity = option.a;
-          for (const chip of event.currentTarget.parentElement.children) {
-            const on = chip === event.currentTarget;
-            chip.classList.toggle('on', on);
-            chip.setAttribute('aria-pressed', String(on));
-          }
+  /** A row of single-choice chips; `pick` gets the chosen key. */
+  const chipRow = (options, current, pick) =>
+    options.map((option) =>
+      el(
+        'button',
+        {
+          class: ['mchip', option.k === current ? 'on' : ''],
+          data: { k: option.k },
+          attrs: { type: 'button', 'aria-pressed': String(option.k === current) },
+          on: {
+            click: (event) => {
+              pick(option.k);
+              for (const chip of event.currentTarget.parentElement.children) {
+                const on = chip === event.currentTarget;
+                chip.classList.toggle('on', on);
+                chip.setAttribute('aria-pressed', String(on));
+              }
+              paintCalc();
+            },
+          },
         },
-      },
-    })
-  );
+        option.hint ? [el('b', { text: option.n }), el('small', { text: option.hint })] : option.n
+      )
+    );
+  const sexChips = chipRow(SEXES, sex, (k) => (sex = k));
+  const jobChips = chipRow(JOBS, job, (k) => (job = k));
+
+  /* The target, worked out live from whatever is filled in so far — the same
+     rows the nutrition page shows, so what is promised here is what appears. */
+  const calcBox = el('div', { class: 'kprev', attrs: { 'aria-live': 'polite' } });
+  function paintCalc() {
+    const weight = Number.parseFloat(weightInput.value);
+    const height = Number.parseInt(heightInput.value, 10);
+    const age = Number.parseInt(ageInput.value, 10);
+    const ready =
+      goal &&
+      job &&
+      weight >= 20 &&
+      weight <= 400 &&
+      height >= 120 &&
+      height <= 230 &&
+      age >= 14 &&
+      age <= 90;
+    if (!ready) {
+      calcBox.replaceChildren(
+        el('div', {
+          class: 'mut',
+          text: 'عبّ وزنك وطولك وعمرك واختر شغلك، ونحسب سعراتك هنا على طول.',
+        })
+      );
+      return;
+    }
+    const n = { age, height, sex, job };
+    const days = normalizeRestDays(goal, restDays);
+    const parts = energyBreakdown(n, weight, goal, days);
+    const target = dailyTarget(n, weight, goal, null, days);
+    calcBox.replaceChildren(calcRows({ parts, goalKey: goal, target }));
+  }
+  for (const input of [weightInput, heightInput, ageInput]) input.addEventListener('input', paintCalc);
 
   // First paint: labels and the inherited tag depend on `level`, which may
   // already be set when an existing trainee reopens this to edit.
@@ -312,6 +360,7 @@ export function renderOnboarding(ctx) {
     }
     const age = Number.parseInt(ageInput.value, 10);
     if (!Number.isFinite(age) || age < 14 || age > 90) return toast('اكتب عمرك (14–90)');
+    if (!job) return toast('اختر طبيعة شغلك');
 
     const rounded = Math.round(weight * 10) / 10;
     // The weight doubles as the baseline measurement, so the first weekly
@@ -341,7 +390,11 @@ export function renderOnboarding(ctx) {
     store.updateNutrition((n) => {
       n.age = age;
       n.height = height;
-      n.act = activity;
+      n.sex = sex;
+      n.job = job;
+      // Still written for a device on an older version, which reads only this.
+      // It now means the day without the gym, so that copy will undercount.
+      n.act = jobOf(job).f;
     });
 
     toast(editing ? 'انحدّث برنامجك' : `جاهز — برنامج ${GOALS[goal].n}`);
@@ -381,16 +434,18 @@ export function renderOnboarding(ctx) {
         el('label', { class: 'inp' }, el('span', { text: 'وزنك بالكيلو' }), weightInput),
         el('label', { class: 'inp' }, el('span', { text: 'طولك بالسنتيمتر' }), heightInput),
         el('label', { class: 'inp' }, el('span', { text: 'عمرك' }), ageInput),
+        el('div', { class: 'inp' }, el('span', { text: 'الجنس' }), el('div', { class: 'mchips' }, sexChips)),
         el(
           'div',
           { class: 'inp' },
-          el('span', { text: 'نشاطك خارج النادي' }),
-          el('div', { class: 'mchips' }, actChips)
+          el('span', { text: 'طبيعة شغلك ويومك (بدون النادي)' }),
+          el('div', { class: 'mchips jobs' }, jobChips)
         ),
         el('div', {
           class: 'mut',
-          text: 'النادي محسوب أصلاً بالمعادلة — لا تحسبه مرتين.',
-        })
+          text: 'التمارين نحسبها من برنامجك نفسه — أيام الحديد ودقايق الكارديو — فلا تحسب النادي هنا.',
+        }),
+        calcBox
       ),
     ],
   ];

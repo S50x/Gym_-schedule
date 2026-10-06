@@ -49,6 +49,17 @@ test('state validation', async (t) => {
     assert.equal(res.doc.nutrition.measuredTdee, 2800);
   });
 
+  await t.test('job and sex are kept, and checked against their lists', () => {
+    const ok = validateState(docWith({}, { nutrition: { age: 30, act: 1.2, job: 'desk', sex: 'f' } }));
+    assert.equal(ok.ok, true);
+    assert.equal(ok.doc.nutrition.job, 'desk');
+    assert.equal(ok.doc.nutrition.sex, 'f');
+    const old = validateState(docWith({}, { nutrition: { age: 30, act: 1.55 } }));
+    assert.equal(old.doc.nutrition.job, null);
+    assert.equal(validateState(docWith({}, { nutrition: { age: 30, act: 1.2, job: 'astronaut' } })).ok, false);
+    assert.equal(validateState(docWith({}, { nutrition: { age: 30, act: 1.2, sex: 'x' } })).ok, false);
+  });
+
   await t.test('a fact about the person is still checked strictly', () => {
     const res = validateState(docWith({}, { nutrition: { age: 300, act: 1.55 } }));
     assert.equal(res.ok, false);
