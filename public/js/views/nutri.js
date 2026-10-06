@@ -11,6 +11,7 @@ import {
   effectiveTdee,
   formulaTdee,
   dailyTarget,
+  energyBreakdown,
   macroTargets,
   mealTotals,
   mealAlerts,
@@ -53,7 +54,7 @@ export function renderNutri(ctx) {
 
   // Recomputed from today's weight and the whole log every time this page
   // opens, so the target follows the body instead of the number it had on day one.
-  const { tdee, target, protein } = numbers(store, bodyWeight, goalKey);
+  const { tdee, target, protein, parts, learned } = numbers(store, bodyWeight, goalKey);
   const targets = macroTargets(target, bodyWeight, goalKey);
   // Weekday index of today (Sat=0 … Fri=6), only meaningful in the current week.
   const todayIndex = wk === store.currentWeek ? [1, 2, 3, 4, 5, 6, 0][new Date().getDay()] : -1;
@@ -206,6 +207,7 @@ export function renderNutri(ctx) {
     heroBox,
     daysBlock,
     summaryBox,
+    calcCard({ ctx, parts, goalKey, target, tdee, learned: learned?.val ?? null, todayIndex }),
     el(
       'details',
       { class: 'card why' },
@@ -217,7 +219,7 @@ export function renderNutri(ctx) {
         ],
         [
           { b: `هدفك الحالي مبني على ${goal.n}` },
-          ` — عشان كذا الرقم ${fmt(target)} مو رقم عام، هو محسوب من وزنك وطولك وعمرك ونشاطك.`,
+          ` — عشان كذا الرقم ${fmt(target)} مو رقم عام، هو محسوب من وزنك وطولك وعمرك وشغلك وتمارين برنامجك.`,
         ],
         [{ b: 'سجّل ولو تقريبي.' }, ' تسجيل 5 أيام بدقة 80% أنفع من تسجيل يومين بدقة 100%.'],
         [
@@ -236,6 +238,90 @@ export function renderNutri(ctx) {
       })
     )
   );
+}
+
+/* ────────────────────────── how the number is made ────────────────────────── */
+
+const signed = (n) => `${n >= 0 ? '+' : '−'}${fmt(Math.abs(n))}`;
+
+/**
+ * The target, line by line: the body at rest, the day around it, the
+ * programme's training, and the goal. Shared with onboarding, which shows the
+ * same rows live while the form is being filled.
+ */
+export function calcRows({ parts, goalKey, target, tdee = parts.tdee, learned = null }) {
+  const goal = goalOf(goalKey);
+  const t = parts.training;
+  const row = (label, sub, value, cls) =>
+    el(
+      'div',
+      { class: ['krow', cls || ''] },
+      el('span', {}, el('b', { text: label }), sub ? el('small', { text: sub }) : null),
+      el('b', { class: 'n', text: value })
+    );
+  const training = [
+    t.liftMin ? `${t.liftMin} د تمرين` : '',
+    t.cardioMin ? `${t.cardioMin} د كارديو` : '',
+  ]
+    .filter(Boolean)
+    .join(' + ');
+  const rows = [
+    row('حرق جسمك وأنت مرتاح', 'من وزنك وطولك وعمرك', fmt(parts.bmr)),
+    row('حركة يومك', parts.job.n, signed(parts.daily)),
+    row('تمارين برنامجك', training ? `${training} بالأسبوع — متوسط اليوم` : 'ما فيه تمرين', signed(t.perDay)),
+    row('احتياجك للثبات', null, fmt(parts.tdee), 'sum'),
+  ];
+  if (Number.isFinite(learned) && learned !== parts.tdee) {
+    rows.push(row('رقمك الحقيقي من سجلك', 'أكلك مقابل تغيّر وزنك — يغلب المعادلة', fmt(learned), 'sum'));
+  }
+  const gap = target - tdee;
+  rows.push(
+    row(
+      `هدف ${goal.n}`,
+      gap === goal.nutrition.delta ? null : 'محدود بالحد الآمن',
+      gap ? signed(gap) : '0'
+    ),
+    row('سعراتك اليومية', null, fmt(target), 'total')
+  );
+  return el('div', { class: 'kcalc' }, rows);
+}
+
+function calcCard({ ctx, parts, goalKey, target, tdee, learned, todayIndex }) {
+  if (!parts) {
+    // A profile from before the job question: the old single factor is still in
+    // use, and one tap fixes it.
+    return el(
+      'div',
+      { class: 'card' },
+      el('b', { class: 'nexth', text: 'خلّ الحسبة أدق' }),
+      el('div', {
+        class: 'mut',
+        text: 'اختر طبيعة شغلك، ونحسب حرق تمارينك من برنامجك نفسه بدل رقم عام.',
+      }),
+      el('button', { class: 'cta', text: 'اختر طبيعة شغلك', on: { click: () => ctx.editProfile() } })
+    );
+  }
+  const today = todayIndex >= 0 ? parts.training.days[todayIndex] : null;
+  return [
+    el('h3', { text: 'كيف انحسب رقمك' }),
+    el(
+      'div',
+      { class: 'card' },
+      calcRows({ parts, goalKey, target, tdee, learned }),
+      today
+        ? el('div', {
+            class: 'mut kday',
+            text: today.kcal
+              ? `تمرين اليوم يحرق تقريباً ${fmt(today.kcal)} سعرة فوق يومك العادي.`
+              : 'اليوم راحة — ما فيه حرق تمرين.',
+          })
+        : null,
+      el('div', {
+        class: 'mut kday',
+        text: 'الرقم يتغير لحاله لما يتغير وزنك أو هدفك أو أيام راحتك أو طبيعة شغلك.',
+      })
+    ),
+  ];
 }
 
 /* ────────────────────────── today ────────────────────────── */
@@ -345,13 +431,15 @@ function ring(ratio, left) {
  */
 export function numbers(store, bodyWeight, goalKey) {
   const nut = store.doc.nutrition;
-  const formula = formulaTdee(nut, bodyWeight);
+  const restDays = store.restDays;
+  const formula = formulaTdee(nut, bodyWeight, goalKey, restDays);
   const learned = measuredTDEE(store.calHist(), store.bodyHist(), formula);
   return {
     formula,
     learned,
-    tdee: effectiveTdee(nut, bodyWeight, learned?.val),
-    target: dailyTarget(nut, bodyWeight, goalKey, learned?.val),
+    parts: energyBreakdown(nut, bodyWeight, goalKey, restDays),
+    tdee: effectiveTdee(nut, bodyWeight, learned?.val, goalKey, restDays),
+    target: dailyTarget(nut, bodyWeight, goalKey, learned?.val, restDays),
     protein: proteinTarget(bodyWeight, goalKey),
   };
 }

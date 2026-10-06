@@ -27,6 +27,11 @@ import {
   mealHabits,
   MAX_FOODS,
   newRecords,
+  energyBreakdown,
+  trainingBurn,
+  formulaTdee,
+  jobFromAct,
+  JOBS,
 } from '../public/js/engine.js';
 import fs from 'node:fs';
 import { FIGURE_IDS, figureOf, hasFigure, hasPhoto, PHOTO_IDS, photoFrame } from '../public/js/figure.js';
@@ -1137,5 +1142,74 @@ test('new records: this week beats every earlier week', async (t) => {
   await t.test('keeps the order it was asked in and skips unknown ids', () => {
     const got = newRecords({ a: [1, 2], b: [1, 3] }, ['b', 'missing', 'a']).map((r) => r.id);
     assert.deepEqual(got, ['b', 'a']);
+  });
+});
+
+test('maintenance is built from the job and the programme', async (t) => {
+  const base = { age: 30, height: 183, sex: 'm' };
+
+  await t.test('a profile without a job keeps the old single factor', () => {
+    const legacy = { age: 30, height: 183, act: 1.55 };
+    assert.equal(energyBreakdown(legacy, 100, 'cut'), null);
+    assert.equal(formulaTdee(legacy, 100, 'cut'), tdeeFormula(100, 30, 1.55, 183));
+  });
+
+  await t.test('the parts add up to maintenance', () => {
+    const p = energyBreakdown({ ...base, job: 'desk' }, 100, 'cut');
+    // BMR = 10×100 + 6.25×183 − 5×30 + 5 = 1998.75
+    assert.equal(p.bmr, 1999);
+    assert.equal(p.daily, Math.round(1999 * 1.2) - 1999);
+    assert.equal(p.tdee, p.bmr + p.daily + p.training.perDay);
+    assert.equal(formulaTdee({ ...base, job: 'desk' }, 100, 'cut'), p.tdee);
+  });
+
+  await t.test('a more active job raises maintenance, step by step', () => {
+    const tdees = JOBS.map((j) => formulaTdee({ ...base, job: j.k }, 90, 'cut'));
+    for (let i = 1; i < tdees.length; i++) assert.ok(tdees[i] > tdees[i - 1], String(tdees));
+  });
+
+  await t.test('sex moves the resting burn by 166 kcal', () => {
+    const m = energyBreakdown({ ...base, job: 'desk' }, 70, 'fitness');
+    const f = energyBreakdown({ ...base, job: 'desk', sex: 'f' }, 70, 'fitness');
+    assert.equal(m.bmr - f.bmr, 166);
+  });
+
+  await t.test('more training burns more', () => {
+    // Six days of 55–70 minute cardio beat a two-session week.
+    assert.ok(trainingBurn('cardio', null, 90).perDay > trainingBurn('muscle', null, 90).perDay);
+    // A heavier body burns more doing the same programme.
+    assert.ok(trainingBurn('cut', null, 110).weekKcal > trainingBurn('cut', null, 70).weekKcal);
+  });
+
+  await t.test('a rest day carries no training burn', () => {
+    const { days } = trainingBurn('cut', null, 90);
+    assert.equal(days[6].kcal, 0, 'Friday is the fat-loss rest day');
+    assert.ok(days[0].kcal > 0 && days[0].lift > 0 && days[0].cardio > 0);
+  });
+
+  await t.test('training burn stays in a believable range for every goal', () => {
+    for (const key of GOAL_KEYS) {
+      const perDay = trainingBurn(key, null, 90).perDay;
+      assert.ok(perDay > 80 && perDay < 600, `${key}: ${perDay}`);
+    }
+  });
+
+  await t.test('rest days the trainee picks change the burn', () => {
+    // Taking a second rest day drops a cardio session from the week.
+    const own = trainingBurn('cut', null, 90).weekKcal;
+    const more = trainingBurn('cut', [3, 6], 90).weekKcal;
+    assert.ok(more < own, `${more} should be under ${own}`);
+  });
+
+  await t.test('every goal still gets its own target', () => {
+    const nut = { ...base, job: 'light' };
+    const targets = GOAL_KEYS.map((k) => dailyTarget(nut, 90, k));
+    assert.equal(new Set(targets).size, GOAL_KEYS.length);
+  });
+
+  await t.test('an old activity factor maps to the nearest job', () => {
+    assert.equal(jobFromAct(1.375), 'desk');
+    assert.equal(jobFromAct(1.55), 'light');
+    assert.equal(jobFromAct(1.725), 'labor');
   });
 });

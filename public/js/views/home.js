@@ -118,7 +118,7 @@ export function renderHome(ctx) {
       el('h2', { text: 'أسبوع سابق' }),
       el('p', { text: 'تتصفح أسبوع قديم. تقدر تعدّل عليه وبيتحدّث حساب الأسابيع اللي بعده.' }),
       el('button', {
-        class: 'go',
+        class: 'gobtn',
         text: `ارجع لأسبوع ${store.currentWeek} ←`,
         on: { click: () => ctx.setWeek(store.currentWeek) },
       })
@@ -132,7 +132,7 @@ export function renderHome(ctx) {
       el('p', {
         text: `${restLine}. الراحة جزء من البرنامج، وجسمك يبني فيها مو بالنادي.`,
       }),
-      el('button', { class: 'go', text: 'سجّل قياس الأسبوع', on: { click: () => navigate('week') } })
+      el('button', { class: 'gobtn', text: 'سجّل قياس الأسبوع', on: { click: () => navigate('week') } })
     );
   } else if (tk === 'cardio') {
     hero = el(
@@ -142,7 +142,7 @@ export function renderHome(ctx) {
       el('h2', { text: 'يوم كارديو' }),
       el('p', { text: CARDIO[todayIndex]?.detail || 'كارديو خفيف اليوم.' }),
       el('button', {
-        class: 'go',
+        class: 'gobtn',
         text: 'شوف تفاصيل الكارديو',
         on: { click: () => navigate('cardio') },
       })
@@ -157,7 +157,7 @@ export function renderHome(ctx) {
       el('h2', { text: plan.title }),
       el('p', { text: `${plan.ex.length} تمارين${done ? ` · خلّصت ${done} منها` : ''}` }),
       el('button', {
-        class: 'go',
+        class: 'gobtn',
         text: `${done ? 'كمّل التمرين' : 'ابدأ التمرين'} ←`,
         on: { click: () => openGym(tk) },
       })

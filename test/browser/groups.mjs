@@ -128,6 +128,7 @@ export default async function groups({ base, browser, problems, step }) {
       await inputs.nth(0).fill('90');
       await inputs.nth(1).fill('180');
       await inputs.nth(2).fill('30');
+      await page.locator('.mchips.jobs .mchip').first().click(); // مكتبي
       await page.locator('.big-cta').click();
       await page.waitForSelector('.today', { timeout: 10_000 });
 
@@ -197,6 +198,7 @@ export default async function groups({ base, browser, problems, step }) {
     await inputs.nth(0).fill('85');
     await inputs.nth(1).fill('178');
     await inputs.nth(2).fill('27');
+    await page.locator('.mchips.jobs .mchip').first().click(); // مكتبي
     await page.locator('.big-cta').click();
     await page.waitForSelector('.today', { timeout: 10_000 });
 

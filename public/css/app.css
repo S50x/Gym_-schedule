@@ -478,7 +478,7 @@ ul.t b {
 .today p:last-child {
   margin-bottom: 0;
 }
-.go {
+.gobtn {
   display: block;
   width: 100%;
   background: var(--hero-btn);
@@ -491,11 +491,11 @@ ul.t b {
   font-size: 16px;
   text-align: center;
 }
-.today.rest .go {
+.today.rest .gobtn {
   background: var(--orange);
   color: var(--accent-ink);
 }
-.go:active {
+.gobtn:active {
   transform: scale(0.99);
 }
 
@@ -1978,6 +1978,56 @@ input[type='range'].gap:active::-webkit-slider-thumb {
 .dim {
   opacity: 0.45;
 }
+/* ── nutrition: how the calorie target is built, one line per part ── */
+.kcalc .krow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+}
+.kcalc .krow > span {
+  min-width: 0;
+}
+.kcalc .krow > span b {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.kcalc .krow small {
+  display: block;
+  font-size: 11.5px;
+  color: var(--mut);
+  line-height: 1.5;
+}
+.kcalc .krow > .n {
+  font-weight: 700;
+  font-size: 15px;
+  white-space: nowrap;
+}
+.kcalc .krow.sum > .n {
+  color: var(--txt);
+}
+.kcalc .krow.total {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.kcalc .krow.total > span b,
+.kcalc .krow.total > .n {
+  color: var(--accent-text);
+  font-size: 17px;
+}
+.kday {
+  margin-top: 10px;
+  font-size: 12.5px;
+}
+/* The live preview under the profile form in onboarding. */
+.kprev {
+  margin-top: 14px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--line-2);
+}
 .back {
   color: var(--mut);
   font-size: 13px;
@@ -2445,6 +2495,29 @@ ol.steps b {
 .mchip.on .tag {
   opacity: 0.75;
   font-weight: 500;
+}
+/* Job chips carry an example under the name, two to a row. */
+.mchips.jobs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.mchips.jobs .mchip {
+  text-align: right;
+  padding: 9px 11px;
+}
+.mchips.jobs .mchip b {
+  display: block;
+  font-size: 12.5px;
+  color: var(--txt);
+}
+.mchips.jobs .mchip small {
+  display: block;
+  font-size: 11px;
+  line-height: 1.45;
+  margin-top: 2px;
+}
+.mchips.jobs .mchip.on b {
+  color: inherit;
 }
 
 .big-cta {
@@ -3009,14 +3082,14 @@ a.cta {
   background: var(--hero);
   color: var(--hero-ink);
 }
-:is(:root:not([data-theme]), :root[data-theme='najd']) .go {
+:is(:root:not([data-theme]), :root[data-theme='najd']) .gobtn {
   border-radius: 999px;
   padding: 16px;
   font-weight: 700;
   font-size: 17px;
   box-shadow: none;
 }
-:is(:root:not([data-theme]), :root[data-theme='najd']) .today.rest .go {
+:is(:root:not([data-theme]), :root[data-theme='najd']) .today.rest .gobtn {
   background: var(--hero-btn);
   color: var(--hero-btn-ink);
 }
