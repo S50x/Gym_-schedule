@@ -1,11 +1,14 @@
 import { config } from './config.js';
 import { createDb, sweep } from './db.js';
 import { createApp } from './app.js';
+import { keepAwakeUrl, startKeepAwake } from './keepawake.js';
 
 const db = await createDb();
 await sweep(db);
 
 const app = createApp(db);
+const keepAwakeTarget = keepAwakeUrl();
+const keepAwakeTimer = keepAwakeTarget ? startKeepAwake(keepAwakeTarget) : null;
 const server = app.listen(config.port, () => {
   console.log(`حديد — يشتغل على المنفذ ${config.port} (${config.env})`);
   console.log(`Origin: ${config.origin}  ·  Secure cookies: ${config.secureCookies}`);
@@ -19,7 +22,9 @@ const server = app.listen(config.port, () => {
       ? `Email: Resend (from ${config.mail.from}) — password reset is live`
       : 'Email: not configured (RESEND_API_KEY unset) — password reset links will NOT be sent'
   );
+  if (keepAwakeTarget) console.log(`Keep-awake: pinging ${keepAwakeTarget} every 10 minutes`);
 });
+
 
 let shuttingDown = false;
 async function shutdown(signal) {
@@ -27,6 +32,7 @@ async function shutdown(signal) {
   shuttingDown = true;
   console.log(`\n${signal} — إغلاق...`);
   clearInterval(app.locals.sweepTimer);
+  clearInterval(keepAwakeTimer);
 
   // Do not hang forever on a stuck keep-alive connection.
   const bail = setTimeout(() => process.exit(1), 10_000);
