@@ -1,5 +1,5 @@
 /**
- * The four looks, and the one localStorage key they share with the top gap.
+ * The six looks, and the one localStorage key they share with the top gap.
  *
  * None of this is reachable from a unit test: the themes are custom properties
  * resolved by the browser, and the bug they are most likely to grow is two
@@ -9,7 +9,7 @@
 
 import { newPage, onboard, tab, runStandalone } from './helpers.mjs';
 
-const THEMES = ['najd', 'volt', 'midnight', 'copper'];
+const THEMES = ['sadu', 'najd', 'chalk', 'volt', 'midnight', 'copper'];
 
 /** What the page is actually painting, not what it was told to paint. */
 const painted = (page) =>
@@ -58,6 +58,32 @@ export default async function run({ base, browser, problems, step }) {
       if (values.size !== THEMES.length) {
         throw new Error(`${key} is the same in ${THEMES.length - values.size + 1} themes: ${[...values].join(' · ')}`);
       }
+    }
+  });
+
+  /**
+   * A theme is more than its colours now: Sadu swaps the week strip for the
+   * rug, Chalk draws each load, Najd and Midnight draw the session ring. All
+   * of those are in the DOM for every theme and shown by CSS, so the failure
+   * to guard is a part leaking into a theme it does not belong to — or the
+   * week vanishing from one because both of its forms are hidden.
+   */
+  await step('each theme shows its own parts and exactly one week strip', async () => {
+    const shown = (sel) =>
+      page.evaluate((s) => {
+        const node = document.querySelector(s);
+        return !!node && getComputedStyle(node).display !== 'none';
+      }, sel);
+    for (const theme of THEMES) {
+      await tab(page, 'account');
+      await page.locator('.mchips .mchip').nth(THEMES.indexOf(theme)).click();
+      await tab(page, 'home');
+      const rug = await shown('.rugbox');
+      const strip = await shown('.glance');
+      if (rug === strip) throw new Error(`${theme}: rug ${rug} and strip ${strip} — wanted exactly one`);
+      if (rug !== (theme === 'sadu')) throw new Error(`${theme}: the rug is ${rug ? 'showing' : 'hidden'}`);
+      const glyph = await shown('.pcard .lg');
+      if (glyph !== (theme === 'chalk')) throw new Error(`${theme}: the drawn load is ${glyph ? 'showing' : 'hidden'}`);
     }
   });
 
@@ -127,11 +153,14 @@ export default async function run({ base, browser, problems, step }) {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#tabbar', { timeout: 8000 });
     const after = await painted(page);
-    if (after.attr !== 'najd') throw new Error(`fell back to ${after.attr}, wanted najd`);
+    if (after.attr !== 'sadu') throw new Error(`fell back to ${after.attr}, wanted sadu`);
     if (!after.accent) throw new Error('the fallback theme resolved no accent');
   });
 
   await page.close();
 }
 
-runStandalone(run);
+// Guarded like every other journey. Unguarded, importing this file from the
+// runner started a second copy of it that ended the process when it finished —
+// so every journey listed after it never ran, and the run still exited 0.
+if (import.meta.url === `file://${process.argv[1]}`) await runStandalone(run);

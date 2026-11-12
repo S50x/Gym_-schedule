@@ -240,7 +240,7 @@ export function mealPanel({ store, wk, day, targets, isToday, onChange, extraAct
         return toast('اكتب اسم الأكل أو رقم واحد على الأقل');
       }
       const count = store.week(wk).meals?.[day]?.length || 0;
-      if (count >= 20) return toast('وصلت حد ٢٠ وجبة لهاليوم');
+      if (count >= 20) return toast('وصلت حد 20 وجبة لهاليوم');
       store.updateMeals(wk, day, (list) => [...list, meal]);
       // Next time this name comes up it fills with these numbers — the user's own.
       store.rememberFood(meal);

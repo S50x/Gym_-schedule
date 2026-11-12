@@ -13,7 +13,8 @@ A single 1124-line Arabic localStorage HTML file became a deployed, tested,
 hardened Node app: accounts, Postgres, cross-device sync, optional 2FA, strict
 CSP, and six training goals that reshape the whole programme — plus rest days
 the trainee picks, meal logging with all four macros, reading a meal from a
-photo on the user's own free Gemini key, and a food memory that learns.
+photo on the user's own free Gemini key, a food memory that learns, and six
+themes that are each an identity of their own (§11).
 
 **The code is complete and green. The remaining work is on the user's side, in
 the Render and Neon dashboards.** Do not rewrite what already works.
@@ -25,26 +26,27 @@ the Render and Neon dashboards.** Do not rewrite what already works.
 ## 1. Current state (verified)
 
 ```
-main:    92a0717   (#35 Gemini scan and #36 null hotfix merged). Open when
-         written: #37, the food-learning branch that carries this update.
-tests:   pnpm test     → 314 pass / 0 fail    (~20s, PGlite in-process)
-browser: pnpm run browser → 15 journeys clean (~3m, boots its own server)
-code:    ~11,700 lines across 35 modules; 6 runtime deps, 5 dev
+main:    b4b6430   (#48 keep-awake merged). Open when written: the six-identities
+         branch `claude/practical-mayer-2hngx3`, which carries this update.
+tests:   pnpm test     → 345 pass / 0 fail    (~20s, PGlite in-process)
+browser: pnpm run browser → 16 journeys clean (~3.5m, boots its own server)
+code:    ~17,700 lines across 36 modules; 6 runtime deps, 5 dev
 tooling: pnpm 10.28 (pinned via packageManager), Node 24 LTS everywhere
 assets:  public/img/ex/v2 — 28 WebP frames, 463 KB (graded; originals in scripts/photo-src)
-         public/img/icon* — 140 KB (was 34: glass is gradients, and PNG
-         charges for them; see §11)
+         public/img/icon* — 140 KB
+         public/fonts — 924 KB, ten families; a theme only fetches its own (§11)
 ```
 
-These numbers were taken on a branch that was open when this was written —
-`git log origin/main` tells you whether it landed. A security review of that
-branch found nothing: it adds no server code, no CSP exception and no new
-origin, and the one place it builds a path from a variable
-(`photoFrame()` in `figure.js`) sits behind a hard-coded allow-list.
+`git log origin/main` tells you whether that branch landed. It adds no server
+code, no CSP exception and no new origin.
 
-New since the goals work: the password-reset flow (`test/reset.test.js`, 12),
-per-muscle-group strength levels (`test/groups.test.js`, 19), and a run of load
-and programme work — see the last four entries of "Shipped in order" below.
+**Merged since the last full rewrite of this file** (#38–#48, none of which
+changed the architecture): Gemini retry and model fallback (#38, #40), the toast
+hiding fully (#39), serving sizes in Arabic (#41), the Najd redesign and the
+four-step onboarding (#42), sync retrying a waking host (#43, #44), the rest
+screen (#45), calories from job and programme (#46), proxy-addr 2.0.8 (#47), and
+`KEEP_AWAKE=1` — the server pinging its own public URL every ten minutes so a
+free Render instance does not sleep (#48, `server/keepawake.js`).
 
 **Visual blueprint** — system layers, module graph, request pipeline, sync
 protocol, database schema, the synced document, and every API endpoint:
@@ -107,8 +109,9 @@ works offline, syncs when the network returns.
   perceived effort allows it, and the weekly weigh-in says the body can take it.
 - **Nutrition** derives maintenance from today's weight, and can back-calculate a
   real figure from logged intake versus actual weight change.
-- Volt theme (lime on graphite), bottom tab bar, bilingual exercise names,
-  cardio split across up to 3 machines per day, and a countdown for timed holds.
+- Six themes, each with its own identity (§11); Sadu is the default. Bottom tab
+  bar, bilingual exercise names, cardio split across up to 3 machines per day,
+  and a countdown for timed holds.
 
 ## 3. Architecture
 
@@ -142,8 +145,8 @@ public/
   js/views/         onboarding · home · cardio · week · nutri · account · reset
   sw.js             offline caching (network-first; never caches /api)
   fonts/            self-hosted (no third-party request, no missing SRI)
-test/               237 unit tests: auth · reset · groups · security · state · engine · totp · qr · mfa · postgres
-test/browser/       11 Playwright journeys — see §8
+test/               345 unit tests: auth · reset · groups · security · state · engine · totp · qr · mfa · postgres · food · shell · keepawake
+test/browser/       16 Playwright journeys — see §8
 docs/               BUGS.md (26) · SECURITY.md (21 findings + S21 2FA)
 render.yaml         Render blueprint — provisions service + database together
 ```
@@ -155,7 +158,7 @@ There is no second copy of the exercise list to drift.
 
 `program.js` has two layers: an `EXERCISES` catalogue (42 movements — names, cue,
 weight step, starting load, and default sets/reps/rest) and six `GOALS`
-(`cut` · `muscle` · `recomp` · `fitness` · `strength`) that pick from it, override
+(`cut` · `muscle` · `recomp` · `fitness` · `strength` · `cardio`) that pick from it, override
 sets/reps/rest, and carry their own 7-day cardio week, nutrition direction and
 weigh-in thresholds.
 
@@ -405,9 +408,9 @@ the hand-run-SQL reset in §9 is still the fallback when it isn't wired up.
   the transcript.
 - `SESSION_SECRET` comes from Render's Generate button, never from chat.
 
-## 7. Fifteen defects that unit tests could not catch
+## 7. Sixteen defects that unit tests could not catch
 
-All eleven passed a green suite and were found only by driving the real app, or
+All of them passed a green suite and were found only by driving the real app, or
 by a user using it. This is why §8 exists.
 
 1. **Recovery codes lost forever** — `refreshUser()` repainted and detached the
@@ -499,6 +502,18 @@ by a user using it. This is why §8 exists.
     exactly when one reference gets missed, and a missing touch icon fails
     silently: iOS puts a screenshot of the page there instead.
 
+16. **Four browser journeys had never run in CI.** `theme.mjs` and
+    `syncretry.mjs` ended with a bare `runStandalone(run)` instead of the
+    `import.meta.url` guard every other journey has. Importing `theme` from the
+    runner therefore started a second copy of it, which called `process.exit`
+    when it finished — with code 0 when it was clean. Everything listed after
+    it (`meals`, `restdays`, `foodscan`, `syncretry`) was skipped, the summary
+    never printed, and the job went green. Found only because `syncretry` failed
+    when run by name: Chromium logs a fulfilled 502 as a console error, and the
+    journey serves one on purpose (`alsoExpect` in `newPage()` now says so).
+    **If `pnpm run browser` does not end with the `════ summary` block, it did
+    not finish**, whatever the exit code.
+
 Recurring theme: **verify what a system decides, not what it was told** — and
 what it actually renders, not what it computed. Both of the last two hid behind
 an invariant that happened to be true of all existing data; when you add data
@@ -509,11 +524,11 @@ that breaks one, no existing test notices.
 ```bash
 pnpm install
 pnpm run lint              # ESLint — error-catching rules only, no formatting
-pnpm test                  # 314 unit tests on PGlite — no database to install
+pnpm test                  # 345 unit tests on PGlite — no database to install
 pnpm start                 # http://localhost:3000 (PGlite in ./data if no DATABASE_URL)
 pnpm run dev               # auto-restart
 
-pnpm run browser           # all 15 browser journeys
+pnpm run browser           # all 16 browser journeys
 pnpm run browser -- goals  # just the ones whose name matches
 node test/browser/mfa.mjs # or run one directly
 ```
@@ -554,18 +569,17 @@ Chromium binary: it looks under `PLAYWRIGHT_BROWSERS_PATH` (default
 | `mfa` | two-factor end to end, including recovery codes |
 | `reset` | the forgot-password form + the reset screen (generic reply, client validation, a dead link fails gracefully) |
 | `groups` | per-muscle-group levels: collapsed by default, the tag follows the overall level, one group moves only its own weights on screen |
-| `theme` | the three themes each paint a different screen, survive a reload, and do not overwrite the top gap in the storage key they share |
+| `theme` | the six themes each paint a different screen, each shows its own parts (the rug, the drawn load) and exactly one week strip, survive a reload, and do not overwrite the top gap in the storage key they share |
 | `meals` | today's day opens by itself; meals add up and lock the row; an over-target alert; delete back to not-logged; reload; a saved food comes back as a one-tap chip |
 | `restdays` | Sat + Tue off moves the fat-loss week (3 lifting days, Friday trains) and survives a reload |
 | `foodscan` | Gemini mocked at the network layer: the guide and its link to Google, saving a key (only last 4 shown), a scan filling the meal with the unread field highlighted |
+| `syncretry` | a 502 from a waking host is retried rather than reported; a refused write says why and can be retried by hand |
 
 **Run these after any server-side or view change.** Every defect in §7 would have
 been caught by one of them.
 
 ## 9. Known gaps
 
-- **Three video links are private** (see §5.5); the weekly check stays red until
-  they are replaced. Do not guess replacement ids — the user chooses.
 - **Gemini quality is unverified end to end from the dev environment** — Google's
   hosts are blocked there, so the real call has only been exercised by the user.
   If readings look wrong, start with the prompt and schema in `server/gemini.js`.
@@ -633,10 +647,11 @@ been caught by one of them.
 
 ## 10. Next step for you
 
-Check `git log origin/main` first: `main` was at **92a0717** (#35 and #36
-merged) when this was written, with **#37** (food memory + habits + this file)
-open. #36 was a one-commit hotfix: #34 merged one push early and an empty meal
-panel printed "null". Concretely:
+Check `git log origin/main` first: `main` was at **b4b6430** (#48) when this was
+written, with the six-identities branch open. Good first tasks: the eleven
+exercises with no video (§9), and the user's reaction to the new themes on a
+real phone — every one of them was only ever seen in headless Chromium.
+Concretely:
 
 - Answer the user's questions in Arabic, one concrete step at a time.
 - **CI gates the merge now.** `pnpm run lint`, `pnpm test` and `pnpm run browser`
@@ -657,13 +672,73 @@ panel printed "null". Concretely:
   "a manual weight is only read after a write" and "no exercise repeats in a
   week". Adding the `cardio` goal broke both.
 
-## 11. The glass, and the numbers behind it
+## 11. Six themes, six identities
 
-Three themes over one layout — `volt` (lime on graphite, the default), `midnight`
-(iPhone blue) and `copper` (warm). Switched from Account → العرض, stored per
-device (§4), applied as `data-theme` on `<html>`. **Every theme is a set of
-custom properties in `app.css` and nothing else.** A theme that needs a layout
-rule of its own is a theme done wrong; fold the difference into a token.
+Switched from Account → العرض, stored per device (§4), applied as `data-theme`
+on `<html>`. The user's brief was explicit: **a theme is an identity, not a
+colour** — its own type, its own shapes, its own motif. So each theme is two
+things in `app.css`: a token block near the top, and an identity layer at the
+end of the file scoped to `:root[data-theme='…']`.
+
+| key | name | type | what only it has |
+|---|---|---|---|
+| `sadu` (default) | سدو | Kufam + Plex | straight edges, the band of teeth on today's card, and **the rug** in place of the week strip |
+| `najd` | نجد | Readex; Kufi on the wordmark and numerals only | diamonds, the arch, the star pattern, the session ring |
+| `chalk` | طباشير | Alexandria + Big Shoulders numerals | the one **light** theme; days are plates, and **every load is drawn** as what goes on the bar |
+| `volt` | فولت | Changa | matte, corners cut at an angle, hexagon days, leaning numerals, hazard tape |
+| `midnight` | زجاج ليلي | Plex | the only glass theme left: pills, rings that close, the session ring |
+| `copper` | نحاس | El Messiri | hammered panels, a struck coin per day, verdigris as the second colour |
+
+- **Parts only some themes draw are in the DOM for all of them** and hidden by
+  CSS (`.rugbox`, `.hring`, `.lg` — see "Parts only some themes draw" in
+  `app.css`). A view never asks which theme is painting. `theme.mjs` asserts each
+  part shows in its own theme only, and that exactly one of rug / week strip is
+  visible — hide both and the week vanishes from a theme with nothing failing.
+- **The rug («سجادتك», `rug()` in `home.js`) stores nothing.** One row per week
+  (last six), one cell per day, built from the set logs and cardio ticks already
+  in the document, read with today's programme. Red = a finished lifting day,
+  saffron = cardio, bare thread = planned and missed, white motif = every planned
+  day of that week done.
+- **The drawn load (`loadGlyph()` / `platesPerSide()` in `ui.js`)** assumes a
+  20 kg bar and the Olympic plate set; greedy is exact for it and
+  `test/engine.test.js` pins the cases. Barbell, dumbbell or weight stack is
+  inferred from the exercise id and name — there is no equipment field in the
+  catalogue. If one is ever added, use it instead of the regexes.
+- **Sadu's token block also matches `:root:not([data-theme])`**, and
+  `index.html`'s `theme-color` is Sadu's ground, because that is what a page
+  paints before (or without) the script. `test/shell.test.js` ties those three
+  to `THEME_FALLBACK`, and checks every theme in the list has a token block and
+  a picker swatch.
+- **Chalk is why `--veil`, `--well`, `--err-ink` and `--ok-ink` exist.** Empty
+  tracks and quiet chips were `rgba(255,255,255,.09)` — invisible on white. Any
+  new translucent fill goes through those tokens, never a literal white or
+  black. Today's card stays dark in Chalk on purpose, so what sits on it
+  (the calorie ring) keeps its literal light tracks.
+- **Changed colours, and why:** Volt's success green `#4ee39a` sat a shade off
+  the lime, so "done" and "current" read as one colour — now teal `#3fe0d0`.
+  Copper lost the orange-to-pink gradient for the metal itself (`#d9773b`) with
+  verdigris `#5cc4b0` as its "done". Sadu's red is 2.6:1 on its ground, so it
+  is fill-only and `--accent-text` is the saffron.
+- **Najd lost its Kufi headings.** At heading size Reem Kufi's long joins made
+  «الأجهزة» something to decode. It stays on the wordmark and the big numerals.
+  Kufam (Sadu) has the opposite fault — a final ي sweeps under the next word —
+  fixed with `word-spacing` on its headings, not by changing face.
+- **Every tab's first line must start at the same height in every theme**
+  (`features.mjs` measures the default; the others were measured by hand). A
+  new display face on `.logo` moves it — Sadu and Najd both carry an explicit
+  `line-height` there for exactly that reason.
+- **Fonts: ten families, 924 KB on disk, but a theme only downloads its own** —
+  `@font-face` with `unicode-range` fetches nothing until a rule uses it.
+  `pnpm run fonts` regenerates `fonts.css`; existing files keep their names and
+  bytes, which `/fonts` being `immutable` requires.
+- **Digits are Latin everywhere.** The goal cards and three verdict lines were
+  typed with ٠-٩; `test/shell.test.js` now fails on any in `public/js`.
+- **Long explanations fold.** The machine comparison and the rules on the
+  cardio tab, and «ليش القرار بهالطريقة؟» on the weigh-in tab, are
+  `<details class="card why">` like «ليش هالأرقام؟» already was.
+
+The rules below were written for the glass themes and still hold for Midnight;
+the token rules hold for all six.
 
 - **`--orange` is the FILL; `--accent-text` is the ink.** Midnight's fill
   (`#0a84ff`) is too dark to read as 11px type on a dark ground, so anything

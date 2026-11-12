@@ -19,10 +19,10 @@ export default async function run({ base, browser, problems, step }) {
   });
 
   await step('fonts load from our own origin', async () => {
-    // The default theme's faces: Kufi for headings, Readex for everything else.
+    // The default theme's faces: Kufam for headings, Plex for everything else.
     const missing = await page.evaluate(async () => {
       await document.fonts.ready;
-      return ['700 16px "Reem Kufi"', '400 16px "Readex Pro"'].filter((f) => !document.fonts.check(f));
+      return ['700 16px "Kufam"', '400 16px "IBM Plex Sans Arabic"'].filter((f) => !document.fonts.check(f));
     });
     if (missing.length) throw new Error(`did not load: ${missing.join(', ')}`);
   });
