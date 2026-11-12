@@ -77,3 +77,40 @@ test('every image the shell points at exists', async () => {
   // would pass this test on a shell with no icons at all.
   assert.ok(seen >= 6, `expected the icon references, found ${seen}`);
 });
+
+/**
+ * One digit system on screen. The goal cards and three verdict lines were
+ * written with Arabic-Indic digits (٣ أيام حديد) while every computed number
+ * in the app is Latin, so onboarding read "٣" and the screen after it "3".
+ */
+test('no Arabic-Indic digits in the app text', async () => {
+  const offenders = [];
+  for (const file of await jsUnder(new URL('js/', PUBLIC))) {
+    const text = await readFile(new URL(file.replace(/^\//, ''), PUBLIC), 'utf8');
+    text.split('\n').forEach((line, i) => {
+      if (/[٠-٩]/.test(line)) offenders.push(`${file}:${i + 1}`);
+    });
+  }
+  assert.deepEqual(offenders, [], 'write digits as 0-9; these lines use ٠-٩');
+});
+
+/**
+ * Every theme the picker offers has a token block, and the one a page with no
+ * attribute paints is the fallback the script would have chosen. A theme added
+ * to the list without its block silently paints as whatever came before it.
+ */
+test('every theme has a token block, and the bare page is the fallback', async () => {
+  const { THEMES, THEME_INFO, THEME_FALLBACK } = await import('../public/js/display.js');
+  const css = await readFile(new URL('css/app.css', PUBLIC), 'utf8');
+  const html = await readFile(new URL('index.html', PUBLIC), 'utf8');
+  for (const theme of THEMES) {
+    assert.match(css, new RegExp(`:root\\[data-theme='${theme}'\\] \\{`), `no token block for ${theme}`);
+    assert.ok(THEME_INFO[theme]?.label && THEME_INFO[theme]?.chrome, `no label or chrome colour for ${theme}`);
+    assert.match(css, new RegExp(`\\.tsw-${theme} \\{`), `no picker swatch for ${theme}`);
+  }
+  assert.match(css, new RegExp(`:root:not\\(\\[data-theme\\]\\),\\n:root\\[data-theme='${THEME_FALLBACK}'\\] \\{`));
+  assert.ok(
+    html.includes(`<meta name="theme-color" content="${THEME_INFO[THEME_FALLBACK].chrome}" />`),
+    'index.html paints the status bar for a different theme than the fallback'
+  );
+});

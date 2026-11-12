@@ -133,10 +133,12 @@ export function renderCardio(ctx) {
       text: `اختر جهازك لكل يوم — وتقدر تختار لين ${MAX_MACHINES_PER_DAY} أجهزة وتقسّم الدقائق بينهم. كلها تسوي نفس الشي للحرق، الفرق في مفاصلك. لو جمعت جهازين متعارضين بتشوف تنبيه — تنبيه مو منع، القرار قرارك.`,
     }),
     el('div', { class: 'card tight-sm' }, rows),
-    el('h3', { text: 'وش الفرق بين الأجهزة' }),
+    // Read once and then in the way: both explanations fold, like «ليش
+    // هالأرقام؟» on the calories screen.
     el(
-      'div',
-      { class: 'card' },
+      'details',
+      { class: 'card why' },
+      el('summary', { text: 'وش الفرق بين الأجهزة؟' }),
       MACH.map((m) =>
         el(
           'div',
@@ -146,10 +148,10 @@ export function renderCardio(ctx) {
         )
       )
     ),
-    el('h3', { text: 'قواعد تخصك أنت' }),
     el(
-      'div',
-      { class: 'card' },
+      'details',
+      { class: 'card why' },
+      el('summary', { text: 'قواعد تخصك أنت' }),
       bulletList([
         [
           { b: 'يوم الاثنين (رجل): سيكل أو غزالة بس.' },

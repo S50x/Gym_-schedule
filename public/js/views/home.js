@@ -1,5 +1,5 @@
 import { el } from '../dom.js';
-import { fmtN, fmt, sparkline, icon } from '../ui.js';
+import { fmtN, fmt, sparkline, icon, loadGlyph } from '../ui.js';
 import {
   planOf,
   weekOf,
@@ -21,6 +21,9 @@ import { todayMealAlerts } from './nutri.js';
 
 /** How many lifts the progress cards show, most-used first. */
 const RAIL_LIMIT = 6;
+
+/** How many weeks the rug shows, newest at the bottom. */
+const RUG_WEEKS = 6;
 
 const SYNC_LABEL = {
   [SYNC.OFF]: 'محلي فقط',
@@ -50,6 +53,13 @@ export function renderHome(ctx) {
   const doneCount = (dayKey) =>
     PLAN[dayKey].ex.filter((e) => {
       const sets = week.sets[setsKey(dayKey, e.id)] || [];
+      return sets.length >= e.sets && sets.slice(0, e.sets).every(Boolean);
+    }).length;
+
+  /** The same count for any week — the rug reads back through all of them. */
+  const doneOf = (anyWeek, dayKey) =>
+    PLAN[dayKey].ex.filter((e) => {
+      const sets = anyWeek.sets[setsKey(dayKey, e.id)] || [];
       return sets.length >= e.sets && sets.slice(0, e.sets).every(Boolean);
     }).length;
 
@@ -153,6 +163,18 @@ export function renderHome(ctx) {
     hero = el(
       'div',
       { class: 'today' },
+      // How far through today's session, as a ring. The line under the title
+      // says the same in words, so the ring is decoration to a screen reader;
+      // Najd and Midnight are the themes that draw it.
+      el(
+        'span',
+        {
+          class: 'hring',
+          style: { '--p': String(Math.round((done / plan.ex.length) * 100)) },
+          attrs: { 'aria-hidden': 'true' },
+        },
+        el('b', { class: 'n', text: `${done}/${plan.ex.length}` })
+      ),
       el('div', { class: 'lbl', text: `اليوم · ${todayName}` }),
       el('h2', { text: plan.title }),
       el('p', { text: `${plan.ex.length} تمارين${done ? ` · خلّصت ${done} منها` : ''}` }),
@@ -249,6 +271,7 @@ export function renderHome(ctx) {
           fmtN(now),
           el('span', { class: 'unit', text: e.time ? ' ث' : ' كجم' })
         ),
+        loadGlyph(e, now),
         sparkline(values, { fill: true, stretch: true })
       )
     );
@@ -347,6 +370,7 @@ export function renderHome(ctx) {
     header,
     hero,
     glance.strip,
+    rug({ store, WEEK, PLAN, CARDIO, doneOf }),
     statRow(store, glance, goalKey, wk),
     recordCard(records),
     reviewCard,
@@ -418,6 +442,61 @@ function weekGlance({ WEEK, PLAN, CARDIO, week, doneCount, isCurrent }) {
     done,
     strip: el('ol', { class: 'glance', attrs: { 'aria-label': 'أسبوعك' } }, days),
   };
+}
+
+/**
+ * «سجادتك» — the Sadu theme's week strip, and the reason that theme exists.
+ *
+ * One row per week, one cell per day. A finished lifting day is woven red, a
+ * finished cardio day saffron; a day that was planned and missed stays bare
+ * thread, and a rest day is left empty. A week with every planned day done gets
+ * the white motif, so a perfect week can be picked out from across the room.
+ *
+ * It is built from the set logs and cardio ticks that already exist, so there
+ * is nothing new to store or sync — and it is read with the programme as it is
+ * today, the same way the progress cards are.
+ *
+ * The other themes keep the seven-day strip above; CSS shows one or the other.
+ */
+function rug({ store, WEEK, PLAN, CARDIO, doneOf }) {
+  const last = store.currentWeek;
+  const first = Math.max(1, last - RUG_WEEKS + 1);
+  const todayIndex = [1, 2, 3, 4, 5, 6, 0][new Date().getDay()];
+  const cells = [];
+  let woven = 0;
+  let planned = 0;
+
+  for (let n = first; n <= last; n++) {
+    const week = store.week(n);
+    const row = WEEK.map((day) => {
+      const slot = CARDIO[day.c];
+      const hasCardio = !day.rest && slot && !slot.rest;
+      if (day.rest || (!day.lift && !hasCardio)) return { kind: 'rest' };
+      const done = day.lift ? doneOf(week, day.lift) === PLAN[day.lift].ex.length : !!week.cardio[String(day.c)];
+      const ahead = n === last && day.c > todayIndex;
+      const iron = day.lift && dayHasLoads(PLAN[day.lift].ex);
+      return { kind: done ? (iron ? 'lift' : 'cardio') : ahead ? 'next' : 'miss', done, today: n === last && day.c === todayIndex };
+    });
+    const work = row.filter((c) => c.kind !== 'rest');
+    const full = work.length > 0 && work.every((c) => c.done);
+    planned += work.filter((c) => c.kind !== 'next').length;
+    woven += work.filter((c) => c.done).length;
+    for (const cell of row) {
+      cells.push(el('i', { class: ['rc', cell.kind, cell.today ? 'now' : '', full && cell.done ? 'full' : ''] }));
+    }
+  }
+
+  return el(
+    'div',
+    { class: 'rugbox', attrs: { role: 'img', 'aria-label': `سجادتك: ${woven} يوم منحاك من ${planned}` } },
+    el('div', { class: 'rughd' }, el('b', { text: 'سجادتك' }), el('span', { text: `${woven} يوم من ${planned}` })),
+    el('div', { class: 'rug' }, cells),
+    el(
+      'div',
+      { class: 'rugl', attrs: { 'aria-hidden': 'true' } },
+      DAY_LETTERS.map((letter) => el('span', { text: letter }))
+    )
+  );
 }
 
 /**
