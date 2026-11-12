@@ -226,3 +226,79 @@ export function icon(name) {
   }
   return svg;
 }
+
+/* ── a load, drawn ───────────────────────────────────────── */
+
+/** Olympic plates, heaviest first: [kg, class]. The classes carry the colours. */
+const PLATES = [
+  [25, 'p25'],
+  [20, 'p20'],
+  [15, 'p15'],
+  [10, 'p10'],
+  [5, 'p5'],
+  [2.5, 'p2'],
+  [1.25, 'p1'],
+];
+const BAR_KG = 20;
+/** Past this a side stops being readable at card size, and no programme here loads more. */
+const MAX_PLATES_A_SIDE = 6;
+
+/**
+ * What goes on each end of a 20 kg bar to make `kg`, heaviest plate first.
+ * Greedy is exact for this plate set. A load under the bar's own weight, or one
+ * the rack cannot make, gives what fits — the number beside it stays the truth.
+ * @returns {string[]} plate classes for one side
+ */
+export function platesPerSide(kg) {
+  let left = Math.round(((Number(kg) || 0) - BAR_KG) * 50) / 100;
+  const side = [];
+  for (const [weight, cls] of PLATES) {
+    while (left >= weight - 1e-9 && side.length < MAX_PLATES_A_SIDE) {
+      side.push(cls);
+      left = Math.round((left - weight) * 100) / 100;
+    }
+  }
+  return side;
+}
+
+/** The plate colour a single dumbbell of this weight would be painted. */
+const bandOf = (kg) => (kg > 20 ? 'p25' : kg > 15 ? 'p20' : kg > 10 ? 'p15' : kg > 5 ? 'p10' : 'p5');
+
+/**
+ * The load as equipment rather than as a number: a bar with its plates, a
+ * dumbbell, or a weight stack with the pin in it. Decorative — the figure next
+ * to it is what a screen reader gets — and only the Chalk theme shows it.
+ *
+ * @param {{id:string, n?:string, body?:boolean, time?:boolean}} exercise
+ * @param {number} kg
+ */
+export function loadGlyph(exercise, kg) {
+  if (!exercise || exercise.body || exercise.time || !(kg > 0)) return null;
+  const hidden = { 'aria-hidden': 'true' };
+  const part = (cls) => el('i', { class: cls });
+
+  if (/_bb$|^dead_|^squat_/.test(exercise.id) || /بار/.test(exercise.n || '')) {
+    const side = platesPerSide(kg);
+    return el(
+      'span',
+      { class: 'lg bb', attrs: hidden },
+      [...side].reverse().map(part),
+      part('slv'),
+      part('bar'),
+      part('slv'),
+      side.map(part)
+    );
+  }
+  if (/_db$|^db_/.test(exercise.id) || /دمبل/.test(exercise.n || '')) {
+    const band = bandOf(kg);
+    return el('span', { class: 'lg db', attrs: hidden }, part(band), part('bar'), part(band));
+  }
+  // A selectorised machine or a cable: the pin sits further down as it gets heavier.
+  const SLABS = 6;
+  const pinned = Math.min(SLABS, Math.max(1, Math.round(kg / 15)));
+  return el(
+    'span',
+    { class: 'lg st', attrs: hidden },
+    Array.from({ length: SLABS }, (_, i) => part(i < pinned ? 'on' : ''))
+  );
+}

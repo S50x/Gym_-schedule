@@ -108,25 +108,33 @@ function programmeCard(ctx) {
  * looks broken.
  */
 function themeCard(ctx) {
+  const current = readTheme();
   const chips = THEMES.map((key) =>
-    el('button', {
-      class: ['mchip', readTheme() === key ? 'on' : ''],
-      text: THEME_INFO[key].label,
-      attrs: { 'aria-pressed': String(readTheme() === key) },
-      on: {
-        click: () => {
-          setTheme(key);
-          ctx.refresh();
+    el(
+      'button',
+      {
+        class: ['mchip', 'tchip', current === key ? 'on' : ''],
+        attrs: { 'aria-pressed': String(current === key) },
+        on: {
+          click: () => {
+            setTheme(key);
+            ctx.refresh();
+          },
         },
       },
-    })
+      // The swatch is the theme's own two colours, so the row can be read
+      // without knowing what any of the names mean.
+      el('span', { class: ['tsw', `tsw-${key}`], attrs: { 'aria-hidden': 'true' } }),
+      THEME_INFO[key].label
+    )
   );
 
   return el(
     'div',
     { class: 'card' },
-    el('div', { class: 'mut', text: 'شكل التطبيق على هذا الجهاز. الترتيب ما يتغيّر — الألوان والخطوط بس.' }),
-    el('div', { class: 'mchips' }, chips)
+    el('div', { class: 'mut', text: 'شكل التطبيق على هذا الجهاز. كل شكل له خطه وأشكاله، مو بس لونه.' }),
+    el('div', { class: 'mchips themes' }, chips),
+    el('div', { class: 'tnote', text: THEME_INFO[current].note })
   );
 }
 
