@@ -172,10 +172,10 @@ export function renderWeek(ctx) {
     form,
     verdictCard,
     nextCard,
-    el('h3', { text: `ليش القرار بهالطريقة — ${goal.n}` }),
     el(
-      'div',
-      { class: 'card' },
+      'details',
+      { class: 'card why' },
+      el('summary', { text: `ليش القرار بهالطريقة؟ — ${goal.n}` }),
       bulletList([
         // What "good" looks like depends entirely on the goal, so these come
         // from the goal itself rather than being hard-coded for fat loss.

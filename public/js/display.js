@@ -77,23 +77,27 @@ export function setTopGap(px) {
 }
 
 /* ── الثيم ────────────────────────────────────────────────────────────────
-   Four looks over one layout. Each is a set of custom properties in app.css
-   under :root[data-theme='…'], so switching is one attribute — never a
-   style="" the CSP would reject, and never a second copy of any rule. */
+   Six looks over one layout. Each is a set of custom properties in app.css
+   under :root[data-theme='…'] plus an identity layer at the end of that file
+   (its own type, shapes and motif), so switching is one attribute — never a
+   style="" the CSP would reject. */
 
-export const THEMES = ['najd', 'volt', 'midnight', 'copper'];
+export const THEMES = ['sadu', 'najd', 'chalk', 'volt', 'midnight', 'copper'];
 
-/** Arabic label + the colour the OS chrome takes while that theme is on. */
+/** Arabic label, one line on what sets it apart, and the colour the OS chrome
+    takes while that theme is on. */
 export const THEME_INFO = {
-  najd: { label: 'كحلي وذهبي', chrome: '#0e1424' },
-  volt: { label: 'ليموني', chrome: '#0f1109' },
-  midnight: { label: 'أزرق ليلي', chrome: '#05070e' },
-  copper: { label: 'نحاسي', chrome: '#150e0a' },
+  sadu: { label: 'سدو', note: 'أحمر وزعفراني، وسجادة تنحاك مع التزامك', chrome: '#18110f' },
+  najd: { label: 'نجد', note: 'كحلي وذهبي، وحلقة تقدّم لتمرين اليوم', chrome: '#0e1424' },
+  chalk: { label: 'طباشير', note: 'فاتح للنادي، وكل وزن مرسوم بأطباقه', chrome: '#eceef0' },
+  volt: { label: 'فولت', note: 'ليموني بزوايا مقصوصة وأرقام مايلة', chrome: '#0f1109' },
+  midnight: { label: 'زجاج ليلي', note: 'أزرق هادي بزجاج وحلقات', chrome: '#05070e' },
+  copper: { label: 'نحاس', note: 'نحاس مطروق وأخضر الزنجار', chrome: '#150e0a' },
 };
 
 /** The one the CSS paints when no attribute is set — so a dead script still
     leaves a finished-looking app rather than an unstyled one. */
-export const THEME_FALLBACK = 'najd';
+export const THEME_FALLBACK = 'sadu';
 
 /** Reads the stored theme, falling back on anything unexpected. */
 export function readTheme() {

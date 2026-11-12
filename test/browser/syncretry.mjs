@@ -18,7 +18,7 @@ const PASSWORD = 'a-really-good-passphrase';
 const syncClass = (page) => page.evaluate(() => document.querySelector('.sync')?.className || '');
 
 export default async function run({ base, browser, problems, step }) {
-  const page = await newPage(browser, problems, { allowRejections: true });
+  const page = await newPage(browser, problems, { allowRejections: true, alsoExpect: [502] });
   await onboard(page, base, { goal: 0, weight: 92 });
 
   await step('signs up and syncs', async () => {
@@ -91,4 +91,7 @@ export default async function run({ base, browser, problems, step }) {
   await page.close();
 }
 
-runStandalone(run);
+// Guarded like every other journey. Unguarded, importing this file from the
+// runner started a second copy of it that ended the process when it finished —
+// so every journey listed after it never ran, and the run still exited 0.
+if (import.meta.url === `file://${process.argv[1]}`) await runStandalone(run);

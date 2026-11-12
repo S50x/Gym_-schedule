@@ -148,7 +148,7 @@ export async function startApp() {
  * A phone-sized Arabic page that reports its own console errors and CSP
  * violations into `problems`. Every journey wants exactly this.
  */
-export async function newPage(browser, problems, { allowRejections = false, serviceWorkers } = {}) {
+export async function newPage(browser, problems, { allowRejections = false, alsoExpect = [], serviceWorkers } = {}) {
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
     deviceScaleFactor: 2,
@@ -164,7 +164,13 @@ export async function newPage(browser, problems, { allowRejections = false, serv
     // Journeys that submit wrong passwords on purpose produce 400/401 console
     // noise, and a 409 on PUT /state is the documented merge path — both are the
     // app working, not defects.
-    const expected = allowRejections && /status of (400|401|403|409|429)/.test(text);
+    // `alsoExpect` is for a journey that serves a status on purpose — a 502 from
+    // a waking host, say. Whether Chromium logs a fulfilled route as a console
+    // error depends on its version, so the journey has to say it is expected
+    // rather than rely on the browser staying quiet.
+    const status = Number(/status of (\d{3})/.exec(text)?.[1]);
+    const expected =
+      (allowRejections && [400, 401, 403, 409, 429].includes(status)) || alsoExpect.includes(status);
     if ((message.type() === 'error' && !expected) || /Content Security Policy|Refused to/i.test(text)) {
       problems.push(`console.${message.type()}: ${text}`);
     }

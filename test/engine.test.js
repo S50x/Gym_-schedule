@@ -1213,3 +1213,17 @@ test('maintenance is built from the job and the programme', async (t) => {
     assert.equal(jobFromAct(1.725), 'labor');
   });
 });
+
+/* ── the drawn load ───────────────────────────────────────── */
+
+test('platesPerSide loads a 20 kg bar exactly, heaviest plate first', async () => {
+  const { platesPerSide } = await import('../public/js/ui.js');
+  assert.deepEqual(platesPerSide(20), []);
+  assert.deepEqual(platesPerSide(60), ['p20']);
+  assert.deepEqual(platesPerSide(100), ['p25', 'p15']);
+  assert.deepEqual(platesPerSide(42.5), ['p10', 'p1']);
+  // Under the bar's own weight there is nothing to put on it.
+  assert.deepEqual(platesPerSide(12.5), []);
+  // And a typed load past anything real still stops at a readable stack.
+  assert.equal(platesPerSide(600).length, 6);
+});

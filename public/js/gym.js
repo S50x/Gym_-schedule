@@ -1,7 +1,7 @@
 /** وضع النادي: شاشة تمرين واحدة في كل مرة + مؤقّت الراحة. */
 
 import { el, clear, append, richText, safeUrl } from './dom.js';
-import { fmt, fmtN, toast, buzz, beep, primeAudio } from './ui.js';
+import { fmt, fmtN, toast, buzz, beep, primeAudio, loadGlyph } from './ui.js';
 import { planOf, fineStep, setsKey, setsOfDay, MAX_LOAD } from './program.js';
 import { dayVolume, formatRest, newRecords } from './engine.js';
 import { exerciseFigure } from './figure.js';
@@ -312,6 +312,7 @@ export class GymMode {
       }),
       lastTime(this.store, exercise, weight),
       el('div', { class: 'wbox' }, el('div', { class: 'val' }, bigValue), adjust),
+      loadGlyph(exercise, weight),
       chips,
       // A timed hold counts itself down here, so nobody has to leave the app,
       // open a stopwatch and come back mid-plank.
