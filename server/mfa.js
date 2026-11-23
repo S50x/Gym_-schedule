@@ -55,14 +55,27 @@ export async function consumeChallenge(db, challengeId) {
   await db.run('DELETE FROM mfa_challenges WHERE id = $1', [challengeId]);
 }
 
-/** @returns true when the challenge has been burned through and is now gone. */
+/**
+ * @returns true when the challenge has been burned through and is now gone.
+ *
+ * The increment is read on the row itself (UPDATE … RETURNING), not computed
+ * from the `attempts` the caller read earlier. Two wrong codes presented in
+ * parallel against the same challenge would otherwise both start from the same
+ * stale count and both write it back as +1, so the six-attempt cap would never
+ * bite and a challenge could absorb as many guesses as the surrounding limiter
+ * allows. A single atomic statement makes each failure count exactly once.
+ */
 export async function recordFailedAttempt(db, challenge) {
-  const attempts = challenge.attempts + 1;
+  const row = await db.one(
+    'UPDATE mfa_challenges SET attempts = attempts + 1 WHERE id = $1 RETURNING attempts',
+    [challenge.id]
+  );
+  // Row gone already (a racing attempt consumed it): treat as burned.
+  const attempts = Number(row?.attempts ?? MAX_CHALLENGE_ATTEMPTS);
   if (attempts >= MAX_CHALLENGE_ATTEMPTS) {
     await consumeChallenge(db, challenge.id);
     return true;
   }
-  await db.run('UPDATE mfa_challenges SET attempts = $1 WHERE id = $2', [attempts, challenge.id]);
   return false;
 }
 
