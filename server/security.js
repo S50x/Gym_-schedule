@@ -169,27 +169,53 @@ export function authRateLimit(db, { windowMs, max, buckets: bucketsFn, message }
     const now = Date.now();
     const buckets = (bucketsFn ? bucketsFn(req) : defaultBuckets(req)).filter(Boolean);
 
-    for (const bucket of buckets) {
-      const row = await db.one(
-        `SELECT COUNT(*) AS n FROM login_attempts
-          WHERE bucket = $1 AND created_at > $2`,
-        [bucket, now - windowMs]
-      );
-      if (Number(row?.n ?? 0) >= max) {
-        const retryAfter = Math.ceil(windowMs / 1000);
-        res.setHeader('Retry-After', String(retryAfter));
-        return res.status(429).json({
-          error: 'rate_limited',
-          retryAfter,
-          message: message || 'محاولات دخول كثيرة. انتظر شوي وحاول مرة ثانية.',
-        });
+    // Check-then-insert is a read-modify-write, and it has to be atomic or the
+    // limit is only advisory: a burst of parallel requests would otherwise all
+    // read a below-limit count before any of them records its attempt, and all
+    // slip through — which on pooled Postgres means a password-guessing budget
+    // of 8/window becomes "8 plus however many land in the same instant", and
+    // every one of those spends a deliberately slow scryptSync. A per-bucket
+    // advisory lock serialises the whole check-and-record. PGlite runs
+    // in-process and already serialises every query, so it needs no lock (and
+    // offers no advisory-lock builtin); the lock is a no-op where there is no
+    // concurrency to guard. Locks are taken in sorted order so two requests
+    // sharing buckets can never deadlock.
+    const over = await db.tx(async (t) => {
+      if (db.kind === 'pg') {
+        for (const bucket of [...buckets].sort()) {
+          await t.query('SELECT pg_advisory_xact_lock(hashtext($1))', [bucket]);
+        }
       }
+
+      for (const bucket of buckets) {
+        const row = await t.one(
+          `SELECT COUNT(*) AS n FROM login_attempts
+            WHERE bucket = $1 AND created_at > $2`,
+          [bucket, now - windowMs]
+        );
+        if (Number(row?.n ?? 0) >= max) return true;
+      }
+
+      // Record the attempt now; routes clear it again on success.
+      for (const bucket of buckets) {
+        await t.run('INSERT INTO login_attempts (bucket, created_at) VALUES ($1, $2)', [
+          bucket,
+          now,
+        ]);
+      }
+      return false;
+    });
+
+    if (over) {
+      const retryAfter = Math.ceil(windowMs / 1000);
+      res.setHeader('Retry-After', String(retryAfter));
+      return res.status(429).json({
+        error: 'rate_limited',
+        retryAfter,
+        message: message || 'محاولات دخول كثيرة. انتظر شوي وحاول مرة ثانية.',
+      });
     }
 
-    // Record the attempt now; routes clear it again on success.
-    for (const bucket of buckets) {
-      await db.run('INSERT INTO login_attempts (bucket, created_at) VALUES ($1, $2)', [bucket, now]);
-    }
     req.rateLimitBuckets = buckets;
     return next();
   };

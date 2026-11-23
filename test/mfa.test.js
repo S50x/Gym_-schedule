@@ -138,6 +138,38 @@ test('two-factor authentication', async (t) => {
     assert.equal((await fresh.get('/api/auth/me')).status, 401);
   });
 
+  await t.test('parallel wrong codes cannot outrun the attempt cap', async () => {
+    // The six-attempt cap must count each failure exactly once. If the counter
+    // is incremented from a value read earlier instead of on the row itself,
+    // codes presented at the same instant all start from the same count and the
+    // cap never bites — a single challenge then absorbs far more guesses than
+    // it should. Fired in parallel so the increments interleave; on real
+    // Postgres (CI) a non-atomic counter leaks here. The challenge must still
+    // burn out: every one of these wrong codes is refused.
+    await enrol(app, 'parallel2fa@example.com');
+
+    const fresh = await makeClient(app.origin).bootstrap();
+    await resetRateLimits();
+    await fresh.post('/api/auth/login', {
+      email: 'parallel2fa@example.com',
+      password: goodPassword,
+    });
+
+    const results = await Promise.all(
+      Array.from({ length: 12 }, (_, i) =>
+        fresh.post('/api/auth/login/verify', { code: String(100000 + i).padStart(6, '0') })
+      )
+    );
+    assert.ok(
+      results.every((r) => r.status === 401),
+      'no wrong code is ever accepted'
+    );
+    // The challenge is spent: a correct code now gets nowhere either.
+    const after = await fresh.post('/api/auth/login/verify', { code: '000000' });
+    assert.equal(after.status, 401);
+    assert.equal((await fresh.get('/api/auth/me')).status, 401, 'no session was minted');
+  });
+
   await t.test('verifying with no challenge is refused', async () => {
     const fresh = await makeClient(app.origin).bootstrap();
     const res = await fresh.post('/api/auth/login/verify', { code: '123456' });
