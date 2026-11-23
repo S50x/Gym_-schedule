@@ -330,6 +330,32 @@ test('security controls', async (t) => {
     }
   });
 
+  await t.test('a burst of parallel wrong logins cannot outrun the limiter', async () => {
+    // The limiter's budget is a security control, not a hint: the check and the
+    // record have to be atomic, or a flood of simultaneous requests all read a
+    // below-limit count before any of them is recorded and all get through —
+    // each one spending a deliberately slow scryptSync. Fired in parallel so
+    // the check-and-record interleaves; on real Postgres (CI) this is where a
+    // non-atomic limiter leaks. At most the budget (8) may reach the password
+    // check; the rest must be turned away with 429.
+    const email = 'parallel-login@example.com';
+    const client = makeClient(app.origin);
+    await registerAndLogin(client, email);
+    await resetRateLimits();
+
+    const fresh = await makeClient(app.origin).bootstrap();
+    const results = await Promise.all(
+      Array.from({ length: 40 }, () =>
+        fresh.post('/api/auth/login', { email, password: 'wrong-password-every-time' })
+      )
+    );
+    const reached = results.filter((r) => r.status === 401).length;
+    const refused = results.filter((r) => r.status === 429).length;
+    assert.ok(reached <= 8, `at most the budget reaches scrypt, got ${reached}`);
+    assert.equal(reached + refused, 40, 'every request is either checked or refused');
+    assert.ok(refused > 0, 'the limiter actually bit');
+  });
+
   await t.test('errors do not leak stack traces', async () => {
     const client = await makeClient(app.origin).bootstrap();
     const res = await fetch(app.origin + '/api/state', {
