@@ -21,7 +21,7 @@ the Render and Neon dashboards.** Do not rewrite what already works.
 
 - **Repo:** `S50x/Gym_-schedule`. This session's GitHub scope is that repo only.
 - **Branch:** work on a fresh `claude/*` branch, open a PR, merge to `main`. **Render deploys `main`** — check Settings → Build & Deploy if a change does not appear.
-- **User:** Arabic-speaking, non-technical (shhv17@gmail.com). Reply in Arabic, one concrete step at a time.
+- **User:** Arabic-speaking, non-technical. Reply in Arabic, one concrete step at a time.
 
 ## 1. Current state (verified)
 
